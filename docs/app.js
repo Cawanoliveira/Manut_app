@@ -1,4 +1,4 @@
-﻿var CACHE_KEY = 'manutencao_offline_cache_v2';
+var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var appState = getDefaultAppState_();
@@ -16,6 +16,15 @@
       dashboard: buildEmptyDashboard_(),
       pendingQueue: [],
       tempIdMap: {},
+      formContext: {
+        loja: '',
+        setor: '',
+        tipo: '',
+        prioridade: ''
+      },
+      speechState: {
+        activeTargetId: ''
+      },
       connection: {
         online: navigator.onLine,
         syncing: false,
@@ -78,6 +87,7 @@
       appState.detailsById = cached.detailsById || {};
       appState.pendingQueue = cached.pendingQueue || [];
       appState.tempIdMap = cached.tempIdMap || {};
+      appState.formContext = cached.formContext || appState.formContext;
       appState.connection.lastSyncAt = cached.lastSyncAt || '';
       appState.dashboard = buildDashboardFromLocalState_();
     } catch (error) {
@@ -95,6 +105,7 @@
         detailsById: appState.detailsById,
         pendingQueue: appState.pendingQueue,
         tempIdMap: appState.tempIdMap,
+        formContext: appState.formContext,
         lastSyncAt: appState.connection.lastSyncAt
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
@@ -107,8 +118,10 @@
   function renderAll_() {
     if (appState.combos) {
       preencherCombos(appState.combos);
+      applySavedFormContext_();
     }
     renderConfiguracoes(appState.configs || []);
+    renderPrestadoresList_();
     appState.dashboard = buildDashboardFromLocalState_();
     renderDashboard(appState.dashboard);
     renderPendencias(getFilteredPendencias_(false));
@@ -199,10 +212,12 @@
     preencherSelect('filtroSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('filtroStatus', ['Aberto', 'Em andamento', 'Aguardando'], 'Todos os status', true);
     preencherSelect('filtroResponsavel', combos.usuarios, 'Todos os responsaveis', true);
+    preencherSelect('filtroExecutor', combos.prestadores, 'Todos os executores', true);
     preencherSelect('filtroPrioridade', combos.prioridades, 'Todas as prioridades', true);
     preencherSelect('filtroTipo', combos.tipos, 'Todos os tipos', true);
 
     preencherSelect('editResponsavel', combos.usuarios, 'Selecione um responsavel', true);
+    preencherSelect('editExecutor', combos.prestadores, 'Selecione um executor', true);
     preencherSelect('editStatus', combos.status, 'Selecione um status');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
@@ -229,6 +244,7 @@
 
   async function salvarNovaPendencia(event) {
     event.preventDefault();
+    captureFormContext_();
     var dados = {
       loja: document.getElementById('novaLoja').value,
       setor: document.getElementById('novoSetor').value,
@@ -268,8 +284,10 @@
         }
         mostrarMensagemSucesso(response.message + ' ID: ' + response.data.id_pendencia);
         limparFormularioNovaPendencia();
+        applySavedFormContext_();
         return carregarEstadoServidor_().then(function() {
-          navegar('secaoListaPendencias');
+          navegar('secaoNovaPendencia');
+          focusNovaDescricao_();
         });
       })
       .catch(handleFailure);
@@ -290,6 +308,7 @@
       observacao: dados.observacao || '',
       solicitante: 'offline_local',
       responsavel: '',
+      executor: '',
       data_inicio: '',
       previsao_entrega: '',
       status: 'Aberto',
@@ -314,8 +333,10 @@
       payload: deepClone_(dados)
     });
     limparFormularioNovaPendencia();
+    applySavedFormContext_();
     renderAll_();
-    navegar('secaoListaPendencias');
+    navegar('secaoNovaPendencia');
+    focusNovaDescricao_();
     mostrarMensagemSucesso('Pendencia salva offline. Ela sera sincronizada quando a internet voltar.');
   }
 
@@ -344,6 +365,7 @@
       setor: getElementValue_('filtroSetor'),
       status: apenasHistorico ? '' : getElementValue_('filtroStatus'),
       responsavel: getElementValue_('filtroResponsavel'),
+      executor: getElementValue_('filtroExecutor'),
       prioridade: getElementValue_('filtroPrioridade'),
       tipo: getElementValue_('filtroTipo'),
       dataAberturaDe: getElementValue_('filtroDataAberturaDe'),
@@ -358,11 +380,12 @@
   function aplicarFiltros() {
     toggleFiltroDrawer(false);
     renderPendencias(getFilteredPendencias_(false));
+    renderHistoricoGeral(getFilteredPendencias_(true));
     renderFiltroResumo();
   }
 
   function limparFiltros() {
-    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
+    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroExecutor', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
       .forEach(function(id) {
         document.getElementById(id).value = '';
       });
@@ -391,6 +414,7 @@
       setor: 'Setor',
       status: 'Status',
       responsavel: 'Responsavel',
+      executor: 'Executor',
       prioridade: 'Prioridade',
       tipo: 'Tipo',
       dataAberturaDe: 'Abertura de',
@@ -442,6 +466,7 @@
     }
     document.getElementById('editIdPendencia').value = item.id_pendencia;
     document.getElementById('editResponsavel').value = item.responsavel || '';
+    document.getElementById('editExecutor').value = item.executor || '';
     document.getElementById('editStatus').value = item.status || '';
     document.getElementById('editDataInicio').value = item.data_inicio || '';
     document.getElementById('editPrevisaoEntrega').value = item.previsao_entrega || '';
@@ -457,6 +482,7 @@
     var id = document.getElementById('editIdPendencia').value;
     var dados = {
       responsavel: document.getElementById('editResponsavel').value,
+      executor: document.getElementById('editExecutor').value,
       status: document.getElementById('editStatus').value,
       data_inicio: document.getElementById('editDataInicio').value,
       previsao_entrega: document.getElementById('editPrevisaoEntrega').value,
@@ -935,8 +961,10 @@
       items = ativos.filter(function(item) { return normalizeText_(item.prioridade) === 'critica'; });
     } else {
       title = 'Total geral';
-      description = 'Todas as pendencias ativas em cache local.';
-      items = ativos.slice();
+      description = 'Todas as pendencias, incluindo historico.';
+      items = appState.allPendencias.slice().sort(function(a, b) {
+        return String(b.id_pendencia).localeCompare(String(a.id_pendencia));
+      });
     }
 
     value = items.length;
@@ -982,16 +1010,23 @@
     cardsEl.innerHTML = items.map(function(item) {
       return '<article class="pendencia-card">' +
         '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + escapeHtml(item.setor) + '</p></div>' +
-        '<p>' + escapeHtml(resumirTexto(item.descricao, 130)) + '</p>' +
         '<div class="card-meta">' +
           renderTag('status', item.status) +
           renderTag('prioridade', item.prioridade) +
           (item.esta_vencida ? '<span class="tag prioridade-critica">Vencida</span>' : '') +
         '</div>' +
-        '<div class="muted-text">Responsavel: ' + escapeHtml(item.responsavel || 'Nao definido') + '</div>' +
-        '<div class="muted-text">Previsao: ' + escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-') + '</div>' +
+        '<div class="card-kv-grid">' +
+          cardKv_('Local', escapeHtml(item.loja || '-') + '<br>' + escapeHtml(item.setor || '-')) +
+          cardKv_('Classificacao', escapeHtml(item.tipo || '-') + '<br>' + escapeHtml(item.prioridade || '-')) +
+          cardKv_('Responsavel', escapeHtml(item.responsavel || 'Nao definido')) +
+          cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
+          cardKv_('Previsao', escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-')) +
+          cardKv_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
+        '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
+          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Obs.</button>' +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
           '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
@@ -1003,14 +1038,13 @@
     tableEl.innerHTML = items.map(function(item) {
       return '<tr>' +
         '<td>' + escapeHtml(item.id_pendencia) + '</td>' +
-        '<td>' + escapeHtml(item.loja) + '</td>' +
-        '<td>' + escapeHtml(item.setor) + '</td>' +
-        '<td>' + escapeHtml(resumirTexto(item.descricao, 80)) + '</td>' +
-        '<td>' + renderTag('prioridade', item.prioridade) + '</td>' +
+        '<td>' + escapeHtml(item.loja) + '<br>' + escapeHtml(item.setor) + '</td>' +
+        '<td>' + renderTag('prioridade', item.prioridade) + '<br>' + escapeHtml(item.tipo || '-') + '</td>' +
+        '<td><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Abrir texto</button></td>' +
+        '<td>' + escapeHtml(item.executor || '-') + '</td>' +
         '<td>' + renderTag('status', item.status) + '</td>' +
-        '<td>' + escapeHtml(item.responsavel || '-') + '</td>' +
-        '<td>' + escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-') + '</td>' +
         '<td><div class="actions-row">' +
+          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Obs.</button>' +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
           '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
@@ -1029,11 +1063,16 @@
     container.innerHTML = items.map(function(item) {
       return '<article class="pendencia-card">' +
         '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + escapeHtml(item.setor) + '</p></div>' +
-        '<p>' + escapeHtml(resumirTexto(item.descricao, 130)) + '</p>' +
         '<div class="card-meta">' + renderTag('status', item.status) + renderTag('prioridade', item.prioridade) + '</div>' +
-        '<div class="muted-text">Conclusao: ' + escapeHtml(item.data_conclusao_label || formatDateBr(item.data_conclusao) || '-') + '</div>' +
+        '<div class="card-kv-grid">' +
+          cardKv_('Conclusao', escapeHtml(item.data_conclusao_label || formatDateBr(item.data_conclusao) || '-')) +
+          cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
+          cardKv_('Responsavel', escapeHtml(item.responsavel || 'Nao definido')) +
+          cardKv_('Tipo', escapeHtml(item.tipo || '-')) +
+        '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
+          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Reabrir/editar</button>' +
         '</div>' +
@@ -1056,14 +1095,17 @@
         detailBlock_('Status', renderTag('status', item.status || '-')) +
         detailBlock_('Solicitante', escapeHtml(item.solicitante || '-')) +
         detailBlock_('Responsavel', escapeHtml(item.responsavel || '-')) +
+        detailBlock_('Executor', escapeHtml(item.executor || '-')) +
         detailBlock_('Abertura', escapeHtml((formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || ''))) +
         detailBlock_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
         detailBlock_('Previsao', escapeHtml(formatDateBr(item.previsao_entrega) || '-')) +
         detailBlock_('Conclusao', escapeHtml((formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || ''))) +
       '</div>' +
-      detailBlock_('Descricao', escapeHtml(item.descricao || '-')) +
-      detailBlock_('Observacao', escapeHtml(item.observacao || '-')) +
-      (item.foto_preview ? '<div><strong>Foto</strong><img class="details-photo" src="' + item.foto_preview + '" alt="Foto da pendencia"></div>' : '') +
+      '<div class="actions-row">' +
+        '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Abrir descricao</button>' +
+        '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Abrir observacao</button>' +
+        (item.id_arquivo_drive ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Ver foto</button>' : '') +
+      '</div>' +
       '<div class="actions-row">' +
         '<button class="primary-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
         '<button class="secondary-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
@@ -1073,6 +1115,10 @@
       '<div><strong>Timeline</strong>' + renderHistoricoInline_(item.historico || []) + '</div>' +
     '</div>';
     document.getElementById('detalhesPendencia').innerHTML = html;
+  }
+
+  function cardKv_(label, valueHtml) {
+    return '<div class="card-kv"><strong>' + label + '</strong><div>' + valueHtml + '</div></div>';
   }
 
   function detailBlock_(title, value) {
@@ -1118,8 +1164,178 @@
     return mapa[chave] || chave;
   }
 
-  function limparFormularioNovaPendencia() {
+  function renderPrestadoresList_() {
+    var container = document.getElementById('prestadoresList');
+    if (!container) {
+      return;
+    }
+    var prestadores = (appState.combos && appState.combos.prestadores) || [];
+    if (!prestadores.length) {
+      container.innerHTML = '<div class="empty-state">Nenhum executor/prestador cadastrado.</div>';
+      return;
+    }
+    container.innerHTML = prestadores.map(function(nome) {
+      return '<div class="summary-item"><span>' + escapeHtml(nome) + '</span><strong>Ativo</strong></div>';
+    }).join('');
+  }
+
+  function salvarNovoPrestador() {
+    var input = document.getElementById('novoPrestadorNome');
+    var nome = input ? input.value.trim() : '';
+    if (!nome) {
+      mostrarMensagemErro('Informe o nome do executor/prestador.');
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Cadastre executores/prestadores com internet para sincronizar com a planilha.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('salvarPrestador', [nome])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        input.value = '';
+        if (!appState.combos) {
+          appState.combos = {};
+        }
+        appState.combos.prestadores = response.data || [];
+        preencherCombos(appState.combos);
+        renderPrestadoresList_();
+        saveCache_();
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function abrirTextoRapido(id, campo) {
+    var item = buildDetailFromLocalItem_(getLocalItemById_(id));
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    var titulo = campo === 'observacao' ? 'Observacao' : 'Descricao';
+    var valor = campo === 'observacao' ? (item.observacao || 'Sem observacao.') : (item.descricao || 'Sem descricao.');
+    document.getElementById('quickViewTitle').textContent = titulo;
+    document.getElementById('quickViewContent').innerHTML = '<p>' + escapeHtml(valor).replace(/\n/g, '<br>') + '</p>';
+    document.getElementById('quickViewModal').classList.remove('hidden');
+  }
+
+  function abrirFotoRapida(id) {
+    var item = buildDetailFromLocalItem_(getLocalItemById_(id));
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    if (item.foto_preview) {
+      document.getElementById('quickViewTitle').textContent = 'Foto';
+      document.getElementById('quickViewContent').innerHTML = '<img class="details-photo" src="' + item.foto_preview + '" alt="Foto da pendencia">';
+      document.getElementById('quickViewModal').classList.remove('hidden');
+      return;
+    }
+    if (!item.id_arquivo_drive) {
+      mostrarMensagemErro('Esta pendencia nao possui foto.');
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('A foto original precisa de internet para ser carregada.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('obterFotoPreviewPendencia', [resolveRemoteId_(id)])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        item.foto_preview = response.data || '';
+        mergeItemIntoState_(item);
+        document.getElementById('quickViewTitle').textContent = 'Foto';
+        document.getElementById('quickViewContent').innerHTML = '<img class="details-photo" src="' + response.data + '" alt="Foto da pendencia">';
+        document.getElementById('quickViewModal').classList.remove('hidden');
+      })
+      .catch(handleFailure);
+  }
+
+  function fecharQuickView() {
+    document.getElementById('quickViewModal').classList.add('hidden');
+  }
+
+  function captureFormContext_() {
+    appState.formContext = {
+      loja: getElementValue_('novaLoja'),
+      setor: getElementValue_('novoSetor'),
+      tipo: getElementValue_('novoTipo'),
+      prioridade: getElementValue_('novaPrioridade')
+    };
+    saveCache_();
+  }
+
+  function applySavedFormContext_() {
+    if (!appState.formContext) {
+      return;
+    }
+    setElementValueIfExists_('novaLoja', appState.formContext.loja);
+    setElementValueIfExists_('novoSetor', appState.formContext.setor);
+    setElementValueIfExists_('novoTipo', appState.formContext.tipo);
+    setElementValueIfExists_('novaPrioridade', appState.formContext.prioridade);
+  }
+
+  function limparContextoRapido() {
+    appState.formContext = {
+      loja: '',
+      setor: '',
+      tipo: '',
+      prioridade: ''
+    };
+    saveCache_();
+    applySavedFormContext_();
+    mostrarMensagemSucesso('Contexto rapido limpo.');
+  }
+
+  function iniciarDitado(targetId) {
+    var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      mostrarMensagemErro('Ditado por voz nao suportado neste navegador.');
+      return;
+    }
+    var recognition = new Recognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    appState.speechState.activeTargetId = targetId;
+    recognition.onresult = function(event) {
+      var transcript = (event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '';
+      var field = document.getElementById(targetId);
+      if (!field) {
+        return;
+      }
+      var currentValue = field.value ? field.value.trim() + ' ' : '';
+      field.value = (currentValue + transcript).trim();
+    };
+    recognition.onerror = function() {
+      mostrarMensagemErro('Nao foi possivel usar o ditado por voz agora.');
+    };
+    recognition.start();
+  }
+
+  function limparFormularioNovaPendencia(clearContext) {
     document.getElementById('formNovaPendencia').reset();
+    if (clearContext) {
+      appState.formContext = {
+        loja: '',
+        setor: '',
+        tipo: '',
+        prioridade: ''
+      };
+      saveCache_();
+    } else {
+      applySavedFormContext_();
+    }
   }
 
   function voltarParaLista() {
@@ -1234,6 +1450,9 @@
         return false;
       }
       if (filtros.responsavel && normalizeText_(item.responsavel) !== normalizeText_(filtros.responsavel)) {
+        return false;
+      }
+      if (filtros.executor && normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
         return false;
       }
       if (filtros.prioridade && normalizeText_(item.prioridade) !== normalizeText_(filtros.prioridade)) {
@@ -1381,6 +1600,10 @@
     if (!item) {
       return null;
     }
+    item.esta_vencida = isPendenciaVencidaLocal_(item);
+    item.data_abertura_label = formatDateBr(item.data_abertura);
+    item.previsao_entrega_label = formatDateBr(item.previsao_entrega);
+    item.data_conclusao_label = formatDateBr(item.data_conclusao);
     if (!item.historico) {
       item.historico = [];
     }
@@ -1391,6 +1614,9 @@
     var now = new Date();
     if (Object.prototype.hasOwnProperty.call(dados, 'responsavel')) {
       item.responsavel = dados.responsavel || '';
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'executor')) {
+      item.executor = dados.executor || '';
     }
     if (Object.prototype.hasOwnProperty.call(dados, 'status') && dados.status) {
       item.status = dados.status;
@@ -1606,9 +1832,29 @@
     if (!value) {
       return '';
     }
+    if (value instanceof Date) {
+      if (isNaN(value.getTime()) || value.getFullYear() < 2000) {
+        return '';
+      }
+      return [
+        ('0' + value.getDate()).slice(-2),
+        ('0' + (value.getMonth() + 1)).slice(-2),
+        value.getFullYear()
+      ].join('/');
+    }
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       var parts = value.split('-');
+      if (Number(parts[0]) < 2000) {
+        return '';
+      }
       return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+      return formatDateBr(value.slice(0, 10));
+    }
+    var parsed = new Date(value);
+    if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2000) {
+      return formatDateBr(parsed);
     }
     return value;
   }
@@ -1678,4 +1924,19 @@
   function getElementValue_(id) {
     var element = document.getElementById(id);
     return element ? element.value : '';
+  }
+
+  function setElementValueIfExists_(id, value) {
+    var element = document.getElementById(id);
+    if (!element) {
+      return;
+    }
+    element.value = value || '';
+  }
+
+  function focusNovaDescricao_() {
+    var field = document.getElementById('novaDescricao');
+    if (field) {
+      field.focus();
+    }
   }

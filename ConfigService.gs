@@ -60,9 +60,30 @@ function getFormSupportData() {
     usuarios: (listarUsuarios().data || []).map(function(item) {
       return item.nome || item.email;
     }),
+    prestadores: (listarPrestadores().data || []).map(function(item) {
+      return item.nome_prestador;
+    }),
     tipos: APP_CONFIG.TIPOS_VALIDOS.map(normalizeLabel_),
     prioridades: APP_CONFIG.PRIORIDADES_VALIDAS.map(normalizeLabel_),
     status: APP_CONFIG.STATUS_VALIDOS.map(normalizeLabel_)
   };
 }
 
+function salvarPrestador(nomePrestador) {
+  try {
+    var nome = sanitizeText_(nomePrestador);
+    if (!nome) {
+      return createErrorResponse_('Informe o nome do executor/prestador.');
+    }
+    upsertSheetRecordByKey_(APP_CONFIG.SHEETS.PRESTADORES, 'nome_prestador', {
+      id_prestador: gerarId('PRE'),
+      nome_prestador: nome,
+      status: 'Ativo',
+      data_cadastro: parseDateInput_(formatDateForInput_(now_()))
+    });
+    return createSuccessResponse_('Executor/prestador salvo com sucesso.', listarPrestadores().data || []);
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao salvar prestador.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel salvar o executor/prestador.', error);
+  }
+}

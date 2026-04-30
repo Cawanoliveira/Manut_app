@@ -9,6 +9,7 @@ function validarDadosPendencia(dados, modo) {
     observacao: sanitizeText_(dados && dados.observacao),
     solicitante: sanitizeText_(dados && dados.solicitante) || getCurrentUserIdentifier_(),
     responsavel: sanitizeText_(dados && dados.responsavel),
+    executor: sanitizeText_(dados && dados.executor),
     data_inicio: dados && dados.data_inicio ? formatDateForInput_(parseDateInput_(dados.data_inicio)) : '',
     previsao_entrega: dados && dados.previsao_entrega ? formatDateForInput_(parseDateInput_(dados.previsao_entrega)) : '',
     status: normalizeLabel_(dados && dados.status),
@@ -97,6 +98,7 @@ function criarPendencia(dados) {
       observacao: clean.observacao,
       solicitante: clean.solicitante,
       responsavel: clean.responsavel,
+      executor: clean.executor,
       data_inicio: clean.data_inicio ? parseDateInput_(clean.data_inicio) : '',
       previsao_entrega: clean.previsao_entrega ? parseDateInput_(clean.previsao_entrega) : '',
       status: normalizeLabel_(statusInicial),
@@ -171,6 +173,9 @@ function applyPendenciasFilters_(items, filtros) {
     if (filtros.responsavel && normalizeCompare_(item.responsavel) !== normalizeCompare_(filtros.responsavel)) {
       return false;
     }
+    if (filtros.executor && normalizeCompare_(item.executor) !== normalizeCompare_(filtros.executor)) {
+      return false;
+    }
     if (filtros.prioridade && normalizeCompare_(item.prioridade) !== normalizeCompare_(filtros.prioridade)) {
       return false;
     }
@@ -233,10 +238,7 @@ function buscarPendenciaPorId(id) {
     pendencia.prioridade = normalizeLabel_(pendencia.prioridade);
     pendencia.tipo = normalizeLabel_(pendencia.tipo);
     pendencia.historico = listarHistoricoPorPendencia_(id);
-    if (pendencia.id_arquivo_drive) {
-      var previewResult = obterFotoPreview(pendencia.id_arquivo_drive);
-      pendencia.foto_preview = previewResult.success ? previewResult.data : '';
-    }
+    pendencia.foto_preview = '';
     return createSuccessResponse_('Pendencia localizada.', pendencia);
   } catch (error) {
     registrarLog('ERRO', 'Falha ao buscar pendencia por ID.', getErrorStack_(error));
@@ -291,6 +293,7 @@ function atualizarPendencia(id, dados) {
       observacao: Object.prototype.hasOwnProperty.call(dados || {}, 'observacao') ? clean.observacao : currentRecord.observacao,
       solicitante: clean.solicitante || currentRecord.solicitante,
       responsavel: Object.prototype.hasOwnProperty.call(dados || {}, 'responsavel') ? clean.responsavel : currentRecord.responsavel,
+      executor: Object.prototype.hasOwnProperty.call(dados || {}, 'executor') ? clean.executor : currentRecord.executor,
       data_inicio: Object.prototype.hasOwnProperty.call(dados || {}, 'data_inicio') ? (clean.data_inicio ? parseDateInput_(clean.data_inicio) : '') : currentRecord.data_inicio,
       previsao_entrega: Object.prototype.hasOwnProperty.call(dados || {}, 'previsao_entrega') ? (clean.previsao_entrega ? parseDateInput_(clean.previsao_entrega) : '') : currentRecord.previsao_entrega,
       status: novoStatus,

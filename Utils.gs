@@ -4,6 +4,7 @@ var APP_CONFIG = {
     LOJAS: 'LOJAS',
     SETORES: 'SETORES',
     USUARIOS: 'USUARIOS',
+    PRESTADORES: 'PRESTADORES',
     PENDENCIAS: 'PENDENCIAS',
     HISTORICO_STATUS: 'HISTORICO_STATUS',
     LOGS: 'LOGS',
@@ -14,6 +15,7 @@ var APP_CONFIG = {
     LOJAS: ['id_loja', 'nome_loja', 'cidade', 'status', 'data_cadastro'],
     SETORES: ['id_setor', 'nome_setor', 'status', 'data_cadastro'],
     USUARIOS: ['id_usuario', 'nome', 'email', 'perfil', 'status', 'data_cadastro'],
+    PRESTADORES: ['id_prestador', 'nome_prestador', 'status', 'data_cadastro'],
     PENDENCIAS: [
       'id_pendencia',
       'data_abertura',
@@ -26,6 +28,7 @@ var APP_CONFIG = {
       'observacao',
       'solicitante',
       'responsavel',
+      'executor',
       'data_inicio',
       'previsao_entrega',
       'status',

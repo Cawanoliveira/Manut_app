@@ -181,3 +181,13 @@ function listarUsuarios() {
   }
 }
 
+function listarPrestadores() {
+  try {
+    return createSuccessResponse_('Prestadores carregados.', getAllSheetData_(APP_CONFIG.SHEETS.PRESTADORES).filter(function(prestador) {
+      return normalizeCompare_(prestador.status || 'Ativo') !== 'inativo';
+    }));
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao listar prestadores.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel listar os prestadores.', error);
+  }
+}

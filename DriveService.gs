@@ -69,3 +69,21 @@ function obterFotoPreview(idArquivoDrive) {
   }
 }
 
+function obterFotoPreviewPendencia(idPendencia) {
+  try {
+    var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.PENDENCIAS, 'id_pendencia', idPendencia);
+    if (rowIndex === -1) {
+      return createErrorResponse_('Pendencia nao encontrada.');
+    }
+    var headers = APP_CONFIG.HEADERS[APP_CONFIG.SHEETS.PENDENCIAS];
+    var values = getSheet_(APP_CONFIG.SHEETS.PENDENCIAS).getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+    var record = mapRowToObject_(APP_CONFIG.SHEETS.PENDENCIAS, values);
+    if (!record.id_arquivo_drive) {
+      return createErrorResponse_('Esta pendencia nao possui foto cadastrada.');
+    }
+    return obterFotoPreview(record.id_arquivo_drive);
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao obter foto da pendencia.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel carregar a foto.', error);
+  }
+}
