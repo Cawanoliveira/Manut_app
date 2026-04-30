@@ -81,7 +81,7 @@ function salvarPrestador(nomePrestador) {
       status: 'Ativo',
       data_cadastro: parseDateInput_(formatDateForInput_(now_()))
     });
-    return createSuccessResponse_('Executor/prestador salvo com sucesso.', listarPrestadores().data || []);
+    return createSuccessResponse_('Executor/prestador salvo com sucesso.', getFormSupportData().prestadores || []);
   } catch (error) {
     registrarLog('ERRO', 'Falha ao salvar prestador.', getErrorStack_(error));
     return createErrorResponse_('Nao foi possivel salvar o executor/prestador.', error);
