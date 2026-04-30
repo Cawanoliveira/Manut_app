@@ -1,3 +1,3 @@
 window.PWA_CONFIG = {
-  appsScriptBridgeUrl: 'https://script.google.com/macros/s/AKfycbyyuZkzhRDvToAPCIEprW2KYWDvakw28h-rtdO2WIyFcH-DGR5ceXxnpfFXk51Dz89_1w/exec'
+  appsScriptBridgeUrl: 'https://script.google.com/macros/s/AKfycbyHXFDmPN0hOFhvSrR_k7Ebv2YVBBu7KpPoaNdtmtXFoLEDIGq74SiRdb5a9euctOUPQw/exec'
 };
