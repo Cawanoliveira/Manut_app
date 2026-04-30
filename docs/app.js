@@ -211,12 +211,10 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     preencherSelect('filtroLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('filtroSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('filtroStatus', ['Aberto', 'Em andamento', 'Aguardando'], 'Todos os status', true);
-    preencherSelect('filtroResponsavel', combos.usuarios, 'Todos os responsaveis', true);
     preencherSelect('filtroExecutor', combos.prestadores, 'Todos os executores', true);
     preencherSelect('filtroPrioridade', combos.prioridades, 'Todas as prioridades', true);
     preencherSelect('filtroTipo', combos.tipos, 'Todos os tipos', true);
 
-    preencherSelect('editResponsavel', combos.usuarios, 'Selecione um responsavel', true);
     preencherSelect('editExecutor', combos.prestadores, 'Selecione um executor', true);
     preencherSelect('editStatus', combos.status, 'Selecione um status');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
@@ -283,12 +281,14 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           return;
         }
         mostrarMensagemSucesso(response.message + ' ID: ' + response.data.id_pendencia);
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderAll_();
+        }
         limparFormularioNovaPendencia();
         applySavedFormContext_();
-        return carregarEstadoServidor_().then(function() {
-          navegar('secaoNovaPendencia');
-          focusNovaDescricao_();
-        });
+        navegar('secaoNovaPendencia');
+        focusNovaDescricao_();
       })
       .catch(handleFailure);
   }
@@ -364,7 +364,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       loja: getElementValue_('filtroLoja'),
       setor: getElementValue_('filtroSetor'),
       status: apenasHistorico ? '' : getElementValue_('filtroStatus'),
-      responsavel: getElementValue_('filtroResponsavel'),
       executor: getElementValue_('filtroExecutor'),
       prioridade: getElementValue_('filtroPrioridade'),
       tipo: getElementValue_('filtroTipo'),
@@ -385,7 +384,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function limparFiltros() {
-    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroExecutor', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
+    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroExecutor', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
       .forEach(function(id) {
         document.getElementById(id).value = '';
       });
@@ -413,7 +412,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       loja: 'Loja',
       setor: 'Setor',
       status: 'Status',
-      responsavel: 'Responsavel',
       executor: 'Executor',
       prioridade: 'Prioridade',
       tipo: 'Tipo',
@@ -465,7 +463,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       return;
     }
     document.getElementById('editIdPendencia').value = item.id_pendencia;
-    document.getElementById('editResponsavel').value = item.responsavel || '';
     document.getElementById('editExecutor').value = item.executor || '';
     document.getElementById('editStatus').value = item.status || '';
     document.getElementById('editDataInicio').value = item.data_inicio || '';
@@ -481,7 +478,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     event.preventDefault();
     var id = document.getElementById('editIdPendencia').value;
     var dados = {
-      responsavel: document.getElementById('editResponsavel').value,
       executor: document.getElementById('editExecutor').value,
       status: document.getElementById('editStatus').value,
       data_inicio: document.getElementById('editDataInicio').value,
@@ -515,6 +511,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           return;
         }
         mostrarMensagemSucesso(response.message);
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderAll_();
+          renderDetalhesPendencia(response.data.pendencia);
+          navegar('secaoDetalhesPendencia');
+          return;
+        }
         return carregarEstadoServidor_().then(function() {
           abrirDetalhesPendencia(resolveRemoteId_(id));
         });
@@ -570,6 +573,12 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           return;
         }
         mostrarMensagemSucesso(response.message);
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderAll_();
+          navegar('secaoHistorico');
+          return;
+        }
         return carregarEstadoServidor_().then(function() {
           navegar('secaoHistorico');
         });
@@ -606,6 +615,17 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           return;
         }
         mostrarMensagemSucesso(response.message);
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderAll_();
+          if (normalizeText_(novoStatus) === 'concluido' || normalizeText_(novoStatus) === 'cancelado') {
+            navegar('secaoHistorico');
+          } else {
+            renderDetalhesPendencia(response.data.pendencia);
+            navegar('secaoDetalhesPendencia');
+          }
+          return;
+        }
         return carregarEstadoServidor_().then(function() {
           if (normalizeText_(novoStatus) === 'concluido' || normalizeText_(novoStatus) === 'cancelado') {
             navegar('secaoHistorico');
@@ -656,9 +676,9 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           return;
         }
         mostrarMensagemSucesso(response.message);
-        return carregarEstadoServidor_().then(function() {
-          navegar('secaoListaPendencias');
-        });
+        removeItemFromState_(id);
+        renderAll_();
+        navegar('secaoListaPendencias');
       })
       .catch(handleFailure);
   }
@@ -1018,15 +1038,16 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '<div class="card-kv-grid">' +
           cardKv_('Local', escapeHtml(item.loja || '-') + '<br>' + escapeHtml(item.setor || '-')) +
           cardKv_('Classificacao', escapeHtml(item.tipo || '-') + '<br>' + escapeHtml(item.prioridade || '-')) +
-          cardKv_('Responsavel', escapeHtml(item.responsavel || 'Nao definido')) +
           cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
           cardKv_('Previsao', escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-')) +
           cardKv_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
+        (item.id_arquivo_drive || item.foto_preview ? '<div class="muted-text">Anexo disponivel</div>' : '') +
         '<div class="actions-row">' +
           '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
           '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Obs.</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Anexo</button>' : '') +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
           '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
@@ -1045,6 +1066,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '<td>' + renderTag('status', item.status) + '</td>' +
         '<td><div class="actions-row">' +
           '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Obs.</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Anexo</button>' : '') +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
           '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
@@ -1067,12 +1089,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '<div class="card-kv-grid">' +
           cardKv_('Conclusao', escapeHtml(item.data_conclusao_label || formatDateBr(item.data_conclusao) || '-')) +
           cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
-          cardKv_('Responsavel', escapeHtml(item.responsavel || 'Nao definido')) +
           cardKv_('Tipo', escapeHtml(item.tipo || '-')) +
+          cardKv_('Local', escapeHtml(item.loja || '-') + '<br>' + escapeHtml(item.setor || '-')) +
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
           '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Anexo</button>' : '') +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Reabrir/editar</button>' +
         '</div>' +
@@ -1094,7 +1117,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         detailBlock_('Prioridade', renderTag('prioridade', item.prioridade || '-')) +
         detailBlock_('Status', renderTag('status', item.status || '-')) +
         detailBlock_('Solicitante', escapeHtml(item.solicitante || '-')) +
-        detailBlock_('Responsavel', escapeHtml(item.responsavel || '-')) +
         detailBlock_('Executor', escapeHtml(item.executor || '-')) +
         detailBlock_('Abertura', escapeHtml((formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || ''))) +
         detailBlock_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
@@ -1309,13 +1331,14 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     recognition.maxAlternatives = 1;
     appState.speechState.activeTargetId = targetId;
     recognition.onresult = function(event) {
-      var transcript = (event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '';
+      var transcript = normalizeVoiceTranscript_((event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
       var field = document.getElementById(targetId);
       if (!field) {
         return;
       }
-      var currentValue = field.value ? field.value.trim() + ' ' : '';
-      field.value = (currentValue + transcript).trim();
+      var currentValue = field.value || '';
+      var prefix = currentValue && transcript && transcript.charAt(0) !== '\n' ? ' ' : '';
+      field.value = (currentValue + prefix + transcript).replace(/[ \t]+\n/g, '\n').trim();
     };
     recognition.onerror = function() {
       mostrarMensagemErro('Nao foi possivel usar o ditado por voz agora.');
@@ -1447,9 +1470,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         return false;
       }
       if (filtros.status && normalizeText_(item.status) !== normalizeText_(filtros.status)) {
-        return false;
-      }
-      if (filtros.responsavel && normalizeText_(item.responsavel) !== normalizeText_(filtros.responsavel)) {
         return false;
       }
       if (filtros.executor && normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
@@ -1903,6 +1923,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function formatDateTimeLocal_(date) {
     return formatDateBr(toInputDate_(date)) + ' ' + toTime_(date);
+  }
+
+  function normalizeVoiceTranscript_(value) {
+    return String(value || '')
+      .replace(/\b(nova linha|novo paragrafo|novo parágrafo)\b/gi, '\n')
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .trim();
   }
 
   function generateLocalId_(prefix) {

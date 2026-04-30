@@ -119,7 +119,8 @@ function criarPendencia(dados) {
 
     registrarLog('INFO', 'Pendencia criada com sucesso.', idPendencia, record.solicitante);
     return createSuccessResponse_('Pendencia criada com sucesso.', {
-      id_pendencia: idPendencia
+      id_pendencia: idPendencia,
+      pendencia: buildPendenciaPayloadById_(idPendencia)
     });
   } catch (error) {
     registrarLog('ERRO', 'Falha ao criar pendencia.', getErrorStack_(error));
@@ -314,7 +315,10 @@ function atualizarPendencia(id, dados) {
     atualizarDashboardBase_();
     SpreadsheetApp.flush();
     registrarLog('INFO', 'Pendencia atualizada.', id, getCurrentUserIdentifier_());
-    return createSuccessResponse_('Pendencia atualizada com sucesso.');
+    return createSuccessResponse_('Pendencia atualizada com sucesso.', {
+      id_pendencia: id,
+      pendencia: buildPendenciaPayloadById_(id)
+    });
   } catch (error) {
     registrarLog('ERRO', 'Falha ao atualizar pendencia.', getErrorStack_(error));
     return createErrorResponse_('Nao foi possivel atualizar a pendencia.', error);
@@ -367,7 +371,9 @@ function excluirPendencia(id, observacao) {
     atualizarDashboardBase_();
     SpreadsheetApp.flush();
     registrarLog('INFO', 'Pendencia excluida com sucesso.', id, getCurrentUserIdentifier_());
-    return createSuccessResponse_('Pendencia excluida com sucesso.');
+    return createSuccessResponse_('Pendencia excluida com sucesso.', {
+      id_pendencia: id
+    });
   } catch (error) {
     registrarLog('ERRO', 'Falha ao excluir pendencia.', getErrorStack_(error), getCurrentUserIdentifier_());
     return createErrorResponse_('Nao foi possivel excluir a pendencia.', error);
@@ -389,6 +395,26 @@ function applyStatusSideEffects_(currentRecord, updatedData, novoStatus) {
     updatedData.hora_conclusao = '';
     updatedData.excluir_foto_em = '';
   }
+}
+
+function buildPendenciaPayloadById_(id) {
+  var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.PENDENCIAS, 'id_pendencia', id);
+  if (rowIndex === -1) {
+    return null;
+  }
+  var headers = APP_CONFIG.HEADERS[APP_CONFIG.SHEETS.PENDENCIAS];
+  var values = getSheet_(APP_CONFIG.SHEETS.PENDENCIAS).getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+  var pendencia = mapRowToObject_(APP_CONFIG.SHEETS.PENDENCIAS, values);
+  pendencia.status = normalizeLabel_(pendencia.status);
+  pendencia.prioridade = normalizeLabel_(pendencia.prioridade);
+  pendencia.tipo = normalizeLabel_(pendencia.tipo);
+  pendencia.data_abertura_label = formatarData(pendencia.data_abertura);
+  pendencia.previsao_entrega_label = formatarData(pendencia.previsao_entrega);
+  pendencia.data_conclusao_label = formatarData(pendencia.data_conclusao);
+  pendencia.esta_vencida = isPendenciaVencida_(pendencia);
+  pendencia.historico = listarHistoricoPorPendencia_(id);
+  pendencia.foto_preview = '';
+  return pendencia;
 }
 
 function registrarHistoricoStatus(idPendencia, statusAnterior, statusNovo, usuario, observacao) {

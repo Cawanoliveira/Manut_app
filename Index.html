@@ -92,7 +92,7 @@
           </label>
           <label class="full-width">
             <span>Foto opcional</span>
-            <input id="novaFoto" type="file" accept="image/*">
+            <input id="novaFoto" type="file" accept="image/*" capture="environment">
             <small>Video nao e permitido.</small>
           </label>
           <div class="full-width actions-row">
@@ -155,10 +155,6 @@
         <form id="formEditarPendencia" class="panel form-grid" onsubmit="salvarEdicaoPendencia(event)">
           <input id="editIdPendencia" type="hidden">
           <label>
-            <span>Responsavel</span>
-            <select id="editResponsavel"></select>
-          </label>
-          <label>
             <span>Executor / prestador</span>
             <select id="editExecutor"></select>
           </label>
@@ -191,7 +187,7 @@
           </label>
           <label class="full-width">
             <span>Nova foto</span>
-            <input id="editFoto" type="file" accept="image/*">
+            <input id="editFoto" type="file" accept="image/*" capture="environment">
           </label>
           <div class="full-width actions-row">
             <button type="submit" class="primary-button">Salvar</button>
@@ -260,10 +256,6 @@
           <label>
             <span>Status</span>
             <select id="filtroStatus"></select>
-          </label>
-          <label>
-            <span>Responsavel</span>
-            <select id="filtroResponsavel"></select>
           </label>
           <label>
             <span>Executor</span>
