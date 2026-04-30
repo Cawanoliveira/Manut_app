@@ -29,12 +29,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       speechState: {
         activeTargetId: ''
       },
-      ui: {
-        filterFabPosition: {
-          top: 54,
-          left: 12
-        }
-      },
       connection: {
         online: navigator.onLine,
         syncing: false,
@@ -46,6 +40,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   function inicializarApp() {
     bindConnectivityHandlers_();
     bindFilterFab_();
+    bindPenInputMode_();
     hydrateFromCache_();
     renderAll_();
     atualizarNomeArquivo('novaFoto', 'novaFotoNome');
@@ -87,71 +82,40 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function bindFilterFab_() {
-    var fab = document.getElementById('filterFab');
-    if (!fab) {
-      return;
-    }
-    var dragState = null;
-
-    fab.addEventListener('pointerdown', function(event) {
-      if (event.pointerType === 'mouse' && event.button !== 0) {
-        return;
-      }
-      dragState = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        startLeft: appState.ui.filterFabPosition.left,
-        startTop: appState.ui.filterFabPosition.top,
-        moved: false
-      };
-      fab.classList.add('dragging');
-      fab.setPointerCapture(event.pointerId);
-    });
-
-    fab.addEventListener('pointermove', function(event) {
-      if (!dragState || dragState.pointerId !== event.pointerId) {
-        return;
-      }
-      var deltaX = event.clientX - dragState.startX;
-      var deltaY = event.clientY - dragState.startY;
-      if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
-        dragState.moved = true;
-      }
-      if (!dragState.moved) {
-        return;
-      }
-      appState.ui.filterFabPosition.left = Math.max(8, Math.min(window.innerWidth - 120, dragState.startLeft + deltaX));
-      appState.ui.filterFabPosition.top = Math.max(44, Math.min(window.innerHeight - 140, dragState.startTop + deltaY));
-      applyFilterFabPosition_();
-    });
-
-    fab.addEventListener('pointerup', function(event) {
-      if (!dragState || dragState.pointerId !== event.pointerId) {
-        return;
-      }
-      fab.releasePointerCapture(event.pointerId);
-      fab.classList.remove('dragging');
-      if (dragState.moved) {
-        fab.dataset.skipClick = '1';
-        saveCache_();
-      }
-      dragState = null;
-    });
-
-    fab.addEventListener('pointercancel', function() {
-      fab.classList.remove('dragging');
-      dragState = null;
-    });
+    applyFilterFabPosition_();
   }
 
   function applyFilterFabPosition_() {
     var fab = document.getElementById('filterFab');
-    if (!fab || !appState.ui || !appState.ui.filterFabPosition) {
+    if (!fab) {
       return;
     }
-    fab.style.left = appState.ui.filterFabPosition.left + 'px';
-    fab.style.top = appState.ui.filterFabPosition.top + 'px';
+    fab.style.left = '12px';
+    fab.style.top = '10px';
+  }
+
+  function bindPenInputMode_() {
+    ['novaDescricao', 'novaObservacao', 'editObservacao'].forEach(function(id) {
+      var field = document.getElementById(id);
+      if (!field) {
+        return;
+      }
+      field.addEventListener('pointerdown', function(event) {
+        if (event.pointerType === 'pen') {
+          event.preventDefault();
+          abrirSpenPopup(id, getSpenFieldTitle_(id));
+        }
+      });
+    });
+  }
+
+  function getSpenFieldTitle_(id) {
+    var map = {
+      novaDescricao: 'Descricao',
+      novaObservacao: 'Observacao',
+      editObservacao: 'Observacao'
+    };
+    return map[id] || 'Campo';
   }
 
   function hydrateFromCache_() {
@@ -169,7 +133,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       appState.pendingQueue = cached.pendingQueue || [];
       appState.tempIdMap = cached.tempIdMap || {};
       appState.formContext = cached.formContext || appState.formContext;
-      appState.ui = cached.ui || appState.ui;
       appState.connection.lastSyncAt = cached.lastSyncAt || '';
       appState.dashboard = buildDashboardFromLocalState_();
     } catch (error) {
@@ -189,7 +152,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         pendingQueue: appState.pendingQueue,
         tempIdMap: appState.tempIdMap,
         formContext: appState.formContext,
-        ui: appState.ui,
         lastSyncAt: appState.connection.lastSyncAt
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
@@ -510,15 +472,12 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function toggleFiltroDrawer(show) {
     document.getElementById('filtroDrawer').classList.toggle('hidden', !show);
+    document.body.classList.toggle('sidebar-open', !!show);
   }
 
   function abrirFiltrosFlutuante() {
-    var fab = document.getElementById('filterFab');
-    if (fab && fab.dataset.skipClick === '1') {
-      fab.dataset.skipClick = '0';
-      return;
-    }
-    toggleFiltroDrawer(true);
+    var drawer = document.getElementById('filtroDrawer');
+    toggleFiltroDrawer(drawer.classList.contains('hidden'));
   }
 
   function abrirDetalhesPendencia(id) {
@@ -649,7 +608,19 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       mostrarMensagemErro('Nenhuma pendencia selecionada.');
       return;
     }
-    var observacao = window.prompt('Observacao de conclusao (opcional):', '') || '';
+    document.getElementById('concluirPendenciaId').value = id;
+    document.getElementById('concluirObservacao').value = '';
+    document.getElementById('concluirModal').classList.remove('hidden');
+  }
+
+  function fecharConclusaoModal() {
+    document.getElementById('concluirModal').classList.add('hidden');
+  }
+
+  function confirmarConclusaoModal() {
+    var id = document.getElementById('concluirPendenciaId').value;
+    var observacao = document.getElementById('concluirObservacao').value || '';
+    fecharConclusaoModal();
     if (!appState.connection.online) {
       atualizarPendenciaOffline_(id, {
         status: 'Concluido',
@@ -1113,12 +1084,10 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     return orderedKeys.map(function(key) {
       var count = collection[key];
       var intensity = Math.max(0.18, count / max);
-      var bgColor = tipo === 'loja'
-        ? 'linear-gradient(90deg, rgba(214,40,40,' + Math.min(0.82, intensity + 0.18) + ') 0%, rgba(255,166,92,0.22) 100%)'
-        : 'linear-gradient(90deg, rgba(242,100,0,' + Math.min(0.82, intensity + 0.18) + ') 0%, rgba(255,211,164,0.22) 100%)';
+      var bgColor = 'linear-gradient(90deg, rgba(138,18,18,' + Math.min(0.92, intensity + 0.2) + ') 0%, rgba(255,176,93,0.32) 100%)';
       var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
       return '<button class="summary-item clickable' + selectedClass + '" style="background:' + bgColor + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
-        '<div><strong>' + escapeHtml(key) + '</strong><div class="summary-item-sub">Toque para visualizar as pendencias.</div></div>' +
+        '<div><strong>' + escapeHtml(key) + '</strong></div>' +
         '<strong>' + count + '</strong>' +
       '</button>';
     }).join('');
@@ -1178,7 +1147,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     var tableEl = document.getElementById('listaPendenciasTabela');
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada.</div>';
-      tableEl.innerHTML = '<tr><td colspan="8" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="10" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
       return;
     }
 
@@ -1200,6 +1169,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
+          '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
           '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
@@ -1211,23 +1181,25 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
     tableEl.innerHTML = items.map(function(item) {
       return '<tr>' +
-        '<td>' + escapeHtml(item.id_pendencia) + '</td>' +
+        '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button></td>' +
+        '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
         '<td>' + escapeHtml(item.setor || '-') + '</td>' +
         '<td>' + escapeHtml(item.tipo || '-') + '</td>' +
         '<td>' + renderTag('prioridade', item.prioridade || '-') + '</td>' +
         '<td><div class="descricao-obs-cell">' +
           '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+          '<button class="warning-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
         '</div></td>' +
         '<td>' + escapeHtml(item.executor || '-') + '</td>' +
         '<td><div class="table-actions">' +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
-          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span></span>') +
-          '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="clip-placeholder"></span>') +
         '</div></td>' +
+        '<td>' +
+          '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
+        '</td>' +
       '</tr>';
     }).join('');
   }
@@ -1268,24 +1240,32 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     var html = '<div class="details-grid">' +
       '<table class="details-table">' +
         '<tbody>' +
-          detailsRow_('ID', escapeHtml(item.id_pendencia || '-')) +
-          detailsRow_('Loja', escapeHtml(item.loja || '-')) +
-          detailsRow_('Setor', escapeHtml(item.setor || '-')) +
-          detailsRow_('Tipo', escapeHtml(item.tipo || '-')) +
-          detailsRow_('Prioridade', renderTag('prioridade', item.prioridade || '-')) +
-          detailsRow_('Status', renderTag('status', item.status || '-')) +
-          detailsRow_('Solicitante', escapeHtml(item.solicitante || '-')) +
-          detailsRow_('Executor', escapeHtml(item.executor || '-')) +
-          detailsRow_('Abertura', escapeHtml((formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || ''))) +
-          detailsRow_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
-          detailsRow_('Previsao', escapeHtml(formatDateBr(item.previsao_entrega) || '-')) +
-          detailsRow_('Conclusao', escapeHtml((formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || ''))) +
+          detailsRow_('Identificacao', '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Mostrar ID</button>') +
+          detailsRow_('Loja / Setor / Tipo', groupedDetail_([
+            { label: 'Loja', value: item.loja || '-' },
+            { label: 'Setor', value: item.setor || '-' },
+            { label: 'Tipo', value: item.tipo || '-' }
+          ])) +
+          detailsRow_('Prioridade / Status', groupedDetail_([
+            { label: 'Prioridade', value: renderTag('prioridade', item.prioridade || '-') },
+            { label: 'Status', value: renderTag('status', item.status || '-') }
+          ], true)) +
+          detailsRow_('Solicitante / Executor', groupedDetail_([
+            { label: 'Solicitante', value: item.solicitante || '-' },
+            { label: 'Executor', value: item.executor || '-' }
+          ])) +
+          detailsRow_('Datas', groupedDetail_([
+            { label: 'Abertura', value: (formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || '') },
+            { label: 'Inicio', value: formatDateBr(item.data_inicio) || '-' },
+            { label: 'Previsao', value: formatDateBr(item.previsao_entrega) || '-' },
+            { label: 'Conclusao', value: (formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || '') }
+          ])) +
           detailsRow_('Acoes', '<span class="details-table-title">Acoes da pendencia</span><div class="details-table-actions">' +
             '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+            '<button class="warning-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
             (item.id_arquivo_drive ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
             '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-            '<button class="secondary-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
+            '<button class="ghost-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
             '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
             '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
           '</div>') +
@@ -1301,6 +1281,20 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function detailsRow_(label, valueHtml) {
     return '<tr><th>' + escapeHtml(label) + '</th><td>' + valueHtml + '</td></tr>';
+  }
+
+  function groupedDetail_(items, rawValues) {
+    return '<div class="grouped-detail">' + (items || []).map(function(item) {
+      return '<div class="grouped-detail-item"><strong>' + escapeHtml(item.label) + '</strong><div>' +
+        (rawValues ? item.value : escapeHtml(item.value || '-')) +
+      '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function mostrarIdPendencia(id) {
+    document.getElementById('quickViewTitle').textContent = 'ID da pendencia';
+    document.getElementById('quickViewContent').innerHTML = '<p><strong>' + escapeHtml(id || '-') + '</strong></p>';
+    document.getElementById('quickViewModal').classList.remove('hidden');
   }
 
   function renderConfiguracoes(items) {
@@ -1431,7 +1425,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function abrirSpenPopup(targetId, title) {
     document.getElementById('spenTargetField').value = targetId;
-    document.getElementById('spenModalTitle').textContent = 'S Pen to text - ' + title;
+    document.getElementById('spenModalTitle').textContent = 'Escrita com S Pen - ' + title;
     document.getElementById('spenInputArea').value = document.getElementById(targetId).value || '';
     document.getElementById('spenModal').classList.remove('hidden');
     setTimeout(function() {
