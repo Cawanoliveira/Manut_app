@@ -14,6 +14,10 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       allPendencias: [],
       detailsById: {},
       dashboard: buildEmptyDashboard_(),
+      dashboardSelection: {
+        type: '',
+        key: ''
+      },
       pendingQueue: [],
       tempIdMap: {},
       formContext: {
@@ -25,6 +29,12 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       speechState: {
         activeTargetId: ''
       },
+      ui: {
+        filterFabPosition: {
+          top: 54,
+          left: 12
+        }
+      },
       connection: {
         online: navigator.onLine,
         syncing: false,
@@ -35,8 +45,11 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function inicializarApp() {
     bindConnectivityHandlers_();
+    bindFilterFab_();
     hydrateFromCache_();
     renderAll_();
+    atualizarNomeArquivo('novaFoto', 'novaFotoNome');
+    atualizarNomeArquivo('editFoto', 'editFotoNome');
 
     if (appState.connection.online) {
       sincronizarFila_(false)
@@ -73,6 +86,74 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     });
   }
 
+  function bindFilterFab_() {
+    var fab = document.getElementById('filterFab');
+    if (!fab) {
+      return;
+    }
+    var dragState = null;
+
+    fab.addEventListener('pointerdown', function(event) {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+      dragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startLeft: appState.ui.filterFabPosition.left,
+        startTop: appState.ui.filterFabPosition.top,
+        moved: false
+      };
+      fab.classList.add('dragging');
+      fab.setPointerCapture(event.pointerId);
+    });
+
+    fab.addEventListener('pointermove', function(event) {
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      var deltaX = event.clientX - dragState.startX;
+      var deltaY = event.clientY - dragState.startY;
+      if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
+        dragState.moved = true;
+      }
+      if (!dragState.moved) {
+        return;
+      }
+      appState.ui.filterFabPosition.left = Math.max(8, Math.min(window.innerWidth - 120, dragState.startLeft + deltaX));
+      appState.ui.filterFabPosition.top = Math.max(44, Math.min(window.innerHeight - 140, dragState.startTop + deltaY));
+      applyFilterFabPosition_();
+    });
+
+    fab.addEventListener('pointerup', function(event) {
+      if (!dragState || dragState.pointerId !== event.pointerId) {
+        return;
+      }
+      fab.releasePointerCapture(event.pointerId);
+      fab.classList.remove('dragging');
+      if (dragState.moved) {
+        fab.dataset.skipClick = '1';
+        saveCache_();
+      }
+      dragState = null;
+    });
+
+    fab.addEventListener('pointercancel', function() {
+      fab.classList.remove('dragging');
+      dragState = null;
+    });
+  }
+
+  function applyFilterFabPosition_() {
+    var fab = document.getElementById('filterFab');
+    if (!fab || !appState.ui || !appState.ui.filterFabPosition) {
+      return;
+    }
+    fab.style.left = appState.ui.filterFabPosition.left + 'px';
+    fab.style.top = appState.ui.filterFabPosition.top + 'px';
+  }
+
   function hydrateFromCache_() {
     try {
       var raw = localStorage.getItem(CACHE_KEY);
@@ -88,11 +169,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       appState.pendingQueue = cached.pendingQueue || [];
       appState.tempIdMap = cached.tempIdMap || {};
       appState.formContext = cached.formContext || appState.formContext;
+      appState.ui = cached.ui || appState.ui;
       appState.connection.lastSyncAt = cached.lastSyncAt || '';
       appState.dashboard = buildDashboardFromLocalState_();
     } catch (error) {
       localStorage.removeItem(CACHE_KEY);
     }
+    applyFilterFabPosition_();
     updateSyncStatusBar_();
   }
 
@@ -106,6 +189,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         pendingQueue: appState.pendingQueue,
         tempIdMap: appState.tempIdMap,
         formContext: appState.formContext,
+        ui: appState.ui,
         lastSyncAt: appState.connection.lastSyncAt
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
@@ -127,6 +211,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
     renderFiltroResumo();
+    applyFilterFabPosition_();
     updateSyncStatusBar_();
   }
 
@@ -427,6 +512,15 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.getElementById('filtroDrawer').classList.toggle('hidden', !show);
   }
 
+  function abrirFiltrosFlutuante() {
+    var fab = document.getElementById('filterFab');
+    if (fab && fab.dataset.skipClick === '1') {
+      fab.dataset.skipClick = '0';
+      return;
+    }
+    toggleFiltroDrawer(true);
+  }
+
   function abrirDetalhesPendencia(id) {
     var itemLocal = getLocalItemById_(id);
     if (!appState.connection.online || isLocalId_(id)) {
@@ -471,6 +565,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.getElementById('editPrioridade').value = item.prioridade || '';
     document.getElementById('editObservacao').value = item.observacao || '';
     document.getElementById('editFoto').value = '';
+    atualizarNomeArquivo('editFoto', 'editFotoNome');
     navegar('secaoEdicaoPendencia');
   }
 
@@ -941,23 +1036,30 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     ];
 
     document.getElementById('dashboardCards').innerHTML = cards.map(function(card) {
-      return '<button class="metric-card ' + card.className + '" onclick="abrirZoomCard(\'' + card.key + '\')">' +
+      var selectedClass = appState.dashboardSelection.type === 'metric' && appState.dashboardSelection.key === card.key ? ' selected' : '';
+      return '<button class="metric-card ' + card.className + selectedClass + '" onclick="abrirZoomCard(\'' + card.key + '\', this)">' +
         '<span class="label">' + escapeHtml(card.label) + '</span>' +
         '<span class="value">' + escapeHtml(String(card.value)) + '</span>' +
       '</button>';
     }).join('');
 
-    document.getElementById('resumoPorLoja').innerHTML = renderSummaryList(data.porLoja);
-    document.getElementById('resumoPorSetor').innerHTML = renderSummaryList(data.porSetor);
+    document.getElementById('resumoPorLoja').innerHTML = renderSummaryList(data.porLoja, 'loja');
+    document.getElementById('resumoPorSetor').innerHTML = renderSummaryList(data.porSetor, 'setor');
   }
 
-  function abrirZoomCard(metricKey) {
+  function abrirZoomCard(metricKey, buttonEl) {
     var ativos = getFilteredPendencias_(false, true);
     var historico = getFilteredPendencias_(true, true);
     var title = 'Detalhes';
     var description = '';
     var value = 0;
     var items = [];
+    appState.dashboardSelection = {
+      type: 'metric',
+      key: metricKey
+    };
+    saveCache_();
+    highlightDashboardSelection_(buttonEl, '.metric-card');
 
     if (metricKey === 'abertas') {
       title = 'Pendencias abertas';
@@ -991,14 +1093,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.getElementById('metricZoomTitle').textContent = title;
     document.getElementById('metricZoomValue').textContent = value;
     document.getElementById('metricZoomDescription').textContent = description;
-    document.getElementById('metricZoomList').innerHTML = items.length ? items.slice(0, 20).map(function(item) {
-      return '<div class="zoom-item">' +
-        '<div><strong>' + escapeHtml(item.id_pendencia) + '</strong><div class="muted-text">' +
-        escapeHtml(item.loja + ' | ' + item.setor) + '</div><div class="muted-text">' +
-        escapeHtml(resumirTexto(item.descricao, 80)) + '</div></div>' +
-        '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">Abrir</button>' +
-      '</div>';
-    }).join('') : '<div class="empty-state">Nenhum item encontrado.</div>';
+    document.getElementById('metricZoomList').innerHTML = renderZoomItems_(items);
     document.getElementById('metricZoomModal').classList.remove('hidden');
   }
 
@@ -1006,16 +1101,76 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.getElementById('metricZoomModal').classList.add('hidden');
   }
 
-  function renderSummaryList(collection) {
+  function renderSummaryList(collection, tipo) {
     var keys = Object.keys(collection || {});
     if (!keys.length) {
       return '<div class="empty-state">Sem dados suficientes.</div>';
     }
-    return keys.sort(function(a, b) {
+    var orderedKeys = keys.sort(function(a, b) {
       return collection[b] - collection[a];
-    }).map(function(key) {
-      return '<div class="summary-item"><span>' + escapeHtml(key) + '</span><strong>' + collection[key] + '</strong></div>';
+    });
+    var max = collection[orderedKeys[0]] || 1;
+    return orderedKeys.map(function(key) {
+      var count = collection[key];
+      var intensity = Math.max(0.18, count / max);
+      var bgColor = tipo === 'loja'
+        ? 'linear-gradient(90deg, rgba(214,40,40,' + Math.min(0.82, intensity + 0.18) + ') 0%, rgba(255,166,92,0.22) 100%)'
+        : 'linear-gradient(90deg, rgba(242,100,0,' + Math.min(0.82, intensity + 0.18) + ') 0%, rgba(255,211,164,0.22) 100%)';
+      var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
+      return '<button class="summary-item clickable' + selectedClass + '" style="background:' + bgColor + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
+        '<div><strong>' + escapeHtml(key) + '</strong><div class="summary-item-sub">Toque para visualizar as pendencias.</div></div>' +
+        '<strong>' + count + '</strong>' +
+      '</button>';
     }).join('');
+  }
+
+  function abrirResumoAgrupado(tipo, chave, buttonEl) {
+    var ativos = getFilteredPendencias_(false, true);
+    var items = ativos.filter(function(item) {
+      return tipo === 'loja'
+        ? normalizeText_(item.loja) === normalizeText_(chave)
+        : normalizeText_(item.setor) === normalizeText_(chave);
+    });
+    appState.dashboardSelection = {
+      type: tipo,
+      key: chave
+    };
+    saveCache_();
+    highlightDashboardSelection_(buttonEl, '.summary-item.clickable');
+    document.getElementById('metricZoomTitle').textContent = (tipo === 'loja' ? 'Loja: ' : 'Setor: ') + chave;
+    document.getElementById('metricZoomValue').textContent = items.length;
+    document.getElementById('metricZoomDescription').textContent = tipo === 'loja'
+      ? 'Pendencias ativas desta loja.'
+      : 'Pendencias ativas deste setor em diferentes lojas.';
+    document.getElementById('metricZoomList').innerHTML = renderZoomItems_(items);
+    document.getElementById('metricZoomModal').classList.remove('hidden');
+  }
+
+  function renderZoomItems_(items) {
+    if (!items.length) {
+      return '<div class="empty-state">Nenhum item encontrado.</div>';
+    }
+    return items.slice(0, 40).map(function(item) {
+      return '<div class="zoom-item">' +
+        '<div><strong>' + escapeHtml(item.id_pendencia) + '</strong><div class="muted-text">' +
+        escapeHtml(item.loja + ' | ' + item.setor) + '</div><div class="muted-text">' +
+        escapeHtml(resumirTexto(item.descricao, 80)) + '</div></div>' +
+        '<div class="actions-row">' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
+          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">Abrir</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function highlightDashboardSelection_(buttonEl, selector) {
+    if (!buttonEl) {
+      return;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll(selector), function(node) {
+      node.classList.remove('selected');
+    });
+    buttonEl.classList.add('selected');
   }
 
   function renderPendencias(items) {
@@ -1023,7 +1178,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     var tableEl = document.getElementById('listaPendenciasTabela');
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada.</div>';
-      tableEl.innerHTML = '<tr><td colspan="9" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="8" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
       return;
     }
 
@@ -1036,22 +1191,20 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           (item.esta_vencida ? '<span class="tag prioridade-critica">Vencida</span>' : '') +
         '</div>' +
         '<div class="card-kv-grid">' +
-          cardKv_('Local', escapeHtml(item.loja || '-') + '<br>' + escapeHtml(item.setor || '-')) +
-          cardKv_('Classificacao', escapeHtml(item.tipo || '-') + '<br>' + escapeHtml(item.prioridade || '-')) +
+          cardKv_('Local', escapeHtml(item.loja || '-')) +
+          cardKv_('Setor', escapeHtml(item.setor || '-')) +
+          cardKv_('Classificacao', escapeHtml(item.tipo || '-')) +
+          cardKv_('Urgencia', escapeHtml(item.prioridade || '-')) +
           cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
-          cardKv_('Previsao', escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-')) +
-          cardKv_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
+          cardKv_('Descricao', '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>') +
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
-        (item.id_arquivo_drive || item.foto_preview ? '<div class="muted-text">Anexo disponivel</div>' : '') +
         '<div class="actions-row">' +
-          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Obs.</button>' +
-          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Anexo</button>' : '') +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-          '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-          '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
-          '<button class="ghost-button compact-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Excluir</button>' +
+          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
+          '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
         '</div>' +
       '</article>';
     }).join('');
@@ -1059,18 +1212,21 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     tableEl.innerHTML = items.map(function(item) {
       return '<tr>' +
         '<td>' + escapeHtml(item.id_pendencia) + '</td>' +
-        '<td>' + escapeHtml(item.loja) + '<br>' + escapeHtml(item.setor) + '</td>' +
-        '<td>' + renderTag('prioridade', item.prioridade) + '<br>' + escapeHtml(item.tipo || '-') + '</td>' +
-        '<td><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Abrir texto</button></td>' +
+        '<td>' + escapeHtml(item.loja || '-') + '</td>' +
+        '<td>' + escapeHtml(item.setor || '-') + '</td>' +
+        '<td>' + escapeHtml(item.tipo || '-') + '</td>' +
+        '<td>' + renderTag('prioridade', item.prioridade || '-') + '</td>' +
+        '<td><div class="descricao-obs-cell">' +
+          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+        '</div></td>' +
         '<td>' + escapeHtml(item.executor || '-') + '</td>' +
-        '<td>' + renderTag('status', item.status) + '</td>' +
-        '<td><div class="actions-row">' +
-          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Obs.</button>' +
-          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Anexo</button>' : '') +
+        '<td><div class="table-actions">' +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-          '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-          '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
-          '<button class="ghost-button compact-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Excluir</button>' +
+          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span></span>') +
+          '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
         '</div></td>' +
       '</tr>';
     }).join('');
@@ -1095,9 +1251,10 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
           '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Anexo</button>' : '') +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
           '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-          '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Reabrir/editar</button>' +
+          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
         '</div>' +
       '</article>';
     }).join('');
@@ -1109,32 +1266,31 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       return;
     }
     var html = '<div class="details-grid">' +
-      '<div class="summary-grid">' +
-        detailBlock_('ID', escapeHtml(item.id_pendencia || '-')) +
-        detailBlock_('Loja', escapeHtml(item.loja || '-')) +
-        detailBlock_('Setor', escapeHtml(item.setor || '-')) +
-        detailBlock_('Tipo', escapeHtml(item.tipo || '-')) +
-        detailBlock_('Prioridade', renderTag('prioridade', item.prioridade || '-')) +
-        detailBlock_('Status', renderTag('status', item.status || '-')) +
-        detailBlock_('Solicitante', escapeHtml(item.solicitante || '-')) +
-        detailBlock_('Executor', escapeHtml(item.executor || '-')) +
-        detailBlock_('Abertura', escapeHtml((formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || ''))) +
-        detailBlock_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
-        detailBlock_('Previsao', escapeHtml(formatDateBr(item.previsao_entrega) || '-')) +
-        detailBlock_('Conclusao', escapeHtml((formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || ''))) +
-      '</div>' +
-      '<div class="actions-row">' +
-        '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Abrir descricao</button>' +
-        '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Abrir observacao</button>' +
-        (item.id_arquivo_drive ? '<button class="ghost-button compact-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">Ver foto</button>' : '') +
-      '</div>' +
-      '<div class="actions-row">' +
-        '<button class="primary-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-        '<button class="secondary-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
-        '<button class="ghost-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluir</button>' +
-        '<button class="ghost-button compact-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Excluir</button>' +
-      '</div>' +
-      '<div><strong>Timeline</strong>' + renderHistoricoInline_(item.historico || []) + '</div>' +
+      '<table class="details-table">' +
+        '<tbody>' +
+          detailsRow_('ID', escapeHtml(item.id_pendencia || '-')) +
+          detailsRow_('Loja', escapeHtml(item.loja || '-')) +
+          detailsRow_('Setor', escapeHtml(item.setor || '-')) +
+          detailsRow_('Tipo', escapeHtml(item.tipo || '-')) +
+          detailsRow_('Prioridade', renderTag('prioridade', item.prioridade || '-')) +
+          detailsRow_('Status', renderTag('status', item.status || '-')) +
+          detailsRow_('Solicitante', escapeHtml(item.solicitante || '-')) +
+          detailsRow_('Executor', escapeHtml(item.executor || '-')) +
+          detailsRow_('Abertura', escapeHtml((formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || ''))) +
+          detailsRow_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
+          detailsRow_('Previsao', escapeHtml(formatDateBr(item.previsao_entrega) || '-')) +
+          detailsRow_('Conclusao', escapeHtml((formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || ''))) +
+          detailsRow_('Acoes', '<span class="details-table-title">Acoes da pendencia</span><div class="details-table-actions">' +
+            '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+            (item.id_arquivo_drive ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
+            '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+            '<button class="secondary-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
+            '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
+            '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
+          '</div>') +
+        '</tbody>' +
+      '</table>' +
     '</div>';
     document.getElementById('detalhesPendencia').innerHTML = html;
   }
@@ -1143,21 +1299,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     return '<div class="card-kv"><strong>' + label + '</strong><div>' + valueHtml + '</div></div>';
   }
 
-  function detailBlock_(title, value) {
-    return '<div><strong>' + escapeHtml(title) + '</strong><div>' + value + '</div></div>';
-  }
-
-  function renderHistoricoInline_(items) {
-    if (!items.length) {
-      return '<div class="empty-state">Sem historico.</div>';
-    }
-    return '<div class="history-list">' + items.map(function(item) {
-      return '<div class="history-item"><div><strong>' +
-        escapeHtml((item.data_label || formatDateBr(item.data)) + ' ' + (item.hora || '')) +
-        '</strong><div class="muted-text">' + escapeHtml((item.status_anterior || 'Inicio') + ' -> ' + (item.status_novo || '')) +
-        '</div><div class="muted-text">' + escapeHtml(item.observacao || 'Sem observacao.') +
-        '</div></div><div class="muted-text">' + escapeHtml(item.usuario || '-') + '</div></div>';
-    }).join('') + '</div>';
+  function detailsRow_(label, valueHtml) {
+    return '<tr><th>' + escapeHtml(label) + '</th><td>' + valueHtml + '</td></tr>';
   }
 
   function renderConfiguracoes(items) {
@@ -1168,8 +1311,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     }
     container.innerHTML = items.map(function(item) {
       return '<div class="config-item">' +
-        '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong><p class="muted-text">' +
-        escapeHtml(item.descricao || '') + '</p></div>' +
+        '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
         '<div><input type="text" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(item.valor || '') + '"></div>' +
       '</div>';
     }).join('');
@@ -1287,6 +1429,35 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.getElementById('quickViewModal').classList.add('hidden');
   }
 
+  function abrirSpenPopup(targetId, title) {
+    document.getElementById('spenTargetField').value = targetId;
+    document.getElementById('spenModalTitle').textContent = 'S Pen to text - ' + title;
+    document.getElementById('spenInputArea').value = document.getElementById(targetId).value || '';
+    document.getElementById('spenModal').classList.remove('hidden');
+    setTimeout(function() {
+      document.getElementById('spenInputArea').focus();
+    }, 80);
+  }
+
+  function aplicarSpenTexto() {
+    var targetId = document.getElementById('spenTargetField').value;
+    var target = document.getElementById(targetId);
+    if (!target) {
+      fecharSpenPopup();
+      return;
+    }
+    target.value = document.getElementById('spenInputArea').value || '';
+    fecharSpenPopup();
+  }
+
+  function limparSpenPopup() {
+    document.getElementById('spenInputArea').value = '';
+  }
+
+  function fecharSpenPopup() {
+    document.getElementById('spenModal').classList.add('hidden');
+  }
+
   function captureFormContext_() {
     appState.formContext = {
       loja: getElementValue_('novaLoja'),
@@ -1346,8 +1517,18 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     recognition.start();
   }
 
+  function atualizarNomeArquivo(inputId, targetId) {
+    var input = document.getElementById(inputId);
+    var target = document.getElementById(targetId);
+    if (!input || !target) {
+      return;
+    }
+    target.textContent = input.files && input.files[0] ? input.files[0].name : 'Nenhuma foto selecionada.';
+  }
+
   function limparFormularioNovaPendencia(clearContext) {
     document.getElementById('formNovaPendencia').reset();
+    atualizarNomeArquivo('novaFoto', 'novaFotoNome');
     if (clearContext) {
       appState.formContext = {
         loja: '',
@@ -1392,19 +1573,17 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function updateSyncStatusBar_() {
-    var connectionLabel = document.getElementById('syncConnectionLabel');
-    var queueLabel = document.getElementById('syncQueueLabel');
-    var button = document.getElementById('syncNowButton');
-    if (!connectionLabel || !queueLabel || !button) {
+    var indicator = document.getElementById('connectionIndicator');
+    if (!indicator) {
       return;
     }
     var statusText = appState.connection.online ? 'Online' : 'Offline';
+    indicator.className = 'connection-indicator ' + (appState.connection.online ? 'online' : 'offline');
     if (appState.connection.syncing) {
       statusText = 'Sincronizando...';
+      indicator.className = 'connection-indicator syncing';
     }
-    connectionLabel.textContent = statusText;
-    queueLabel.textContent = 'Fila: ' + appState.pendingQueue.length + (appState.connection.lastSyncAt ? ' | Ultimo sync: ' + formatDateTimeHuman_(appState.connection.lastSyncAt) : '');
-    button.disabled = !appState.connection.online || appState.connection.syncing || appState.pendingQueue.length === 0;
+    indicator.textContent = statusText;
   }
 
   function buildDashboardFromLocalState_() {
@@ -1928,7 +2107,17 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   function normalizeVoiceTranscript_(value) {
     return String(value || '')
       .replace(/\b(nova linha|novo paragrafo|novo parágrafo)\b/gi, '\n')
+      .replace(/\b(virgula|vírgula)\b/gi, ',')
+      .replace(/\b(ponto final)\b/gi, '.')
+      .replace(/\b(dois pontos)\b/gi, ':')
+      .replace(/\b(ponto e virgula)\b/gi, ';')
+      .replace(/\b(abrir parenteses|abrir parênteses)\b/gi, '(')
+      .replace(/\b(fechar parenteses|fechar parênteses)\b/gi, ')')
       .replace(/[ \t]*\n[ \t]*/g, '\n')
+      .replace(/\s+,/g, ',')
+      .replace(/\s+\./g, '.')
+      .replace(/\s+:/g, ':')
+      .replace(/\s+;/g, ';')
       .trim();
   }
 

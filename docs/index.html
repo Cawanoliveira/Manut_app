@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <base target="_top">
@@ -18,13 +17,12 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
-    <div id="syncStatusBar" class="sync-status-bar">
-      <div class="sync-status-left">
-        <strong id="syncConnectionLabel">Conectando...</strong>
-        <span id="syncQueueLabel">Fila: 0</span>
-      </div>
-      <button id="syncNowButton" class="secondary-button compact-button" onclick="sincronizarAgora()">Sincronizar</button>
-    </div>
+    <div id="connectionIndicator" class="connection-indicator offline">Offline</div>
+
+    <button id="filterFab" class="filter-fab" type="button" onclick="abrirFiltrosFlutuante()">
+      <span class="filter-fab-icon">&#9776;</span>
+      <span class="filter-fab-label">Filtros</span>
+    </button>
 
     <main class="page-shell">
       <section id="secaoDashboard" class="page-section active">
@@ -55,10 +53,8 @@
       <section id="secaoNovaPendencia" class="page-section">
         <div class="section-header">
           <div>
-            <h2>Nova acao</h2>
-            <p>Os campos de contexto ficam pre-carregados para acelerar registros em sequencia.</p>
+            <h2>Nova Pendencia</h2>
           </div>
-          <button class="ghost-button compact-button" onclick="limparContextoRapido()">Limpar contexto</button>
         </div>
 
         <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
@@ -78,28 +74,45 @@
             <span>Prioridade</span>
             <select id="novaPrioridade"></select>
           </label>
+
           <label class="full-width">
             <span>Descricao *</span>
             <div class="field-with-action">
-              <textarea id="novaDescricao" rows="4" placeholder="Descreva o problema encontrado." required></textarea>
-              <button type="button" id="btnMicDescricao" class="mic-button" onclick="iniciarDitado('novaDescricao')">🎤</button>
+              <textarea id="novaDescricao" rows="5" placeholder="Descreva o problema encontrado." required></textarea>
+              <div class="field-actions-stack">
+                <button type="button" class="mic-button" onclick="iniciarDitado('novaDescricao')">Voz</button>
+                <button type="button" class="spen-button" onclick="abrirSpenPopup('novaDescricao', 'Descricao')">S Pen</button>
+              </div>
+            </div>
+            <div class="voice-commands">
+              Comandos de voz possiveis: "nova linha", "novo paragrafo", "virgula", "ponto final", "dois pontos", "ponto e virgula", "abrir parenteses" e "fechar parenteses".
             </div>
           </label>
+
           <label class="full-width">
             <span>Observacao</span>
             <div class="field-with-action">
-              <textarea id="novaObservacao" rows="3" placeholder="Detalhes adicionais, local exato, contexto."></textarea>
-              <button type="button" id="btnMicObservacao" class="mic-button" onclick="iniciarDitado('novaObservacao')">🎤</button>
+              <textarea id="novaObservacao" rows="4" placeholder="Detalhes adicionais, local exato, contexto."></textarea>
+              <div class="field-actions-stack">
+                <button type="button" class="mic-button" onclick="iniciarDitado('novaObservacao')">Voz</button>
+                <button type="button" class="spen-button" onclick="abrirSpenPopup('novaObservacao', 'Observacao')">S Pen</button>
+              </div>
             </div>
           </label>
+
           <label class="full-width">
             <span>Foto opcional</span>
-            <input id="novaFoto" type="file" accept="image/*" capture="environment">
-            <small>Video nao e permitido.</small>
+            <input id="novaFoto" class="native-file-input" type="file" accept="image/*" capture="environment" onchange="atualizarNomeArquivo('novaFoto', 'novaFotoNome')">
+            <label for="novaFoto" class="file-picker-button">
+              <span class="file-picker-icon">&#128247;</span>
+              <span>Escolher ou tirar foto</span>
+            </label>
+            <div id="novaFotoNome" class="file-picker-name">Nenhuma foto selecionada.</div>
           </label>
+
           <div class="full-width actions-row">
             <button type="submit" class="primary-button">Salvar</button>
-            <button type="button" class="ghost-button" onclick="limparFormularioNovaPendencia()">Limpar</button>
+            <button type="button" class="ghost-button" onclick="limparFormularioNovaPendencia(true)">Limpar</button>
           </div>
         </form>
       </section>
@@ -107,26 +120,25 @@
       <section id="secaoListaPendencias" class="page-section">
         <div class="section-header">
           <div>
-            <h2>Pendencias ativas</h2>
-            <p>Lista compacta com leitura rapida e texto longo em pop-up.</p>
+            <h2>Lista</h2>
           </div>
           <div class="header-actions">
-            <button class="secondary-button" onclick="toggleFiltroDrawer(true)">Filtros</button>
             <button class="ghost-button" onclick="listarPendencias()">Atualizar</button>
           </div>
         </div>
         <div id="filtroResumo" class="filter-summary">Sem filtros aplicados.</div>
         <div id="listaPendenciasCards" class="list-cards"></div>
         <div class="table-wrapper">
-          <table class="desktop-table">
+          <table class="desktop-table listagem-table">
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Local</th>
+                <th>Setor</th>
                 <th>Classificacao</th>
-                <th>Descricao</th>
+                <th>Urgencia</th>
+                <th>Descricao / Observacao</th>
                 <th>Executor</th>
-                <th>Status</th>
                 <th>Acoes</th>
               </tr>
             </thead>
@@ -139,7 +151,6 @@
         <div class="section-header">
           <div>
             <h2>Detalhes</h2>
-            <p>Leitura completa sem carregar foto automaticamente.</p>
           </div>
           <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
         </div>
@@ -183,17 +194,25 @@
           <label class="full-width">
             <span>Observacao</span>
             <div class="field-with-action">
-              <textarea id="editObservacao" rows="3"></textarea>
-              <button type="button" class="mic-button" onclick="iniciarDitado('editObservacao')">🎤</button>
+              <textarea id="editObservacao" rows="4"></textarea>
+              <div class="field-actions-stack">
+                <button type="button" class="mic-button" onclick="iniciarDitado('editObservacao')">Voz</button>
+                <button type="button" class="spen-button" onclick="abrirSpenPopup('editObservacao', 'Observacao da edicao')">S Pen</button>
+              </div>
             </div>
           </label>
           <label class="full-width">
             <span>Nova foto</span>
-            <input id="editFoto" type="file" accept="image/*" capture="environment">
+            <input id="editFoto" class="native-file-input" type="file" accept="image/*" capture="environment" onchange="atualizarNomeArquivo('editFoto', 'editFotoNome')">
+            <label for="editFoto" class="file-picker-button">
+              <span class="file-picker-icon">&#128247;</span>
+              <span>Escolher ou tirar foto</span>
+            </label>
+            <div id="editFotoNome" class="file-picker-name">Nenhuma foto selecionada.</div>
           </label>
           <div class="full-width actions-row">
             <button type="submit" class="primary-button">Salvar</button>
-            <button type="button" class="secondary-button" onclick="concluirPendencia(document.getElementById('editIdPendencia').value)">Concluir</button>
+            <button type="button" class="success-button" onclick="concluirPendencia(document.getElementById('editIdPendencia').value)">Concluir</button>
           </div>
         </form>
       </section>
@@ -213,7 +232,7 @@
         <div class="section-header">
           <div>
             <h2>Configuracoes</h2>
-            <p>Ajustes do sistema e cadastro de executor/prestador.</p>
+            <p>Ajustes do sistema.</p>
           </div>
         </div>
 
@@ -221,8 +240,6 @@
           <div id="configList" class="config-list empty-state">Carregando configuracoes...</div>
           <div class="actions-row">
             <button class="primary-button" onclick="salvarConfiguracoes()">Salvar configuracoes</button>
-            <button class="secondary-button" onclick="executarSetupSistema()">Setup</button>
-            <button class="ghost-button" onclick="instalarTriggerFotos()">Trigger</button>
           </div>
         </div>
 
@@ -323,20 +340,44 @@
       </div>
     </div>
 
+    <div id="spenModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="fecharSpenPopup()"></div>
+      <div class="modal-card spen-modal-card">
+        <div class="drawer-header">
+          <div>
+            <h3 id="spenModalTitle">S Pen to text</h3>
+            <p class="modal-description">Use a escrita manual do teclado do tablet e depois aplique o texto ao campo.</p>
+          </div>
+          <button class="ghost-button compact-button" onclick="fecharSpenPopup()">Fechar</button>
+        </div>
+        <input id="spenTargetField" type="hidden">
+        <textarea id="spenInputArea" class="spen-textarea" rows="8" placeholder="Escreva aqui com a S Pen."></textarea>
+        <div class="actions-row">
+          <button class="secondary-button" type="button" onclick="limparSpenPopup()">Limpar</button>
+          <button class="primary-button" type="button" onclick="aplicarSpenTexto()">Aplicar ao campo</button>
+        </div>
+      </div>
+    </div>
+
     <nav class="bottom-nav">
       <button class="nav-button active" data-section="secaoDashboard" onclick="navegar('secaoDashboard', this)">
+        <span class="nav-icon">&#8962;</span>
         <span class="nav-label">Inicio</span>
       </button>
       <button class="nav-button" data-section="secaoNovaPendencia" onclick="navegar('secaoNovaPendencia', this)">
+        <span class="nav-icon">&#10010;</span>
         <span class="nav-label">Nova</span>
       </button>
       <button class="nav-button" data-section="secaoListaPendencias" onclick="navegar('secaoListaPendencias', this)">
+        <span class="nav-icon">&#9776;</span>
         <span class="nav-label">Lista</span>
       </button>
       <button class="nav-button" data-section="secaoHistorico" onclick="navegar('secaoHistorico', this)">
+        <span class="nav-icon">&#8635;</span>
         <span class="nav-label">Historico</span>
       </button>
       <button class="nav-button" data-section="secaoConfiguracoes" onclick="navegar('secaoConfiguracoes', this)">
+        <span class="nav-icon">&#9881;</span>
         <span class="nav-label">Config</span>
       </button>
     </nav>
