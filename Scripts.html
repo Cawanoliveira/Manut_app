@@ -1,0 +1,1683 @@
+<script>
+  var CACHE_KEY = 'manutencao_offline_cache_v2';
+  var bridgeResolvers_ = {};
+  var bridgeListenerReady_ = false;
+  var appState = getDefaultAppState_();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    inicializarApp();
+  });
+
+  function getDefaultAppState_() {
+    return {
+      combos: null,
+      configs: [],
+      allPendencias: [],
+      detailsById: {},
+      dashboard: buildEmptyDashboard_(),
+      pendingQueue: [],
+      tempIdMap: {},
+      connection: {
+        online: navigator.onLine,
+        syncing: false,
+        lastSyncAt: ''
+      }
+    };
+  }
+
+  function inicializarApp() {
+    bindConnectivityHandlers_();
+    hydrateFromCache_();
+    renderAll_();
+
+    if (appState.connection.online) {
+      sincronizarFila_(false)
+        .then(function() {
+          return carregarEstadoServidor_();
+        })
+        .catch(function() {
+          mostrarMensagemErro('Modo offline ativo. Usando os dados salvos neste aparelho.');
+        });
+    } else {
+      mostrarMensagemErro('Sem internet. O app esta usando o cache local e a fila offline.');
+    }
+  }
+
+  function bindConnectivityHandlers_() {
+    window.addEventListener('online', function() {
+      appState.connection.online = true;
+      updateSyncStatusBar_();
+      mostrarMensagemSucesso('Conexao restabelecida. Sincronizando pendencias pendentes...');
+      sincronizarFila_(true)
+        .then(function() {
+          return carregarEstadoServidor_();
+        })
+        .catch(function(error) {
+          mostrarMensagemErro(error.message || 'Nao foi possivel sincronizar ao voltar a internet.');
+        });
+    });
+
+    window.addEventListener('offline', function() {
+      appState.connection.online = false;
+      saveCache_();
+      updateSyncStatusBar_();
+      mostrarMensagemErro('Sem internet. As alteracoes serao guardadas localmente.');
+    });
+  }
+
+  function hydrateFromCache_() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) {
+        updateSyncStatusBar_();
+        return;
+      }
+      var cached = JSON.parse(raw);
+      appState.combos = cached.combos || null;
+      appState.configs = cached.configs || [];
+      appState.allPendencias = cached.allPendencias || [];
+      appState.detailsById = cached.detailsById || {};
+      appState.pendingQueue = cached.pendingQueue || [];
+      appState.tempIdMap = cached.tempIdMap || {};
+      appState.connection.lastSyncAt = cached.lastSyncAt || '';
+      appState.dashboard = buildDashboardFromLocalState_();
+    } catch (error) {
+      localStorage.removeItem(CACHE_KEY);
+    }
+    updateSyncStatusBar_();
+  }
+
+  function saveCache_() {
+    try {
+      var payload = {
+        combos: appState.combos,
+        configs: appState.configs,
+        allPendencias: appState.allPendencias,
+        detailsById: appState.detailsById,
+        pendingQueue: appState.pendingQueue,
+        tempIdMap: appState.tempIdMap,
+        lastSyncAt: appState.connection.lastSyncAt
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      mostrarMensagemErro('Armazenamento local cheio. Reduza fotos offline antes de continuar.');
+    }
+    updateSyncStatusBar_();
+  }
+
+  function renderAll_() {
+    if (appState.combos) {
+      preencherCombos(appState.combos);
+    }
+    renderConfiguracoes(appState.configs || []);
+    appState.dashboard = buildDashboardFromLocalState_();
+    renderDashboard(appState.dashboard);
+    renderPendencias(getFilteredPendencias_(false));
+    renderHistoricoGeral(getFilteredPendencias_(true));
+    renderFiltroResumo();
+    updateSyncStatusBar_();
+  }
+
+  function carregarEstadoServidor_() {
+    if (!appState.connection.online) {
+      return Promise.resolve();
+    }
+    mostrarLoading();
+    return Promise.all([
+      serverCall_('getAppInitData', []),
+      serverCall_('listarPendencias', [{ incluirFinalizadas: false, apenasHistorico: false }]),
+      serverCall_('listarPendencias', [{ incluirFinalizadas: true, apenasHistorico: true }])
+    ]).then(function(results) {
+      var initResponse = results[0];
+      var ativosResponse = results[1];
+      var historicoResponse = results[2];
+      if (!initResponse.success) {
+        throw new Error(initResponse.message);
+      }
+      if (!ativosResponse.success) {
+        throw new Error(ativosResponse.message);
+      }
+      if (!historicoResponse.success) {
+        throw new Error(historicoResponse.message);
+      }
+
+      appState.combos = initResponse.data.combos;
+      appState.configs = initResponse.data.config.data || [];
+      appState.allPendencias = (ativosResponse.data || []).concat(historicoResponse.data || []);
+      appState.dashboard = buildDashboardFromLocalState_();
+      appState.connection.lastSyncAt = new Date().toISOString();
+      saveCache_();
+      renderAll_();
+      ocultarLoading();
+    }).catch(function(error) {
+      ocultarLoading();
+      throw error;
+    });
+  }
+
+  function navegar(sectionId, buttonEl) {
+    document.querySelectorAll('.page-section').forEach(function(section) {
+      section.classList.toggle('active', section.id === sectionId);
+    });
+    document.querySelectorAll('.nav-button').forEach(function(button) {
+      button.classList.remove('active');
+    });
+    if (buttonEl) {
+      buttonEl.classList.add('active');
+    } else {
+      var targetButton = document.querySelector('.nav-button[data-section="' + sectionId + '"]');
+      if (targetButton) {
+        targetButton.classList.add('active');
+      }
+    }
+    if (sectionId === 'secaoHistorico') {
+      renderHistoricoGeral(getFilteredPendencias_(true));
+    }
+    if (sectionId === 'secaoListaPendencias') {
+      renderPendencias(getFilteredPendencias_(false));
+    }
+  }
+
+  function carregarDashboard() {
+    if (!appState.connection.online) {
+      appState.dashboard = buildDashboardFromLocalState_();
+      renderDashboard(appState.dashboard);
+      mostrarMensagemSucesso('Dashboard atualizado com os dados offline salvos neste aparelho.');
+      return;
+    }
+    carregarEstadoServidor_().catch(function(error) {
+      mostrarMensagemErro(error.message || 'Nao foi possivel atualizar o dashboard.');
+    });
+  }
+
+  function preencherCombos(combos) {
+    preencherSelect('novaLoja', combos.lojas, 'Selecione uma loja');
+    preencherSelect('novoSetor', combos.setores, 'Selecione um setor');
+    preencherSelect('novoTipo', combos.tipos, 'Selecione um tipo');
+    preencherSelect('novaPrioridade', combos.prioridades, 'Selecione uma prioridade');
+
+    preencherSelect('filtroLoja', combos.lojas, 'Todas as lojas', true);
+    preencherSelect('filtroSetor', combos.setores, 'Todos os setores', true);
+    preencherSelect('filtroStatus', ['Aberto', 'Em andamento', 'Aguardando'], 'Todos os status', true);
+    preencherSelect('filtroResponsavel', combos.usuarios, 'Todos os responsaveis', true);
+    preencherSelect('filtroPrioridade', combos.prioridades, 'Todas as prioridades', true);
+    preencherSelect('filtroTipo', combos.tipos, 'Todos os tipos', true);
+
+    preencherSelect('editResponsavel', combos.usuarios, 'Selecione um responsavel', true);
+    preencherSelect('editStatus', combos.status, 'Selecione um status');
+    preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
+    preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
+  }
+
+  function preencherSelect(elementId, values, placeholder, allowBlank) {
+    var select = document.getElementById(elementId);
+    if (!select) {
+      return;
+    }
+    var currentValue = select.value;
+    var options = ['<option value="">' + (placeholder || 'Selecione') + '</option>'];
+    (values || []).forEach(function(value) {
+      options.push('<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>');
+    });
+    select.innerHTML = options.join('');
+    if (currentValue) {
+      select.value = currentValue;
+    }
+    if (!allowBlank && values && values.length === 1 && !select.value) {
+      select.value = values[0];
+    }
+  }
+
+  async function salvarNovaPendencia(event) {
+    event.preventDefault();
+    var dados = {
+      loja: document.getElementById('novaLoja').value,
+      setor: document.getElementById('novoSetor').value,
+      tipo: document.getElementById('novoTipo').value,
+      prioridade: document.getElementById('novaPrioridade').value,
+      descricao: document.getElementById('novaDescricao').value,
+      observacao: document.getElementById('novaObservacao').value
+    };
+
+    if (!dados.loja || !dados.setor || !dados.descricao.trim()) {
+      mostrarMensagemErro('Preencha loja, setor e descricao antes de salvar.');
+      return;
+    }
+
+    var fotoInput = document.getElementById('novaFoto');
+    if (fotoInput.files && fotoInput.files[0]) {
+      try {
+        dados.foto = await converterFotoParaBase64(fotoInput.files[0]);
+      } catch (error) {
+        mostrarMensagemErro(error.message || 'Nao foi possivel preparar a foto.');
+        return;
+      }
+    }
+
+    if (!appState.connection.online) {
+      criarPendenciaOffline_(dados);
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('criarPendencia', [dados])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message + ' ID: ' + response.data.id_pendencia);
+        limparFormularioNovaPendencia();
+        return carregarEstadoServidor_().then(function() {
+          navegar('secaoListaPendencias');
+        });
+      })
+      .catch(handleFailure);
+  }
+
+  function criarPendenciaOffline_(dados) {
+    var tempId = generateLocalId_('LOCAL');
+    var now = new Date();
+    var item = {
+      id_pendencia: tempId,
+      data_abertura: toInputDate_(now),
+      hora_abertura: toTime_(now),
+      loja: dados.loja,
+      setor: dados.setor,
+      tipo: dados.tipo || 'Outro',
+      prioridade: dados.prioridade || 'Media',
+      descricao: dados.descricao,
+      observacao: dados.observacao || '',
+      solicitante: 'offline_local',
+      responsavel: '',
+      data_inicio: '',
+      previsao_entrega: '',
+      status: 'Aberto',
+      data_conclusao: '',
+      hora_conclusao: '',
+      link_foto: '',
+      id_arquivo_drive: '',
+      excluir_foto_em: '',
+      foto_excluida: 'NAO',
+      ultima_atualizacao: formatDateTimeLocal_(now),
+      atualizado_por: 'offline_local',
+      foto_preview: dados.foto ? dados.foto.base64 : '',
+      historico: [buildHistoryEntry_('', 'Aberto', 'offline_local', dados.observacao || 'Registro criado offline.')],
+      _syncStatus: 'pendente',
+      _offlineOnly: true
+    };
+    item.historico[0].id_pendencia = tempId;
+    mergeItemIntoState_(item);
+    enqueueOperation_({
+      type: 'create',
+      tempId: tempId,
+      payload: deepClone_(dados)
+    });
+    limparFormularioNovaPendencia();
+    renderAll_();
+    navegar('secaoListaPendencias');
+    mostrarMensagemSucesso('Pendencia salva offline. Ela sera sincronizada quando a internet voltar.');
+  }
+
+  function listarPendencias() {
+    renderPendencias(getFilteredPendencias_(false));
+    renderFiltroResumo();
+    if (appState.connection.online && appState.pendingQueue.length === 0) {
+      carregarEstadoServidor_().catch(function() {
+        renderPendencias(getFilteredPendencias_(false));
+      });
+    }
+  }
+
+  function carregarHistoricoPendencias() {
+    renderHistoricoGeral(getFilteredPendencias_(true));
+    if (appState.connection.online && appState.pendingQueue.length === 0) {
+      carregarEstadoServidor_().catch(function() {
+        renderHistoricoGeral(getFilteredPendencias_(true));
+      });
+    }
+  }
+
+  function obterFiltrosTela(apenasHistorico) {
+    return {
+      loja: getElementValue_('filtroLoja'),
+      setor: getElementValue_('filtroSetor'),
+      status: apenasHistorico ? '' : getElementValue_('filtroStatus'),
+      responsavel: getElementValue_('filtroResponsavel'),
+      prioridade: getElementValue_('filtroPrioridade'),
+      tipo: getElementValue_('filtroTipo'),
+      dataAberturaDe: getElementValue_('filtroDataAberturaDe'),
+      dataAberturaAte: getElementValue_('filtroDataAberturaAte'),
+      previsaoEntregaDe: getElementValue_('filtroPrevisaoDe'),
+      previsaoEntregaAte: getElementValue_('filtroPrevisaoAte'),
+      incluirFinalizadas: !!apenasHistorico,
+      apenasHistorico: !!apenasHistorico
+    };
+  }
+
+  function aplicarFiltros() {
+    toggleFiltroDrawer(false);
+    renderPendencias(getFilteredPendencias_(false));
+    renderFiltroResumo();
+  }
+
+  function limparFiltros() {
+    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
+      .forEach(function(id) {
+        document.getElementById(id).value = '';
+      });
+    renderPendencias(getFilteredPendencias_(false));
+    renderHistoricoGeral(getFilteredPendencias_(true));
+    renderFiltroResumo();
+  }
+
+  function renderFiltroResumo() {
+    var filtros = obterFiltrosTela(false);
+    var labels = [];
+    Object.keys(filtros).forEach(function(key) {
+      if (key === 'incluirFinalizadas' || key === 'apenasHistorico') {
+        return;
+      }
+      if (filtros[key]) {
+        labels.push(formatarChaveFiltro(key) + ': ' + filtros[key]);
+      }
+    });
+    document.getElementById('filtroResumo').textContent = labels.length ? labels.join(' | ') : 'Sem filtros aplicados.';
+  }
+
+  function formatarChaveFiltro(chave) {
+    var mapa = {
+      loja: 'Loja',
+      setor: 'Setor',
+      status: 'Status',
+      responsavel: 'Responsavel',
+      prioridade: 'Prioridade',
+      tipo: 'Tipo',
+      dataAberturaDe: 'Abertura de',
+      dataAberturaAte: 'Abertura ate',
+      previsaoEntregaDe: 'Previsao de',
+      previsaoEntregaAte: 'Previsao ate'
+    };
+    return mapa[chave] || chave;
+  }
+
+  function toggleFiltroDrawer(show) {
+    document.getElementById('filtroDrawer').classList.toggle('hidden', !show);
+  }
+
+  function abrirDetalhesPendencia(id) {
+    var itemLocal = getLocalItemById_(id);
+    if (!appState.connection.online || isLocalId_(id)) {
+      renderDetalhesPendencia(buildDetailFromLocalItem_(itemLocal));
+      navegar('secaoDetalhesPendencia');
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('buscarPendenciaPorId', [resolveRemoteId_(id)])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        appState.detailsById[response.data.id_pendencia] = response.data;
+        mergeItemIntoState_(response.data);
+        saveCache_();
+        renderDetalhesPendencia(response.data);
+        navegar('secaoDetalhesPendencia');
+      })
+      .catch(function() {
+        ocultarLoading();
+        renderDetalhesPendencia(buildDetailFromLocalItem_(itemLocal));
+        navegar('secaoDetalhesPendencia');
+      });
+  }
+
+  function editarPendencia(id) {
+    var item = buildDetailFromLocalItem_(getLocalItemById_(id));
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    document.getElementById('editIdPendencia').value = item.id_pendencia;
+    document.getElementById('editResponsavel').value = item.responsavel || '';
+    document.getElementById('editStatus').value = item.status || '';
+    document.getElementById('editDataInicio').value = item.data_inicio || '';
+    document.getElementById('editPrevisaoEntrega').value = item.previsao_entrega || '';
+    document.getElementById('editTipo').value = item.tipo || '';
+    document.getElementById('editPrioridade').value = item.prioridade || '';
+    document.getElementById('editObservacao').value = item.observacao || '';
+    document.getElementById('editFoto').value = '';
+    navegar('secaoEdicaoPendencia');
+  }
+
+  async function salvarEdicaoPendencia(event) {
+    event.preventDefault();
+    var id = document.getElementById('editIdPendencia').value;
+    var dados = {
+      responsavel: document.getElementById('editResponsavel').value,
+      status: document.getElementById('editStatus').value,
+      data_inicio: document.getElementById('editDataInicio').value,
+      previsao_entrega: document.getElementById('editPrevisaoEntrega').value,
+      tipo: document.getElementById('editTipo').value,
+      prioridade: document.getElementById('editPrioridade').value,
+      observacao: document.getElementById('editObservacao').value
+    };
+
+    var fotoInput = document.getElementById('editFoto');
+    if (fotoInput.files && fotoInput.files[0]) {
+      try {
+        dados.foto = await converterFotoParaBase64(fotoInput.files[0]);
+      } catch (error) {
+        mostrarMensagemErro(error.message || 'Nao foi possivel preparar a foto.');
+        return;
+      }
+    }
+
+    if (!appState.connection.online) {
+      atualizarPendenciaOffline_(id, dados, 'update');
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('atualizarPendencia', [resolveRemoteId_(id), dados])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+        return carregarEstadoServidor_().then(function() {
+          abrirDetalhesPendencia(resolveRemoteId_(id));
+        });
+      })
+      .catch(handleFailure);
+  }
+
+  function atualizarPendenciaOffline_(id, dados, operationType) {
+    var item = getLocalItemById_(id);
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    var previousStatus = item.status || 'Aberto';
+    applyOfflineMutationToItem_(item, dados);
+    if (dados.status && normalizeText_(dados.status) !== normalizeText_(previousStatus)) {
+      item.historico = item.historico || [];
+      item.historico.unshift(buildHistoryEntry_(previousStatus, dados.status, 'offline_local', dados.observacao || 'Status alterado offline.'));
+    }
+    mergeItemIntoState_(item);
+    enqueueOperation_({
+      type: operationType || 'update',
+      id: id,
+      payload: deepClone_(dados),
+      observacao: dados.observacao || ''
+    });
+    renderAll_();
+    abrirDetalhesPendencia(id);
+    mostrarMensagemSucesso('Edicao salva offline. Ela sera sincronizada quando a internet voltar.');
+  }
+
+  function concluirPendencia(id) {
+    if (!id) {
+      mostrarMensagemErro('Nenhuma pendencia selecionada.');
+      return;
+    }
+    var observacao = window.prompt('Observacao de conclusao (opcional):', '') || '';
+    if (!appState.connection.online) {
+      atualizarPendenciaOffline_(id, {
+        status: 'Concluido',
+        observacao: observacao
+      }, 'conclude');
+      navegar('secaoHistorico');
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('concluirPendencia', [resolveRemoteId_(id), observacao])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+        return carregarEstadoServidor_().then(function() {
+          navegar('secaoHistorico');
+        });
+      })
+      .catch(handleFailure);
+  }
+
+  function alterarStatus(id) {
+    if (!id) {
+      return;
+    }
+    var novoStatus = window.prompt('Novo status:', '');
+    if (!novoStatus) {
+      return;
+    }
+    var observacao = window.prompt('Observacao da mudanca (opcional):', '') || '';
+    if (!appState.connection.online) {
+      atualizarPendenciaOffline_(id, {
+        status: novoStatus,
+        observacao: observacao
+      }, 'status');
+      if (normalizeText_(novoStatus) === 'concluido' || normalizeText_(novoStatus) === 'cancelado') {
+        navegar('secaoHistorico');
+      }
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('alterarStatusPendencia', [resolveRemoteId_(id), novoStatus, observacao])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+        return carregarEstadoServidor_().then(function() {
+          if (normalizeText_(novoStatus) === 'concluido' || normalizeText_(novoStatus) === 'cancelado') {
+            navegar('secaoHistorico');
+          } else {
+            abrirDetalhesPendencia(resolveRemoteId_(id));
+          }
+        });
+      })
+      .catch(handleFailure);
+  }
+
+  function excluirPendencia(id) {
+    if (!id) {
+      return;
+    }
+    if (!window.confirm('Deseja excluir esta pendencia?')) {
+      return;
+    }
+    var observacao = window.prompt('Motivo da exclusao (opcional):', '') || '';
+
+    if (isLocalId_(id)) {
+      removePendingOperationsForId_(id);
+      removeItemFromState_(id);
+      saveCache_();
+      renderAll_();
+      mostrarMensagemSucesso('Pendencia local removida.');
+      return;
+    }
+
+    if (!appState.connection.online) {
+      removeItemFromState_(id);
+      enqueueOperation_({
+        type: 'delete',
+        id: id,
+        observacao: observacao
+      });
+      renderAll_();
+      mostrarMensagemSucesso('Exclusao registrada offline. Ela sera sincronizada ao reconectar.');
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('excluirPendencia', [resolveRemoteId_(id), observacao])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+        return carregarEstadoServidor_().then(function() {
+          navegar('secaoListaPendencias');
+        });
+      })
+      .catch(handleFailure);
+  }
+
+  function converterFotoParaBase64(file) {
+    return new Promise(function(resolve, reject) {
+      if (!file.type || file.type.indexOf('image/') !== 0) {
+        reject(new Error('Selecione apenas arquivos de imagem.'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        resolve({
+          base64: event.target.result,
+          name: file.name,
+          mimeType: file.type
+        });
+      };
+      reader.onerror = function() {
+        reject(new Error('Falha ao ler o arquivo.'));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function salvarConfiguracoes() {
+    var configs = Array.from(document.querySelectorAll('.config-input')).map(function(input) {
+      return {
+        chave: input.dataset.chave,
+        valor: input.value
+      };
+    });
+    appState.configs = configs.map(function(config) {
+      var existing = findConfigByKey_(config.chave) || { descricao: '' };
+      return {
+        chave: config.chave,
+        valor: config.valor,
+        descricao: existing.descricao || ''
+      };
+    });
+    saveCache_();
+    renderConfiguracoes(appState.configs);
+
+    if (!appState.connection.online) {
+      enqueueSaveConfigs_(configs);
+      mostrarMensagemSucesso('Configuracoes salvas offline. Elas serao sincronizadas ao reconectar.');
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('salvarConfiguracoesSimples', [configs])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+        return carregarEstadoServidor_();
+      })
+      .catch(handleFailure);
+  }
+
+  function executarSetupSistema() {
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Setup do sistema so pode ser executado com internet.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('setupSistema', [])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+        return carregarEstadoServidor_();
+      })
+      .catch(handleFailure);
+  }
+
+  function instalarTriggerFotos() {
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Criacao de trigger so pode ser feita com internet.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('criarTriggerLimpezaFotos', [])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function sincronizarAgora() {
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Sem internet. A sincronizacao sera feita automaticamente ao reconectar.');
+      return;
+    }
+    sincronizarFila_(true)
+      .then(function() {
+        return carregarEstadoServidor_();
+      })
+      .then(function() {
+        mostrarMensagemSucesso('Sincronizacao concluida com sucesso.');
+      })
+      .catch(function(error) {
+        mostrarMensagemErro(error.message || 'Nao foi possivel sincronizar agora.');
+      });
+  }
+
+  function sincronizarFila_(showMessages) {
+    if (!appState.connection.online) {
+      return Promise.resolve();
+    }
+    if (appState.connection.syncing) {
+      return Promise.resolve();
+    }
+    if (!appState.pendingQueue.length) {
+      updateSyncStatusBar_();
+      return Promise.resolve();
+    }
+
+    appState.connection.syncing = true;
+    updateSyncStatusBar_();
+
+    var chain = Promise.resolve();
+    appState.pendingQueue.slice().forEach(function(operation) {
+      chain = chain.then(function() {
+        return sincronizarOperacao_(operation);
+      });
+    });
+
+    return chain.then(function() {
+      appState.connection.syncing = false;
+      appState.connection.lastSyncAt = new Date().toISOString();
+      saveCache_();
+      if (showMessages) {
+        mostrarMensagemSucesso('Fila offline sincronizada.');
+      }
+    }).catch(function(error) {
+      appState.connection.syncing = false;
+      saveCache_();
+      throw error;
+    });
+  }
+
+  function sincronizarOperacao_(operation) {
+    if (operation.type === 'create') {
+      return serverCall_('criarPendencia', [operation.payload]).then(function(response) {
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        var realId = response.data.id_pendencia;
+        appState.tempIdMap[operation.tempId] = realId;
+        replaceItemIdInState_(operation.tempId, realId);
+        removeOperationById_(operation.opId);
+        saveCache_();
+      });
+    }
+
+    if (operation.type === 'update') {
+      return serverCall_('atualizarPendencia', [resolveRemoteId_(operation.id), operation.payload]).then(function(response) {
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        removeOperationById_(operation.opId);
+        saveCache_();
+      });
+    }
+
+    if (operation.type === 'status') {
+      return serverCall_('alterarStatusPendencia', [resolveRemoteId_(operation.id), operation.payload.status, operation.observacao || '']).then(function(response) {
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        removeOperationById_(operation.opId);
+        saveCache_();
+      });
+    }
+
+    if (operation.type === 'conclude') {
+      return serverCall_('concluirPendencia', [resolveRemoteId_(operation.id), operation.observacao || '']).then(function(response) {
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        removeOperationById_(operation.opId);
+        saveCache_();
+      });
+    }
+
+    if (operation.type === 'delete') {
+      return serverCall_('excluirPendencia', [resolveRemoteId_(operation.id), operation.observacao || '']).then(function(response) {
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        removeOperationById_(operation.opId);
+        saveCache_();
+      });
+    }
+
+    if (operation.type === 'save_configs') {
+      return serverCall_('salvarConfiguracoesSimples', [operation.payload]).then(function(response) {
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        removeOperationById_(operation.opId);
+        saveCache_();
+      });
+    }
+
+    removeOperationById_(operation.opId);
+    saveCache_();
+    return Promise.resolve();
+  }
+
+  function enqueueOperation_(operation) {
+    operation.opId = operation.opId || generateLocalId_('OP');
+    operation.createdAt = operation.createdAt || new Date().toISOString();
+    appState.pendingQueue.push(operation);
+    saveCache_();
+  }
+
+  function enqueueSaveConfigs_(configs) {
+    appState.pendingQueue = appState.pendingQueue.filter(function(item) {
+      return item.type !== 'save_configs';
+    });
+    enqueueOperation_({
+      type: 'save_configs',
+      payload: deepClone_(configs)
+    });
+  }
+
+  function removeOperationById_(opId) {
+    appState.pendingQueue = appState.pendingQueue.filter(function(item) {
+      return item.opId !== opId;
+    });
+  }
+
+  function removePendingOperationsForId_(id) {
+    appState.pendingQueue = appState.pendingQueue.filter(function(item) {
+      return item.id !== id && item.tempId !== id;
+    });
+  }
+
+  function renderDashboard(data) {
+    var cards = [
+      { key: 'abertas', label: 'Abertas', value: data.abertas || 0, className: '' },
+      { key: 'emAndamento', label: 'Em andamento', value: data.emAndamento || 0, className: 'warning' },
+      { key: 'concluidas', label: 'Concluidas', value: data.concluidas || 0, className: 'success' },
+      { key: 'vencidas', label: 'Vencidas', value: data.vencidas || 0, className: 'danger' },
+      { key: 'criticas', label: 'Criticas', value: data.criticas || 0, className: 'danger' },
+      { key: 'total', label: 'Total geral', value: data.total || 0, className: '' }
+    ];
+
+    document.getElementById('dashboardCards').innerHTML = cards.map(function(card) {
+      return '<button class="metric-card ' + card.className + '" onclick="abrirZoomCard(\'' + card.key + '\')">' +
+        '<span class="label">' + escapeHtml(card.label) + '</span>' +
+        '<span class="value">' + escapeHtml(String(card.value)) + '</span>' +
+      '</button>';
+    }).join('');
+
+    document.getElementById('resumoPorLoja').innerHTML = renderSummaryList(data.porLoja);
+    document.getElementById('resumoPorSetor').innerHTML = renderSummaryList(data.porSetor);
+  }
+
+  function abrirZoomCard(metricKey) {
+    var ativos = getFilteredPendencias_(false, true);
+    var historico = getFilteredPendencias_(true, true);
+    var title = 'Detalhes';
+    var description = '';
+    var value = 0;
+    var items = [];
+
+    if (metricKey === 'abertas') {
+      title = 'Pendencias abertas';
+      description = 'Itens ainda nao iniciados.';
+      items = ativos.filter(function(item) { return normalizeText_(item.status) === 'aberto'; });
+    } else if (metricKey === 'emAndamento') {
+      title = 'Pendencias em andamento';
+      description = 'Itens sendo executados.';
+      items = ativos.filter(function(item) { return normalizeText_(item.status) === 'em andamento'; });
+    } else if (metricKey === 'concluidas') {
+      title = 'Pendencias concluidas';
+      description = 'Itens finalizados no historico.';
+      items = historico.filter(function(item) { return normalizeText_(item.status) === 'concluido'; });
+    } else if (metricKey === 'vencidas') {
+      title = 'Pendencias vencidas';
+      description = 'Itens com prazo vencido.';
+      items = ativos.filter(function(item) { return item.esta_vencida; });
+    } else if (metricKey === 'criticas') {
+      title = 'Pendencias criticas';
+      description = 'Itens com prioridade critica.';
+      items = ativos.filter(function(item) { return normalizeText_(item.prioridade) === 'critica'; });
+    } else {
+      title = 'Total geral';
+      description = 'Todas as pendencias ativas em cache local.';
+      items = ativos.slice();
+    }
+
+    value = items.length;
+    document.getElementById('metricZoomTitle').textContent = title;
+    document.getElementById('metricZoomValue').textContent = value;
+    document.getElementById('metricZoomDescription').textContent = description;
+    document.getElementById('metricZoomList').innerHTML = items.length ? items.slice(0, 20).map(function(item) {
+      return '<div class="zoom-item">' +
+        '<div><strong>' + escapeHtml(item.id_pendencia) + '</strong><div class="muted-text">' +
+        escapeHtml(item.loja + ' | ' + item.setor) + '</div><div class="muted-text">' +
+        escapeHtml(resumirTexto(item.descricao, 80)) + '</div></div>' +
+        '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">Abrir</button>' +
+      '</div>';
+    }).join('') : '<div class="empty-state">Nenhum item encontrado.</div>';
+    document.getElementById('metricZoomModal').classList.remove('hidden');
+  }
+
+  function fecharZoomCard() {
+    document.getElementById('metricZoomModal').classList.add('hidden');
+  }
+
+  function renderSummaryList(collection) {
+    var keys = Object.keys(collection || {});
+    if (!keys.length) {
+      return '<div class="empty-state">Sem dados suficientes.</div>';
+    }
+    return keys.sort(function(a, b) {
+      return collection[b] - collection[a];
+    }).map(function(key) {
+      return '<div class="summary-item"><span>' + escapeHtml(key) + '</span><strong>' + collection[key] + '</strong></div>';
+    }).join('');
+  }
+
+  function renderPendencias(items) {
+    var cardsEl = document.getElementById('listaPendenciasCards');
+    var tableEl = document.getElementById('listaPendenciasTabela');
+    if (!items.length) {
+      cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada.</div>';
+      tableEl.innerHTML = '<tr><td colspan="9" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      return;
+    }
+
+    cardsEl.innerHTML = items.map(function(item) {
+      return '<article class="pendencia-card">' +
+        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + escapeHtml(item.setor) + '</p></div>' +
+        '<p>' + escapeHtml(resumirTexto(item.descricao, 130)) + '</p>' +
+        '<div class="card-meta">' +
+          renderTag('status', item.status) +
+          renderTag('prioridade', item.prioridade) +
+          (item.esta_vencida ? '<span class="tag prioridade-critica">Vencida</span>' : '') +
+        '</div>' +
+        '<div class="muted-text">Responsavel: ' + escapeHtml(item.responsavel || 'Nao definido') + '</div>' +
+        '<div class="muted-text">Previsao: ' + escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-') + '</div>' +
+        (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
+        '<div class="actions-row">' +
+          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+          '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
+          '<button class="ghost-button compact-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Excluir</button>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+
+    tableEl.innerHTML = items.map(function(item) {
+      return '<tr>' +
+        '<td>' + escapeHtml(item.id_pendencia) + '</td>' +
+        '<td>' + escapeHtml(item.loja) + '</td>' +
+        '<td>' + escapeHtml(item.setor) + '</td>' +
+        '<td>' + escapeHtml(resumirTexto(item.descricao, 80)) + '</td>' +
+        '<td>' + renderTag('prioridade', item.prioridade) + '</td>' +
+        '<td>' + renderTag('status', item.status) + '</td>' +
+        '<td>' + escapeHtml(item.responsavel || '-') + '</td>' +
+        '<td>' + escapeHtml(item.previsao_entrega_label || formatDateBr(item.previsao_entrega) || '-') + '</td>' +
+        '<td><div class="actions-row">' +
+          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+          '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '<button class="primary-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
+          '<button class="ghost-button compact-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Excluir</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function renderHistoricoGeral(items) {
+    var container = document.getElementById('historicoListaCards');
+    if (!items.length) {
+      container.innerHTML = '<div class="panel empty-state">Nenhuma pendencia concluida ou cancelada.</div>';
+      return;
+    }
+    container.innerHTML = items.map(function(item) {
+      return '<article class="pendencia-card">' +
+        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + escapeHtml(item.setor) + '</p></div>' +
+        '<p>' + escapeHtml(resumirTexto(item.descricao, 130)) + '</p>' +
+        '<div class="card-meta">' + renderTag('status', item.status) + renderTag('prioridade', item.prioridade) + '</div>' +
+        '<div class="muted-text">Conclusao: ' + escapeHtml(item.data_conclusao_label || formatDateBr(item.data_conclusao) || '-') + '</div>' +
+        (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
+        '<div class="actions-row">' +
+          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+          '<button class="ghost-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Reabrir/editar</button>' +
+        '</div>' +
+      '</article>';
+    }).join('');
+  }
+
+  function renderDetalhesPendencia(item) {
+    if (!item) {
+      document.getElementById('detalhesPendencia').innerHTML = '<div class="empty-state">Pendencia nao encontrada.</div>';
+      return;
+    }
+    var html = '<div class="details-grid">' +
+      '<div class="summary-grid">' +
+        detailBlock_('ID', escapeHtml(item.id_pendencia || '-')) +
+        detailBlock_('Loja', escapeHtml(item.loja || '-')) +
+        detailBlock_('Setor', escapeHtml(item.setor || '-')) +
+        detailBlock_('Tipo', escapeHtml(item.tipo || '-')) +
+        detailBlock_('Prioridade', renderTag('prioridade', item.prioridade || '-')) +
+        detailBlock_('Status', renderTag('status', item.status || '-')) +
+        detailBlock_('Solicitante', escapeHtml(item.solicitante || '-')) +
+        detailBlock_('Responsavel', escapeHtml(item.responsavel || '-')) +
+        detailBlock_('Abertura', escapeHtml((formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || ''))) +
+        detailBlock_('Inicio', escapeHtml(formatDateBr(item.data_inicio) || '-')) +
+        detailBlock_('Previsao', escapeHtml(formatDateBr(item.previsao_entrega) || '-')) +
+        detailBlock_('Conclusao', escapeHtml((formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || ''))) +
+      '</div>' +
+      detailBlock_('Descricao', escapeHtml(item.descricao || '-')) +
+      detailBlock_('Observacao', escapeHtml(item.observacao || '-')) +
+      (item.foto_preview ? '<div><strong>Foto</strong><img class="details-photo" src="' + item.foto_preview + '" alt="Foto da pendencia"></div>' : '') +
+      '<div class="actions-row">' +
+        '<button class="primary-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+        '<button class="secondary-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
+        '<button class="ghost-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluir</button>' +
+        '<button class="ghost-button compact-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Excluir</button>' +
+      '</div>' +
+      '<div><strong>Timeline</strong>' + renderHistoricoInline_(item.historico || []) + '</div>' +
+    '</div>';
+    document.getElementById('detalhesPendencia').innerHTML = html;
+  }
+
+  function detailBlock_(title, value) {
+    return '<div><strong>' + escapeHtml(title) + '</strong><div>' + value + '</div></div>';
+  }
+
+  function renderHistoricoInline_(items) {
+    if (!items.length) {
+      return '<div class="empty-state">Sem historico.</div>';
+    }
+    return '<div class="history-list">' + items.map(function(item) {
+      return '<div class="history-item"><div><strong>' +
+        escapeHtml((item.data_label || formatDateBr(item.data)) + ' ' + (item.hora || '')) +
+        '</strong><div class="muted-text">' + escapeHtml((item.status_anterior || 'Inicio') + ' -> ' + (item.status_novo || '')) +
+        '</div><div class="muted-text">' + escapeHtml(item.observacao || 'Sem observacao.') +
+        '</div></div><div class="muted-text">' + escapeHtml(item.usuario || '-') + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  function renderConfiguracoes(items) {
+    var container = document.getElementById('configList');
+    if (!items.length) {
+      container.innerHTML = '<div class="empty-state">Nenhuma configuracao encontrada.</div>';
+      return;
+    }
+    container.innerHTML = items.map(function(item) {
+      return '<div class="config-item">' +
+        '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong><p class="muted-text">' +
+        escapeHtml(item.descricao || '') + '</p></div>' +
+        '<div><input type="text" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(item.valor || '') + '"></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function formatarNomeConfiguracao_(chave) {
+    var mapa = {
+      DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO: 'Dias para excluir fotos apos conclusao',
+      NOME_PASTA_DRIVE_FOTOS: 'Nome da pasta de fotos no Drive',
+      STATUS_PADRAO_NOVO_REGISTRO: 'Status padrao do novo registro',
+      PERMITIR_EXCLUSAO_FOTO_AUTOMATICA: 'Permitir exclusao automatica de fotos',
+      VERSAO_SISTEMA: 'Versao do sistema'
+    };
+    return mapa[chave] || chave;
+  }
+
+  function limparFormularioNovaPendencia() {
+    document.getElementById('formNovaPendencia').reset();
+  }
+
+  function voltarParaLista() {
+    navegar('secaoListaPendencias');
+  }
+
+  function mostrarLoading() {
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+  }
+
+  function ocultarLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+
+  function mostrarMensagemSucesso(mensagem) {
+    criarToast_(mensagem, 'success');
+  }
+
+  function mostrarMensagemErro(mensagem) {
+    criarToast_(mensagem, 'error');
+  }
+
+  function criarToast_(mensagem, tipo) {
+    var toast = document.createElement('div');
+    toast.className = 'toast ' + tipo;
+    toast.textContent = mensagem;
+    document.getElementById('toastContainer').appendChild(toast);
+    setTimeout(function() {
+      toast.remove();
+    }, 4200);
+  }
+
+  function updateSyncStatusBar_() {
+    var connectionLabel = document.getElementById('syncConnectionLabel');
+    var queueLabel = document.getElementById('syncQueueLabel');
+    var button = document.getElementById('syncNowButton');
+    if (!connectionLabel || !queueLabel || !button) {
+      return;
+    }
+    var statusText = appState.connection.online ? 'Online' : 'Offline';
+    if (appState.connection.syncing) {
+      statusText = 'Sincronizando...';
+    }
+    connectionLabel.textContent = statusText;
+    queueLabel.textContent = 'Fila: ' + appState.pendingQueue.length + (appState.connection.lastSyncAt ? ' | Ultimo sync: ' + formatDateTimeHuman_(appState.connection.lastSyncAt) : '');
+    button.disabled = !appState.connection.online || appState.connection.syncing || appState.pendingQueue.length === 0;
+  }
+
+  function buildDashboardFromLocalState_() {
+    var dashboard = buildEmptyDashboard_();
+    appState.allPendencias.forEach(function(item) {
+      var status = normalizeText_(item.status);
+      var prioridade = normalizeText_(item.prioridade);
+      var loja = item.loja || 'Sem loja';
+      var setor = item.setor || 'Sem setor';
+      var responsavel = item.responsavel || 'Nao definido';
+      dashboard.porLoja[loja] = (dashboard.porLoja[loja] || 0) + 1;
+      dashboard.porSetor[setor] = (dashboard.porSetor[setor] || 0) + 1;
+      dashboard.porResponsavel[responsavel] = (dashboard.porResponsavel[responsavel] || 0) + 1;
+      dashboard.total += 1;
+      if (status === 'aberto') {
+        dashboard.abertas += 1;
+      } else if (status === 'em andamento') {
+        dashboard.emAndamento += 1;
+      } else if (status === 'concluido') {
+        dashboard.concluidas += 1;
+      }
+      if (prioridade === 'critica') {
+        dashboard.criticas += 1;
+      }
+      if (isPendenciaVencidaLocal_(item)) {
+        dashboard.vencidas += 1;
+      }
+    });
+    return dashboard;
+  }
+
+  function buildEmptyDashboard_() {
+    return {
+      total: 0,
+      abertas: 0,
+      emAndamento: 0,
+      concluidas: 0,
+      vencidas: 0,
+      criticas: 0,
+      porLoja: {},
+      porSetor: {},
+      porResponsavel: {}
+    };
+  }
+
+  function getFilteredPendencias_(apenasHistorico, ignoreFilters) {
+    var filtros = ignoreFilters ? {} : obterFiltrosTela(!!apenasHistorico);
+    return appState.allPendencias.filter(function(item) {
+      var status = normalizeText_(item.status);
+      if (apenasHistorico) {
+        if (status !== 'concluido' && status !== 'cancelado') {
+          return false;
+        }
+      } else {
+        if (status === 'concluido' || status === 'cancelado') {
+          return false;
+        }
+      }
+      if (filtros.loja && normalizeText_(item.loja) !== normalizeText_(filtros.loja)) {
+        return false;
+      }
+      if (filtros.setor && normalizeText_(item.setor) !== normalizeText_(filtros.setor)) {
+        return false;
+      }
+      if (filtros.status && normalizeText_(item.status) !== normalizeText_(filtros.status)) {
+        return false;
+      }
+      if (filtros.responsavel && normalizeText_(item.responsavel) !== normalizeText_(filtros.responsavel)) {
+        return false;
+      }
+      if (filtros.prioridade && normalizeText_(item.prioridade) !== normalizeText_(filtros.prioridade)) {
+        return false;
+      }
+      if (filtros.tipo && normalizeText_(item.tipo) !== normalizeText_(filtros.tipo)) {
+        return false;
+      }
+      if (filtros.dataAberturaDe || filtros.dataAberturaAte) {
+        if (!dateWithinRangeLocal_(item.data_abertura, filtros.dataAberturaDe, filtros.dataAberturaAte)) {
+          return false;
+        }
+      }
+      if (filtros.previsaoEntregaDe || filtros.previsaoEntregaAte) {
+        if (!dateWithinRangeLocal_(item.previsao_entrega, filtros.previsaoEntregaDe, filtros.previsaoEntregaAte)) {
+          return false;
+        }
+      }
+      item.esta_vencida = isPendenciaVencidaLocal_(item);
+      item.data_abertura_label = formatDateBr(item.data_abertura);
+      item.previsao_entrega_label = formatDateBr(item.previsao_entrega);
+      item.data_conclusao_label = formatDateBr(item.data_conclusao);
+      return true;
+    }).sort(function(a, b) {
+      return String(b.id_pendencia).localeCompare(String(a.id_pendencia));
+    });
+  }
+
+  function dateWithinRangeLocal_(value, fromValue, toValue) {
+    if (!fromValue && !toValue) {
+      return true;
+    }
+    if (!value) {
+      return false;
+    }
+    var date = parseInputDate_(value);
+    var from = fromValue ? parseInputDate_(fromValue) : null;
+    var to = toValue ? parseInputDate_(toValue) : null;
+    if (!date) {
+      return false;
+    }
+    if (from && date < from) {
+      return false;
+    }
+    if (to) {
+      var toLimit = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59);
+      if (date > toLimit) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function isPendenciaVencidaLocal_(item) {
+    if (!item || !item.previsao_entrega) {
+      return false;
+    }
+    var status = normalizeText_(item.status);
+    if (status === 'concluido' || status === 'cancelado') {
+      return false;
+    }
+    var previsao = parseInputDate_(item.previsao_entrega);
+    var hoje = parseInputDate_(toInputDate_(new Date()));
+    return !!(previsao && hoje && previsao < hoje);
+  }
+
+  function mergeItemIntoState_(item) {
+    if (!item || !item.id_pendencia) {
+      return;
+    }
+    var cloned = deepClone_(item);
+    cloned.esta_vencida = isPendenciaVencidaLocal_(cloned);
+    cloned.data_abertura_label = formatDateBr(cloned.data_abertura);
+    cloned.previsao_entrega_label = formatDateBr(cloned.previsao_entrega);
+    cloned.data_conclusao_label = formatDateBr(cloned.data_conclusao);
+    var replaced = false;
+    appState.allPendencias = appState.allPendencias.map(function(current) {
+      if (current.id_pendencia === cloned.id_pendencia) {
+        replaced = true;
+        return cloned;
+      }
+      return current;
+    });
+    if (!replaced) {
+      appState.allPendencias.push(cloned);
+    }
+    appState.detailsById[cloned.id_pendencia] = deepClone_(cloned);
+    appState.dashboard = buildDashboardFromLocalState_();
+    saveCache_();
+  }
+
+  function replaceItemIdInState_(oldId, newId) {
+    appState.allPendencias.forEach(function(item) {
+      if (item.id_pendencia === oldId) {
+        item.id_pendencia = newId;
+        if (item.historico) {
+          item.historico.forEach(function(historyItem) {
+            historyItem.id_pendencia = newId;
+          });
+        }
+        delete item._offlineOnly;
+        delete item._syncStatus;
+      }
+    });
+    if (appState.detailsById[oldId]) {
+      appState.detailsById[newId] = appState.detailsById[oldId];
+      appState.detailsById[newId].id_pendencia = newId;
+      delete appState.detailsById[oldId];
+    }
+    appState.pendingQueue.forEach(function(operation) {
+      if (operation.id === oldId) {
+        operation.id = newId;
+      }
+    });
+    saveCache_();
+  }
+
+  function removeItemFromState_(id) {
+    appState.allPendencias = appState.allPendencias.filter(function(item) {
+      return item.id_pendencia !== id;
+    });
+    delete appState.detailsById[id];
+    appState.dashboard = buildDashboardFromLocalState_();
+    saveCache_();
+  }
+
+  function getLocalItemById_(id) {
+    var direct = appState.detailsById[id];
+    if (direct) {
+      return deepClone_(direct);
+    }
+    for (var i = 0; i < appState.allPendencias.length; i += 1) {
+      if (appState.allPendencias[i].id_pendencia === id) {
+        return deepClone_(appState.allPendencias[i]);
+      }
+    }
+    var mappedId = appState.tempIdMap[id];
+    if (mappedId && appState.detailsById[mappedId]) {
+      return deepClone_(appState.detailsById[mappedId]);
+    }
+    return null;
+  }
+
+  function buildDetailFromLocalItem_(item) {
+    if (!item) {
+      return null;
+    }
+    if (!item.historico) {
+      item.historico = [];
+    }
+    return item;
+  }
+
+  function applyOfflineMutationToItem_(item, dados) {
+    var now = new Date();
+    if (Object.prototype.hasOwnProperty.call(dados, 'responsavel')) {
+      item.responsavel = dados.responsavel || '';
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'status') && dados.status) {
+      item.status = dados.status;
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'data_inicio')) {
+      item.data_inicio = dados.data_inicio || '';
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'previsao_entrega')) {
+      item.previsao_entrega = dados.previsao_entrega || '';
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'tipo') && dados.tipo) {
+      item.tipo = dados.tipo;
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'prioridade') && dados.prioridade) {
+      item.prioridade = dados.prioridade;
+    }
+    if (Object.prototype.hasOwnProperty.call(dados, 'observacao')) {
+      item.observacao = dados.observacao || '';
+    }
+    if (dados.foto && dados.foto.base64) {
+      item.foto_preview = dados.foto.base64;
+    }
+    if (normalizeText_(item.status) === 'concluido') {
+      item.data_conclusao = toInputDate_(now);
+      item.hora_conclusao = toTime_(now);
+      item.excluir_foto_em = calculateExcluirFotoEm_();
+    } else if (normalizeText_(item.status) !== 'cancelado') {
+      item.data_conclusao = '';
+      item.hora_conclusao = '';
+      item.excluir_foto_em = '';
+    }
+    item.ultima_atualizacao = formatDateTimeLocal_(now);
+    item.atualizado_por = 'offline_local';
+    item._syncStatus = 'pendente';
+  }
+
+  function buildHistoryEntry_(statusAnterior, statusNovo, usuario, observacao) {
+    var now = new Date();
+    return {
+      id_historico: generateLocalId_('HIS'),
+      id_pendencia: '',
+      data: toInputDate_(now),
+      data_label: formatDateBr(toInputDate_(now)),
+      hora: toTime_(now),
+      status_anterior: statusAnterior || '',
+      status_novo: statusNovo || '',
+      usuario: usuario || 'offline_local',
+      observacao: observacao || ''
+    };
+  }
+
+  function calculateExcluirFotoEm_() {
+    var config = findConfigByKey_('DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO');
+    var dias = Number(config && config.valor ? config.valor : 30);
+    var base = new Date();
+    var data = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias);
+    return toInputDate_(data);
+  }
+
+  function findConfigByKey_(key) {
+    for (var i = 0; i < appState.configs.length; i += 1) {
+      if (appState.configs[i].chave === key) {
+        return appState.configs[i];
+      }
+    }
+    return null;
+  }
+
+  function serverCall_(functionName, args) {
+    if (window.google && google.script && google.script.run) {
+      return new Promise(function(resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function(error) {
+            reject(error instanceof Error ? error : new Error(error && error.message ? error.message : 'Falha na chamada ao servidor.'));
+          });
+        runner[functionName].apply(runner, args || []);
+      });
+    }
+    return externalBridgeCall_(functionName, args || []);
+  }
+
+  function externalBridgeCall_(functionName, args) {
+    return new Promise(function(resolve, reject) {
+      var config = window.PWA_CONFIG || {};
+      var endpoint = (config.appsScriptBridgeUrl || '').trim();
+      if (!endpoint) {
+        reject(new Error('Configure o URL do Apps Script em docs/config.js antes de sincronizar com o servidor.'));
+        return;
+      }
+      ensureBridgeListener_();
+      var requestId = generateLocalId_('BRIDGE');
+      var iframeName = 'bridge_frame_' + requestId;
+      var iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.className = 'hidden';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = endpoint;
+      form.target = iframeName;
+      form.style.display = 'none';
+
+      appendHiddenField_(form, 'bridge', '1');
+      appendHiddenField_(form, 'requestId', requestId);
+      appendHiddenField_(form, 'origin', window.location.origin || '*');
+      appendHiddenField_(form, 'functionName', functionName);
+      appendHiddenField_(form, 'args', JSON.stringify(args || []));
+
+      var timeout = setTimeout(function() {
+        cleanupBridgeRequest_(requestId, iframe, form);
+        reject(new Error('Tempo esgotado ao comunicar com o Apps Script.'));
+      }, 45000);
+
+      bridgeResolvers_[requestId] = {
+        resolve: resolve,
+        reject: reject,
+        iframe: iframe,
+        form: form,
+        timeout: timeout
+      };
+
+      document.body.appendChild(form);
+      form.submit();
+    });
+  }
+
+  function ensureBridgeListener_() {
+    if (bridgeListenerReady_) {
+      return;
+    }
+    window.addEventListener('message', function(event) {
+      var data = event.data;
+      if (!data || data.source !== 'apps-script-bridge' || !data.requestId) {
+        return;
+      }
+      var resolver = bridgeResolvers_[data.requestId];
+      if (!resolver) {
+        return;
+      }
+      clearTimeout(resolver.timeout);
+      cleanupBridgeRequest_(data.requestId, resolver.iframe, resolver.form);
+      resolver.resolve(data.response);
+    });
+    bridgeListenerReady_ = true;
+  }
+
+  function cleanupBridgeRequest_(requestId, iframe, form) {
+    delete bridgeResolvers_[requestId];
+    if (form && form.parentNode) {
+      form.parentNode.removeChild(form);
+    }
+    if (iframe && iframe.parentNode) {
+      iframe.parentNode.removeChild(iframe);
+    }
+  }
+
+  function appendHiddenField_(form, name, value) {
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+
+  function handleFailure(error) {
+    ocultarLoading();
+    mostrarMensagemErro(error.message || 'Ocorreu um erro inesperado.');
+  }
+
+  function renderTag(type, value) {
+    var slug = slugify_(value || '-');
+    return '<span class="tag ' + type + '-' + slug + '">' + escapeHtml(value || '-') + '</span>';
+  }
+
+  function slugify_(value) {
+    return normalizeText_(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+
+  function normalizeText_(value) {
+    return (value || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function resumirTexto(texto, limite) {
+    if (!texto) {
+      return '';
+    }
+    return texto.length > limite ? texto.slice(0, limite - 3) + '...' : texto;
+  }
+
+  function escapeHtml(value) {
+    return (value || '')
+      .toString()
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeJs(value) {
+    return (value || '').toString().replace(/\\/g, '\\\\').replace(/'/g, '\\\'');
+  }
+
+  function formatDateBr(value) {
+    if (!value) {
+      return '';
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      var parts = value.split('-');
+      return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    return value;
+  }
+
+  function formatDateTimeHuman_(value) {
+    if (!value) {
+      return '';
+    }
+    var date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toLocaleString('pt-BR');
+  }
+
+  function parseInputDate_(value) {
+    if (!value) {
+      return null;
+    }
+    if (value instanceof Date) {
+      return value;
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      var parts = value.split('-');
+      return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    }
+    var parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function toInputDate_(date) {
+    return [
+      date.getFullYear(),
+      ('0' + (date.getMonth() + 1)).slice(-2),
+      ('0' + date.getDate()).slice(-2)
+    ].join('-');
+  }
+
+  function toTime_(date) {
+    return [
+      ('0' + date.getHours()).slice(-2),
+      ('0' + date.getMinutes()).slice(-2),
+      ('0' + date.getSeconds()).slice(-2)
+    ].join(':');
+  }
+
+  function formatDateTimeLocal_(date) {
+    return formatDateBr(toInputDate_(date)) + ' ' + toTime_(date);
+  }
+
+  function generateLocalId_(prefix) {
+    return prefix + '-' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000);
+  }
+
+  function isLocalId_(id) {
+    return String(id || '').indexOf('LOCAL-') === 0;
+  }
+
+  function resolveRemoteId_(id) {
+    return appState.tempIdMap[id] || id;
+  }
+
+  function deepClone_(obj) {
+    return JSON.parse(JSON.stringify(obj || null));
+  }
+
+  function getElementValue_(id) {
+    var element = document.getElementById(id);
+    return element ? element.value : '';
+  }
+</script>

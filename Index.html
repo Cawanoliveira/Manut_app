@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+    <?!= include('Styles'); ?>
+  </head>
+  <body>
+    <div id="loadingOverlay" class="loading-overlay hidden">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <span>Carregando...</span>
+      </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <div id="syncStatusBar" class="sync-status-bar">
+      <div class="sync-status-left">
+        <strong id="syncConnectionLabel">Conectando...</strong>
+        <span id="syncQueueLabel">Fila: 0</span>
+      </div>
+      <button id="syncNowButton" class="secondary-button compact-button" onclick="sincronizarAgora()">Sincronizar</button>
+    </div>
+
+    <main class="page-shell">
+      <section id="secaoDashboard" class="page-section active">
+        <div class="section-header">
+          <div>
+            <h2>Painel</h2>
+            <p>Resumo rapido das pendencias em andamento.</p>
+          </div>
+          <button class="secondary-button" onclick="carregarDashboard()">Atualizar</button>
+        </div>
+
+        <div id="dashboardCards" class="cards-grid"></div>
+
+        <div class="summary-grid">
+          <article class="panel">
+            <div class="panel-title-row">
+              <h3>Por loja</h3>
+            </div>
+            <div id="resumoPorLoja" class="summary-list empty-state">Nenhum dado carregado.</div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-title-row">
+              <h3>Por setor</h3>
+            </div>
+            <div id="resumoPorSetor" class="summary-list empty-state">Nenhum dado carregado.</div>
+          </article>
+        </div>
+      </section>
+
+      <section id="secaoNovaPendencia" class="page-section">
+        <div class="section-header">
+          <div>
+            <h2>Nova pendencia</h2>
+            <p>Registro rapido para uso em celular.</p>
+          </div>
+        </div>
+
+        <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
+          <label>
+            <span>Loja *</span>
+            <select id="novaLoja" required></select>
+          </label>
+          <label>
+            <span>Setor *</span>
+            <select id="novoSetor" required></select>
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select id="novoTipo"></select>
+          </label>
+          <label>
+            <span>Prioridade</span>
+            <select id="novaPrioridade"></select>
+          </label>
+          <label class="full-width">
+            <span>Descricao *</span>
+            <textarea id="novaDescricao" rows="4" placeholder="Descreva o que foi encontrado." required></textarea>
+          </label>
+          <label class="full-width">
+            <span>Observacao</span>
+            <textarea id="novaObservacao" rows="3" placeholder="Detalhes adicionais."></textarea>
+          </label>
+          <label class="full-width">
+            <span>Foto opcional</span>
+            <input id="novaFoto" type="file" accept="image/*">
+            <small>Apenas imagem.</small>
+          </label>
+          <div class="full-width actions-row">
+            <button type="submit" class="primary-button">Salvar</button>
+            <button type="button" class="ghost-button" onclick="limparFormularioNovaPendencia()">Limpar</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="secaoListaPendencias" class="page-section">
+        <div class="section-header">
+          <div>
+            <h2>Pendencias ativas</h2>
+            <p>Somente itens em aberto, andamento ou aguardando.</p>
+          </div>
+          <div class="header-actions">
+            <button class="secondary-button" onclick="toggleFiltroDrawer(true)">Filtros</button>
+            <button class="ghost-button" onclick="listarPendencias()">Atualizar</button>
+          </div>
+        </div>
+
+        <div id="filtroResumo" class="filter-summary">Sem filtros aplicados.</div>
+        <div id="listaPendenciasCards" class="list-cards"></div>
+
+        <div class="table-wrapper">
+          <table class="desktop-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Loja</th>
+                <th>Setor</th>
+                <th>Descricao</th>
+                <th>Prioridade</th>
+                <th>Status</th>
+                <th>Responsavel</th>
+                <th>Previsao</th>
+                <th>Acoes</th>
+              </tr>
+            </thead>
+            <tbody id="listaPendenciasTabela"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="secaoDetalhesPendencia" class="page-section">
+        <div class="section-header">
+          <div>
+            <h2>Detalhes</h2>
+            <p>Visualizacao completa da pendencia.</p>
+          </div>
+          <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
+        </div>
+        <div id="detalhesPendencia" class="panel empty-state">Selecione uma pendencia.</div>
+      </section>
+
+      <section id="secaoEdicaoPendencia" class="page-section">
+        <div class="section-header">
+          <div>
+            <h2>Editar</h2>
+            <p>Programe responsavel, prazo e status.</p>
+          </div>
+          <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
+        </div>
+
+        <form id="formEditarPendencia" class="panel form-grid" onsubmit="salvarEdicaoPendencia(event)">
+          <input id="editIdPendencia" type="hidden">
+          <label>
+            <span>Responsavel</span>
+            <select id="editResponsavel"></select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select id="editStatus"></select>
+          </label>
+          <label>
+            <span>Inicio</span>
+            <input id="editDataInicio" type="date">
+          </label>
+          <label>
+            <span>Previsao</span>
+            <input id="editPrevisaoEntrega" type="date">
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select id="editTipo"></select>
+          </label>
+          <label>
+            <span>Prioridade</span>
+            <select id="editPrioridade"></select>
+          </label>
+          <label class="full-width">
+            <span>Observacao</span>
+            <textarea id="editObservacao" rows="3"></textarea>
+          </label>
+          <label class="full-width">
+            <span>Nova foto</span>
+            <input id="editFoto" type="file" accept="image/*">
+          </label>
+          <div class="full-width actions-row">
+            <button type="submit" class="primary-button">Salvar</button>
+            <button type="button" class="secondary-button" onclick="concluirPendencia(document.getElementById('editIdPendencia').value)">Concluir</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="secaoHistorico" class="page-section">
+        <div class="section-header">
+          <div>
+            <h2>Historico</h2>
+            <p>Pendencias concluidas ou canceladas.</p>
+          </div>
+          <button class="secondary-button" onclick="carregarHistoricoPendencias()">Atualizar</button>
+        </div>
+
+        <div id="historicoListaCards" class="list-cards"></div>
+      </section>
+
+      <section id="secaoConfiguracoes" class="page-section">
+        <div class="section-header">
+          <div>
+            <h2>Configuracoes</h2>
+            <p>Ajustes rapidos do sistema.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div id="configList" class="config-list empty-state">Carregando configuracoes...</div>
+          <div class="actions-row">
+            <button class="primary-button" onclick="salvarConfiguracoes()">Salvar</button>
+            <button class="secondary-button" onclick="executarSetupSistema()">Setup</button>
+            <button class="ghost-button" onclick="instalarTriggerFotos()">Trigger</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="filtroDrawer" class="drawer hidden">
+      <div class="drawer-backdrop" onclick="toggleFiltroDrawer(false)"></div>
+      <div class="drawer-panel">
+        <div class="drawer-header">
+          <h3>Filtros</h3>
+          <button class="ghost-button compact-button" onclick="toggleFiltroDrawer(false)">Fechar</button>
+        </div>
+        <div class="filters-grid">
+          <label>
+            <span>Loja</span>
+            <select id="filtroLoja"></select>
+          </label>
+          <label>
+            <span>Setor</span>
+            <select id="filtroSetor"></select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select id="filtroStatus"></select>
+          </label>
+          <label>
+            <span>Responsavel</span>
+            <select id="filtroResponsavel"></select>
+          </label>
+          <label>
+            <span>Prioridade</span>
+            <select id="filtroPrioridade"></select>
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select id="filtroTipo"></select>
+          </label>
+          <label>
+            <span>Abertura de</span>
+            <input id="filtroDataAberturaDe" type="date">
+          </label>
+          <label>
+            <span>Abertura ate</span>
+            <input id="filtroDataAberturaAte" type="date">
+          </label>
+          <label>
+            <span>Previsao de</span>
+            <input id="filtroPrevisaoDe" type="date">
+          </label>
+          <label>
+            <span>Previsao ate</span>
+            <input id="filtroPrevisaoAte" type="date">
+          </label>
+        </div>
+        <div class="actions-row drawer-actions">
+          <button class="primary-button" onclick="aplicarFiltros()">Aplicar</button>
+          <button class="ghost-button" onclick="limparFiltros()">Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="metricZoomModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="fecharZoomCard()"></div>
+      <div class="modal-card">
+        <div class="drawer-header">
+          <div>
+            <h3 id="metricZoomTitle">Detalhes</h3>
+            <p id="metricZoomValue" class="metric-zoom-value">0</p>
+          </div>
+          <button class="ghost-button compact-button" onclick="fecharZoomCard()">Fechar</button>
+        </div>
+        <p id="metricZoomDescription" class="modal-description"></p>
+        <div id="metricZoomList" class="summary-list"></div>
+      </div>
+    </div>
+
+    <nav class="bottom-nav">
+      <button class="nav-button active" data-section="secaoDashboard" onclick="navegar('secaoDashboard', this)">
+        <span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-button" data-section="secaoNovaPendencia" onclick="navegar('secaoNovaPendencia', this)">
+        <span class="nav-label">Nova</span>
+      </button>
+      <button class="nav-button" data-section="secaoListaPendencias" onclick="navegar('secaoListaPendencias', this)">
+        <span class="nav-label">Lista</span>
+      </button>
+      <button class="nav-button" data-section="secaoHistorico" onclick="navegar('secaoHistorico', this)">
+        <span class="nav-label">Historico</span>
+      </button>
+      <button class="nav-button" data-section="secaoConfiguracoes" onclick="navegar('secaoConfiguracoes', this)">
+        <span class="nav-label">Config</span>
+      </button>
+    </nav>
+
+    <?!= include('Scripts'); ?>
+  </body>
+</html>
