@@ -111,7 +111,7 @@
         startX: event.clientX,
         startY: event.clientY,
         startLeft: parseFloat(fab.style.left) || 12,
-        startTop: parseFloat(fab.style.top) || 58,
+        startTop: parseFloat(fab.style.top) || 42,
         moved: false
       };
       fab.dataset.dragging = '0';
@@ -156,10 +156,13 @@
       return;
     }
     if (fab.style.left && fab.style.top) {
-      setFilterFabPosition_(parseFloat(fab.style.left) || 12, parseFloat(fab.style.top) || 58);
+      setFilterFabPosition_(parseFloat(fab.style.left) || 12, parseFloat(fab.style.top) || 42);
       return;
     }
-    setFilterFabPosition_(12, 58);
+    var viewportWidth = (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 1024;
+    var fabWidth = fab.offsetWidth || 124;
+    var centeredLeft = Math.max(10, (viewportWidth / 2) - (fabWidth / 2));
+    setFilterFabPosition_(centeredLeft, 42);
   }
 
   function setFilterFabPosition_(left, top) {
@@ -172,7 +175,7 @@
     var fabWidth = fab.offsetWidth || 92;
     var fabHeight = fab.offsetHeight || 42;
     var minLeft = 10;
-    var minTop = 58;
+    var minTop = 42;
     var maxLeft = Math.max(minLeft, viewportWidth - fabWidth - 10);
     var maxTop = Math.max(minTop, viewportHeight - fabHeight - 10);
     fab.style.left = Math.min(Math.max(minLeft, left), maxLeft) + 'px';
