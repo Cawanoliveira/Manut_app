@@ -38,7 +38,7 @@ function listarConfiguracoes() {
 function salvarConfiguracoesSimples(configs) {
   try {
     (configs || []).forEach(function(item) {
-      if (item && item.chave) {
+      if (item && item.chave && item.chave !== 'STATUS_PADRAO_NOVO_REGISTRO') {
         setConfig(item.chave, item.valor);
       }
     });
@@ -81,9 +81,55 @@ function salvarPrestador(nomePrestador) {
       status: 'Ativo',
       data_cadastro: parseDateInput_(formatDateForInput_(now_()))
     });
-    return createSuccessResponse_('Executor/prestador salvo com sucesso.', getFormSupportData().prestadores || []);
+    return createSuccessResponse_('Executor/prestador salvo com sucesso.', buildPrestadoresPayload_());
   } catch (error) {
     registrarLog('ERRO', 'Falha ao salvar prestador.', getErrorStack_(error));
     return createErrorResponse_('Nao foi possivel salvar o executor/prestador.', error);
   }
+}
+
+function alterarStatusPrestador(idPrestador, novoStatus) {
+  try {
+    var id = sanitizeText_(idPrestador);
+    var status = sanitizeText_(novoStatus);
+    if (!id || !status) {
+      return createErrorResponse_('Prestador ou status invalido.');
+    }
+    var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', id);
+    if (rowIndex === -1) {
+      return createErrorResponse_('Prestador nao encontrado.');
+    }
+    updateSheetRecordByRow_(APP_CONFIG.SHEETS.PRESTADORES, rowIndex, {
+      status: status
+    });
+    return createSuccessResponse_('Status do executor/prestador atualizado com sucesso.', buildPrestadoresPayload_());
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao atualizar status do prestador.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel atualizar o status do executor/prestador.', error);
+  }
+}
+
+function excluirPrestador(idPrestador) {
+  try {
+    var id = sanitizeText_(idPrestador);
+    if (!id) {
+      return createErrorResponse_('Prestador invalido.');
+    }
+    var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', id);
+    if (rowIndex === -1) {
+      return createErrorResponse_('Prestador nao encontrado.');
+    }
+    getSheet_(APP_CONFIG.SHEETS.PRESTADORES).deleteRow(rowIndex);
+    return createSuccessResponse_('Executor/prestador excluido com sucesso.', buildPrestadoresPayload_());
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao excluir prestador.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel excluir o executor/prestador.', error);
+  }
+}
+
+function buildPrestadoresPayload_() {
+  return {
+    ativos: getFormSupportData().prestadores || [],
+    todos: listarPrestadoresTodos().data || []
+  };
 }

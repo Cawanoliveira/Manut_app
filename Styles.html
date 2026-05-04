@@ -70,6 +70,17 @@
     box-shadow: var(--shadow);
   }
 
+  .brand-logo {
+    position: fixed;
+    top: 6px;
+    left: 12px;
+    z-index: 58;
+    width: 116px;
+    height: auto;
+    object-fit: contain;
+    pointer-events: none;
+  }
+
   .connection-indicator.online {
     background: var(--success);
   }
@@ -85,7 +96,7 @@
 
   .filter-fab {
     position: fixed;
-    top: 42px;
+    top: 52px;
     left: 12px;
     z-index: 55;
     border: 0;
@@ -95,26 +106,26 @@
     box-shadow: var(--shadow-strong);
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 9px 12px;
+    gap: 10px;
+    padding: 12px 18px;
     cursor: pointer;
     user-select: none;
     touch-action: none;
   }
 
   .filter-fab-icon {
-    font-size: 17px;
+    font-size: 21px;
     line-height: 1;
   }
 
   .filter-fab-label {
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 800;
   }
 
   .page-shell {
     height: calc(100vh - var(--bottom-nav-height) - env(safe-area-inset-bottom, 0px));
-    padding: 42px 10px 0;
+    padding: 84px 10px 0;
     overflow: hidden;
     background: linear-gradient(180deg, #fffdfb 0%, #ffffff 100%);
   }
@@ -437,6 +448,10 @@
     font-weight: 800;
   }
 
+  .back-button {
+    min-width: 88px;
+  }
+
   .ghost-button,
   .compact-button {
     background: #f5f5f5;
@@ -533,6 +548,13 @@
     flex: 1 1 220px;
   }
 
+  .executor-inline-select {
+    min-width: 100%;
+    font-size: 12px;
+    padding: 9px 10px;
+    border-radius: 12px;
+  }
+
   .pendencia-card {
     background: #fff;
     border: 1px solid #ececec;
@@ -586,12 +608,14 @@
   .tag.prioridade-critica { background: #fee2e2; color: #991b1b; }
 
   .details-photo {
-    width: 100%;
-    max-height: 320px;
+    width: min(80vw, 100%);
+    max-height: 80dvh;
     object-fit: contain;
     border-radius: 14px;
     background: #fff;
     border: 1px solid #eee;
+    display: block;
+    margin: 0 auto;
   }
 
   .table-wrapper {
@@ -997,7 +1021,7 @@
 
   .filter-sidebar {
     position: fixed;
-    top: 92px;
+    top: 88px;
     left: 0;
     bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     width: min(360px, calc(100vw - 20px));
@@ -1035,6 +1059,20 @@
 
   .sidebar-open .page-shell {
     padding-left: min(378px, calc(100vw - 4px));
+  }
+
+  .sidebar-open .listagem-table .compact-button,
+  .sidebar-open .listagem-table .warning-button,
+  .sidebar-open .listagem-table .success-button,
+  .sidebar-open .listagem-table .secondary-button,
+  .sidebar-open .listagem-table .ghost-button,
+  .sidebar-open .historico-table .compact-button,
+  .sidebar-open .historico-table .warning-button,
+  .sidebar-open .historico-table .success-button,
+  .sidebar-open .historico-table .secondary-button,
+  .sidebar-open .historico-table .ghost-button {
+    font-size: 11px;
+    padding: 9px 10px;
   }
 
   .spen-open {
@@ -1102,7 +1140,7 @@
 
   @media (min-width: 768px) {
     .page-shell {
-      padding: 40px 16px 0;
+      padding: 84px 16px 0;
     }
 
     .cards-grid {

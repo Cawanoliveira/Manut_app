@@ -1,4 +1,4 @@
-  var CACHE_KEY = 'manutencao_offline_cache_v2';
+﻿var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -12,6 +12,7 @@
     return {
       combos: null,
       configs: [],
+      prestadoresAdmin: [],
       allPendencias: [],
       detailsById: {},
       dashboard: buildEmptyDashboard_(),
@@ -34,10 +35,14 @@
         title: '',
         description: '',
         items: [],
+        anchorType: '',
         filterLoja: '',
-        filterSetor: ''
+        filterSetor: '',
+        filterStatus: ''
       },
       spenLocked: true,
+      currentSection: 'secaoDashboard',
+      navigationStack: [],
       connection: {
         online: navigator.onLine,
         syncing: false,
@@ -105,7 +110,7 @@
         startX: event.clientX,
         startY: event.clientY,
         startLeft: parseFloat(fab.style.left) || 12,
-        startTop: parseFloat(fab.style.top) || 42,
+        startTop: parseFloat(fab.style.top) || 58,
         moved: false
       };
       fab.dataset.dragging = '0';
@@ -145,7 +150,15 @@
   }
 
   function applyFilterFabPosition_() {
-    setFilterFabPosition_(12, 42);
+    var fab = document.getElementById('filterFab');
+    if (!fab) {
+      return;
+    }
+    if (fab.style.left && fab.style.top) {
+      setFilterFabPosition_(parseFloat(fab.style.left) || 12, parseFloat(fab.style.top) || 58);
+      return;
+    }
+    setFilterFabPosition_(12, 58);
   }
 
   function setFilterFabPosition_(left, top) {
@@ -158,7 +171,7 @@
     var fabWidth = fab.offsetWidth || 92;
     var fabHeight = fab.offsetHeight || 42;
     var minLeft = 10;
-    var minTop = 42;
+    var minTop = 58;
     var maxLeft = Math.max(minLeft, viewportWidth - fabWidth - 10);
     var maxTop = Math.max(minTop, viewportHeight - fabHeight - 10);
     fab.style.left = Math.min(Math.max(minLeft, left), maxLeft) + 'px';
@@ -231,11 +244,14 @@
       var cached = JSON.parse(raw);
       appState.combos = cached.combos || null;
       appState.configs = cached.configs || [];
+      appState.prestadoresAdmin = cached.prestadoresAdmin || [];
       appState.allPendencias = cached.allPendencias || [];
       appState.detailsById = cached.detailsById || {};
       appState.pendingQueue = cached.pendingQueue || [];
       appState.tempIdMap = cached.tempIdMap || {};
       appState.formContext = cached.formContext || appState.formContext;
+      appState.currentSection = cached.currentSection || appState.currentSection;
+      appState.navigationStack = cached.navigationStack || [];
       appState.connection.lastSyncAt = cached.lastSyncAt || '';
       appState.dashboard = buildDashboardFromLocalState_();
     } catch (error) {
@@ -250,11 +266,14 @@
       var payload = {
         combos: appState.combos,
         configs: appState.configs,
+        prestadoresAdmin: appState.prestadoresAdmin,
         allPendencias: appState.allPendencias,
         detailsById: appState.detailsById,
         pendingQueue: appState.pendingQueue,
         tempIdMap: appState.tempIdMap,
         formContext: appState.formContext,
+        currentSection: appState.currentSection,
+        navigationStack: appState.navigationStack,
         lastSyncAt: appState.connection.lastSyncAt
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
@@ -278,6 +297,7 @@
     renderFiltroResumo();
     applyFilterFabPosition_();
     updateSyncStatusBar_();
+    refreshBackButtons_();
   }
 
   function carregarEstadoServidor_() {
@@ -300,6 +320,7 @@
 
       appState.combos = initResponse.data.combos;
       appState.configs = initResponse.data.config.data || [];
+      appState.prestadoresAdmin = (initResponse.data.prestadoresAdmin && initResponse.data.prestadoresAdmin.data) || [];
       appState.allPendencias = pendenciasResponse.data || [];
       appState.dashboard = buildDashboardFromLocalState_();
       appState.connection.lastSyncAt = new Date().toISOString();
@@ -312,7 +333,11 @@
     });
   }
 
-  function navegar(sectionId, buttonEl) {
+  function navegar(sectionId, buttonEl, skipHistory) {
+    if (appState.currentSection && appState.currentSection !== sectionId && !skipHistory) {
+      appState.navigationStack.push(appState.currentSection);
+    }
+    appState.currentSection = sectionId;
     document.querySelectorAll('.page-section').forEach(function(section) {
       section.classList.toggle('active', section.id === sectionId);
     });
@@ -333,6 +358,23 @@
     if (sectionId === 'secaoListaPendencias') {
       renderPendencias(getFilteredPendencias_(false));
     }
+    saveCache_();
+    refreshBackButtons_();
+  }
+
+  function voltarTelaAnterior() {
+    if (!appState.navigationStack.length) {
+      return;
+    }
+    var previous = appState.navigationStack.pop();
+    navegar(previous || 'secaoDashboard', null, true);
+  }
+
+  function refreshBackButtons_() {
+    Array.prototype.forEach.call(document.querySelectorAll('.back-button'), function(button) {
+      button.disabled = appState.navigationStack.length === 0;
+      button.classList.toggle('disabled', appState.navigationStack.length === 0);
+    });
   }
 
   function carregarDashboard() {
@@ -568,6 +610,10 @@
   }
 
   function renderFiltroResumo() {
+    var summaryNode = document.getElementById('filtroResumo');
+    if (!summaryNode) {
+      return;
+    }
     var filtros = obterFiltrosTela(false);
     var labels = [];
     Object.keys(filtros).forEach(function(key) {
@@ -578,7 +624,7 @@
         labels.push(formatarChaveFiltro(key) + ': ' + filtros[key]);
       }
     });
-    document.getElementById('filtroResumo').textContent = labels.length ? labels.join(' | ') : 'Sem filtros aplicados.';
+    summaryNode.textContent = labels.length ? labels.join(' | ') : '';
   }
 
   function formatarChaveFiltro(chave) {
@@ -600,6 +646,11 @@
   function toggleFiltroDrawer(show) {
     document.getElementById('filtroDrawer').classList.toggle('hidden', !show);
     document.body.classList.toggle('sidebar-open', !!show);
+    renderPendencias(getFilteredPendencias_(false));
+    renderHistoricoGeral(getFilteredPendencias_(true));
+    if (appState.zoomContext && !document.getElementById('metricZoomModal').classList.contains('hidden')) {
+      aplicarFiltrosZoom();
+    }
   }
 
   function abrirFiltrosFlutuante() {
@@ -657,6 +708,50 @@
     document.getElementById('editFoto').value = '';
     atualizarNomeArquivo('editFoto', 'editFotoNome');
     navegar('secaoEdicaoPendencia');
+  }
+
+  function salvarExecutorRapido(id, executor) {
+    var item = getLocalItemById_(id);
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    if (normalizeText_(item.executor) === normalizeText_(executor)) {
+      return;
+    }
+    if (!appState.connection.online) {
+      item.executor = executor || '';
+      item._syncStatus = 'pendente';
+      item.ultima_atualizacao = formatDateTimeLocal_(new Date());
+      item.atualizado_por = 'offline_local';
+      mergeItemIntoState_(item);
+      enqueueOperation_({
+        type: 'update',
+        id: id,
+        payload: { executor: executor || '' },
+        observacao: ''
+      });
+      renderAll_();
+      mostrarMensagemSucesso('Executor atualizado offline. Sera sincronizado ao reconectar.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('atualizarPendencia', [resolveRemoteId_(id), { executor: executor || '' }])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderAll_();
+        } else {
+          return carregarEstadoServidor_();
+        }
+        mostrarMensagemSucesso('Executor atualizado com sucesso.');
+      })
+      .catch(handleFailure);
   }
 
   async function salvarEdicaoPendencia(event) {
@@ -1127,6 +1222,58 @@
     });
   }
 
+  function uiLabel_(full, shortLabel) {
+    return document.body.classList.contains('sidebar-open') ? shortLabel : full;
+  }
+
+  function getDashboardDisplayStatus_(item) {
+    if (!item) {
+      return 'Aberta';
+    }
+    var status = normalizeText_(item.status);
+    if (status === 'concluido') {
+      return 'Concluida';
+    }
+    if (status === 'cancelado') {
+      return 'Cancelada';
+    }
+    if (isPendenciaVencidaLocal_(item)) {
+      return 'Vencida';
+    }
+    return safeTrim_(item.executor) ? 'Em andamento' : 'Aberta';
+  }
+
+  function renderExecutorSelect_(item) {
+    var pendenciaId = escapeJs(item.id_pendencia);
+    var options = ['<option value="">Sem executor</option>'];
+    ((appState.combos && appState.combos.prestadores) || []).forEach(function(nome) {
+      options.push('<option value="' + escapeHtml(nome) + '"' + (normalizeText_(nome) === normalizeText_(item.executor) ? ' selected' : '') + '>' + escapeHtml(nome) + '</option>');
+    });
+    return '<select class="executor-inline-select" onchange="salvarExecutorRapido(\'' + pendenciaId + '\', this.value)">' + options.join('') + '</select>';
+  }
+
+  function renderHistoryStatusButton_(item) {
+    var status = normalizeText_(item.status);
+    var className = status === 'cancelado' ? 'ghost-button compact-button' : 'success-button compact-button';
+    var label = status === 'cancelado' ? 'Cancelado' : 'Concluido';
+    return '<button class="' + className + '" type="button">' + uiLabel_(label, status === 'cancelado' ? 'Cancel.' : 'Concl.') + '</button>';
+  }
+
+  function renderDashboardStatusTag_(label) {
+    var normalized = normalizeText_(label);
+    var className = 'status-aberto';
+    if (normalized === 'em andamento') {
+      className = 'status-em-andamento';
+    } else if (normalized === 'vencida') {
+      className = 'prioridade-critica';
+    } else if (normalized === 'concluida') {
+      className = 'status-concluido';
+    } else if (normalized === 'cancelada') {
+      className = 'status-cancelado';
+    }
+    return '<span class="tag ' + className + '">' + escapeHtml(label) + '</span>';
+  }
+
   function renderDashboard(data) {
     var cards = [
       { key: 'abertas', label: 'Abertas', value: data.abertas || 0, className: '' },
@@ -1165,11 +1312,11 @@
     if (metricKey === 'abertas') {
       title = 'Pendencias abertas';
       description = 'Pendencias sem executor associado.';
-      items = ativos.filter(function(item) { return !safeTrim_(item.executor); });
+      items = ativos.filter(function(item) { return getDashboardDisplayStatus_(item) === 'Aberta'; });
     } else if (metricKey === 'emAndamento') {
       title = 'Pendencias em andamento';
       description = 'Pendencias com executor associado.';
-      items = ativos.filter(function(item) { return !!safeTrim_(item.executor); });
+      items = ativos.filter(function(item) { return getDashboardDisplayStatus_(item) === 'Em andamento'; });
     } else if (metricKey === 'concluidas') {
       title = 'Pendencias concluidas';
       description = 'Itens finalizados no historico.';
@@ -1177,7 +1324,7 @@
     } else if (metricKey === 'vencidas') {
       title = 'Pendencias vencidas';
       description = 'Itens com prazo vencido.';
-      items = ativos.filter(function(item) { return item.esta_vencida; });
+      items = ativos.filter(function(item) { return getDashboardDisplayStatus_(item) === 'Vencida'; });
     } else {
       title = 'Total geral';
       description = 'Todas as pendencias, incluindo historico.';
@@ -1186,7 +1333,7 @@
       });
     }
 
-    openMetricZoom_(title, description, items);
+    openMetricZoom_(title, description, items, 'metric');
   }
 
   function fecharZoomCard() {
@@ -1245,7 +1392,8 @@
     openMetricZoom_(
       (tipo === 'loja' ? 'Loja: ' : 'Setor: ') + chave,
       tipo === 'loja' ? 'Pendencias ativas desta loja.' : 'Pendencias ativas deste setor por loja.',
-      items
+      items,
+      tipo
     );
   }
 
@@ -1254,28 +1402,32 @@
       return '<div class="empty-state">Nenhum item encontrado.</div>';
     }
     return items.slice(0, 40).map(function(item) {
+      var statusAtual = getDashboardDisplayStatus_(item);
       return '<div class="zoom-item zoom-table-item">' +
         '<div class="zoom-main"><div class="zoom-badges">' +
           '<span class="zoom-chip">' + escapeHtml(item.loja || '-') + '</span>' +
           '<span class="zoom-chip alt">' + escapeHtml(item.setor || '-') + '</span>' +
+          renderDashboardStatusTag_(statusAtual) +
         '</div><div class="muted-text">' + escapeHtml(item.tipo || 'Sem classificacao') + ' | ' + escapeHtml(item.prioridade || 'Sem urgencia') + '</div>' +
         '<div class="muted-text">' + escapeHtml(resumirTexto(item.descricao || item.observacao || '', 96)) + '</div></div>' +
         '<div class="actions-row">' +
           '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
-          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">Detalhes</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
         '</div>' +
       '</div>';
     }).join('');
   }
 
-  function openMetricZoom_(title, description, items) {
+  function openMetricZoom_(title, description, items, anchorType) {
     appState.zoomContext = {
       title: title || 'Detalhes',
       description: description || '',
       items: (items || []).slice(),
+      anchorType: anchorType || 'metric',
       filterLoja: '',
-      filterSetor: ''
+      filterSetor: '',
+      filterStatus: ''
     };
     document.getElementById('metricZoomTitle').textContent = appState.zoomContext.title;
     document.getElementById('metricZoomDescription').textContent = appState.zoomContext.description;
@@ -1288,10 +1440,17 @@
     var items = appState.zoomContext.items || [];
     var lojas = uniqueSorted_(items.map(function(item) { return item.loja || ''; }).filter(Boolean));
     var setores = uniqueSorted_(items.map(function(item) { return item.setor || ''; }).filter(Boolean));
+    var statusList = uniqueSorted_(items.map(function(item) {
+      return getDashboardDisplayStatus_(item);
+    }).filter(Boolean));
     preencherSelect('metricZoomFiltroLoja', lojas, 'Todas as lojas', true);
     preencherSelect('metricZoomFiltroSetor', setores, 'Todos os setores', true);
+    preencherSelect('metricZoomFiltroStatus', statusList, 'Todos os status', true);
+    document.getElementById('metricZoomLojaWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'loja');
+    document.getElementById('metricZoomSetorWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'setor');
     document.getElementById('metricZoomFiltroLoja').value = appState.zoomContext.filterLoja || '';
     document.getElementById('metricZoomFiltroSetor').value = appState.zoomContext.filterSetor || '';
+    document.getElementById('metricZoomFiltroStatus').value = appState.zoomContext.filterStatus || '';
   }
 
   function aplicarFiltrosZoom() {
@@ -1300,11 +1459,15 @@
     }
     appState.zoomContext.filterLoja = getElementValue_('metricZoomFiltroLoja');
     appState.zoomContext.filterSetor = getElementValue_('metricZoomFiltroSetor');
+    appState.zoomContext.filterStatus = getElementValue_('metricZoomFiltroStatus');
     var items = (appState.zoomContext.items || []).filter(function(item) {
       if (appState.zoomContext.filterLoja && normalizeText_(item.loja) !== normalizeText_(appState.zoomContext.filterLoja)) {
         return false;
       }
       if (appState.zoomContext.filterSetor && normalizeText_(item.setor) !== normalizeText_(appState.zoomContext.filterSetor)) {
+        return false;
+      }
+      if (appState.zoomContext.filterStatus && normalizeText_(getDashboardDisplayStatus_(item)) !== normalizeText_(appState.zoomContext.filterStatus)) {
         return false;
       }
       return true;
@@ -1345,15 +1508,15 @@
           cardKv_('Setor', escapeHtml(item.setor || '-')) +
           cardKv_('Classificacao', escapeHtml(item.tipo || '-')) +
           cardKv_('Urgencia', escapeHtml(item.prioridade || '-')) +
-          cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
-          cardKv_('Descricao', '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>') +
+          cardKv_('Executor', renderExecutorSelect_(item)) +
+          cardKv_('Descricao', '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>') +
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
           '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
-          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
+          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Editar', 'Edit.') + '</button>' +
+          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Concluido', 'Concl.') + '</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
           '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
         '</div>' +
@@ -1362,20 +1525,20 @@
 
     tableEl.innerHTML = items.map(function(item) {
       return '<tr>' +
-        '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button></td>' +
+        '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Concluido', 'Concl.') + '</button></td>' +
         '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
         '<td>' + escapeHtml(item.setor || '-') + '</td>' +
         '<td>' + escapeHtml(item.tipo || '-') + '</td>' +
         '<td>' + renderTag('prioridade', item.prioridade || '-') + '</td>' +
         '<td><div class="descricao-obs-cell">' +
-          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>' +
         '</div></td>' +
-        '<td>' + escapeHtml(item.executor || '-') + '</td>' +
+        '<td>' + renderExecutorSelect_(item) + '</td>' +
         '<td><div class="table-actions">' +
-          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
+          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Editar', 'Edit.') + '</button>' +
         '</div></td>' +
         '<td>' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="clip-placeholder"></span>') + '</td>' +
         '<td><button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button></td>' +
@@ -1405,11 +1568,11 @@
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
-          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
-          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
+          '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Editar', 'Edit.') + '</button>' +
         '</div>' +
       '</article>';
     }).join('');
@@ -1417,20 +1580,20 @@
     if (tableEl) {
       tableEl.innerHTML = items.map(function(item) {
         return '<tr>' +
-          '<td>' + renderTag('status', item.status || '-') + '</td>' +
+          '<td>' + renderHistoryStatusButton_(item) + '</td>' +
           '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
           '<td>' + escapeHtml(item.loja || '-') + '</td>' +
           '<td>' + escapeHtml(item.setor || '-') + '</td>' +
           '<td>' + escapeHtml(item.tipo || '-') + '</td>' +
           '<td>' + renderTag('prioridade', item.prioridade || '-') + '</td>' +
           '<td><div class="descricao-obs-cell">' +
-            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button>' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>' +
           '</div></td>' +
           '<td>' + escapeHtml(item.executor || '-') + '</td>' +
           '<td><div class="table-actions">' +
-            '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
-            '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+            '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
+            '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Editar', 'Edit.') + '</button>' +
           '</div></td>' +
           '<td>' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="clip-placeholder"></span>') + '</td>' +
           '<td><button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button></td>' +
@@ -1507,7 +1670,7 @@
   function renderConfiguracoes(items) {
     var container = document.getElementById('configList');
     var visibleItems = (items || []).filter(function(item) {
-      return item.chave !== 'NOME_PASTA_DRIVE_FOTOS';
+      return item.chave !== 'NOME_PASTA_DRIVE_FOTOS' && item.chave !== 'STATUS_PADRAO_NOVO_REGISTRO';
     });
     if (!visibleItems.length) {
       container.innerHTML = '<div class="empty-state">Nenhuma configuracao encontrada.</div>';
@@ -1536,13 +1699,23 @@
     if (!container) {
       return;
     }
-    var prestadores = normalizePrestadores_((appState.combos && appState.combos.prestadores) || []);
+    var prestadores = appState.prestadoresAdmin || [];
     if (!prestadores.length) {
       container.innerHTML = '<div class="empty-state">Nenhum executor/prestador cadastrado.</div>';
       return;
     }
-    container.innerHTML = prestadores.map(function(nome) {
-      return '<div class="summary-item"><span>' + escapeHtml(nome) + '</span><strong>Ativo</strong></div>';
+    container.innerHTML = prestadores.map(function(item) {
+      var status = normalizeText_(item.status) === 'inativo' ? 'Inativo' : 'Ativo';
+      var actionButton = status === 'Ativo'
+        ? '<button class="ghost-button compact-button" onclick="alterarStatusPrestadorConfig(\'' + escapeJs(item.id_prestador) + '\', \'Inativo\')">Desativar</button>'
+        : '<button class="secondary-button compact-button" onclick="alterarStatusPrestadorConfig(\'' + escapeJs(item.id_prestador) + '\', \'Ativo\')">Ativar</button>';
+      return '<div class="summary-item">' +
+        '<div><strong>' + escapeHtml(item.nome_prestador || '-') + '</strong><div class="summary-item-sub">' + escapeHtml(status) + '</div></div>' +
+        '<div class="actions-row">' +
+          actionButton +
+          '<button class="icon-button" onclick="excluirPrestadorConfig(\'' + escapeJs(item.id_prestador) + '\')">&#128465;</button>' +
+        '</div>' +
+      '</div>';
     }).join('');
   }
 
@@ -1569,9 +1742,77 @@
         if (!appState.combos) {
           appState.combos = {};
         }
-        appState.combos.prestadores = normalizePrestadores_(response.data || []);
+        appState.combos.prestadores = normalizePrestadores_((response.data && response.data.ativos) || []);
+        appState.prestadoresAdmin = (response.data && response.data.todos) || [];
         preencherCombos(appState.combos);
         renderPrestadoresList_();
+        saveCache_();
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function alterarStatusPrestadorConfig(idPrestador, novoStatus) {
+    if (!idPrestador || !novoStatus) {
+      return;
+    }
+    var acao = normalizeText_(novoStatus) === 'inativo' ? 'desativar' : 'ativar';
+    if (!window.confirm('Deseja ' + acao + ' este executor/prestador?')) {
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Altere executores/prestadores com internet para sincronizar com a planilha.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('alterarStatusPrestador', [idPrestador, novoStatus])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        if (!appState.combos) {
+          appState.combos = {};
+        }
+        appState.combos.prestadores = normalizePrestadores_((response.data && response.data.ativos) || []);
+        appState.prestadoresAdmin = (response.data && response.data.todos) || [];
+        preencherCombos(appState.combos);
+        renderPrestadoresList_();
+        renderPendencias(getFilteredPendencias_(false));
+        saveCache_();
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function excluirPrestadorConfig(idPrestador) {
+    if (!idPrestador) {
+      return;
+    }
+    if (!window.confirm('Deseja excluir este executor/prestador?')) {
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Exclua executores/prestadores com internet para sincronizar com a planilha.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('excluirPrestador', [idPrestador])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        if (!appState.combos) {
+          appState.combos = {};
+        }
+        appState.combos.prestadores = normalizePrestadores_((response.data && response.data.ativos) || []);
+        appState.prestadoresAdmin = (response.data && response.data.todos) || [];
+        preencherCombos(appState.combos);
+        renderPrestadoresList_();
+        renderPendencias(getFilteredPendencias_(false));
         saveCache_();
         mostrarMensagemSucesso(response.message);
       })
@@ -1836,8 +2077,7 @@
     var dashboard = buildEmptyDashboard_();
     appState.allPendencias.forEach(function(item) {
       var status = normalizeText_(item.status);
-      var prioridade = normalizeText_(item.prioridade);
-      var possuiExecutor = !!safeTrim_(item.executor);
+      var displayStatus = getDashboardDisplayStatus_(item);
       var loja = item.loja || 'Sem loja';
       var setor = item.setor || 'Sem setor';
       var responsavel = item.responsavel || 'Nao definido';
@@ -1845,18 +2085,14 @@
       dashboard.porSetor[setor] = (dashboard.porSetor[setor] || 0) + 1;
       dashboard.porResponsavel[responsavel] = (dashboard.porResponsavel[responsavel] || 0) + 1;
       dashboard.total += 1;
-      if (status !== 'concluido' && status !== 'cancelado' && !possuiExecutor) {
-        dashboard.abertas += 1;
-      } else if (status !== 'concluido' && status !== 'cancelado' && possuiExecutor) {
-        dashboard.emAndamento += 1;
-      } else if (status === 'concluido') {
+      if (status === 'concluido') {
         dashboard.concluidas += 1;
-      }
-      if (prioridade === 'critica') {
-        dashboard.criticas += 1;
-      }
-      if (isPendenciaVencidaLocal_(item)) {
+      } else if (displayStatus === 'Vencida') {
         dashboard.vencidas += 1;
+      } else if (displayStatus === 'Aberta') {
+        dashboard.abertas += 1;
+      } else if (displayStatus === 'Em andamento') {
+        dashboard.emAndamento += 1;
       }
     });
     return dashboard;
@@ -1869,7 +2105,6 @@
       emAndamento: 0,
       concluidas: 0,
       vencidas: 0,
-      criticas: 0,
       porLoja: {},
       porSetor: {},
       porResponsavel: {}
@@ -1881,17 +2116,16 @@
     var ativos = getFilteredPendencias_(false);
     var historico = getFilteredPendencias_(true);
     ativos.forEach(function(item) {
-      var possuiExecutor = !!safeTrim_(item.executor);
+      var displayStatus = getDashboardDisplayStatus_(item);
       dashboard.total += 1;
       dashboard.porLoja[item.loja || 'Sem loja'] = (dashboard.porLoja[item.loja || 'Sem loja'] || 0) + 1;
       dashboard.porSetor[item.setor || 'Sem setor'] = (dashboard.porSetor[item.setor || 'Sem setor'] || 0) + 1;
-      if (!possuiExecutor) {
-        dashboard.abertas += 1;
-      } else {
-        dashboard.emAndamento += 1;
-      }
-      if (item.esta_vencida) {
+      if (displayStatus === 'Vencida') {
         dashboard.vencidas += 1;
+      } else if (displayStatus === 'Aberta') {
+        dashboard.abertas += 1;
+      } else if (displayStatus === 'Em andamento') {
+        dashboard.emAndamento += 1;
       }
     });
     historico.forEach(function(item) {
@@ -1980,7 +2214,7 @@
   }
 
   function isPendenciaVencidaLocal_(item) {
-    if (!item || !item.previsao_entrega) {
+    if (!item || !(item.previsao_entrega || item.previsao_entrega_label)) {
       return false;
     }
     var status = normalizeText_(item.status);
@@ -2455,13 +2689,13 @@
 
   function normalizeVoiceTranscript_(value) {
     return String(value || '')
-      .replace(/\b(nova linha|novo paragrafo|novo parágrafo)\b/gi, '\n')
-      .replace(/\b(virgula|vírgula)\b/gi, ',')
+      .replace(/\b(nova linha|novo paragrafo|novo parÃ¡grafo)\b/gi, '\n')
+      .replace(/\b(virgula|vÃ­rgula)\b/gi, ',')
       .replace(/\b(ponto final)\b/gi, '.')
       .replace(/\b(dois pontos)\b/gi, ':')
       .replace(/\b(ponto e virgula)\b/gi, ';')
-      .replace(/\b(abrir parenteses|abrir parênteses)\b/gi, '(')
-      .replace(/\b(fechar parenteses|fechar parênteses)\b/gi, ')')
+      .replace(/\b(abrir parenteses|abrir parÃªnteses)\b/gi, '(')
+      .replace(/\b(fechar parenteses|fechar parÃªnteses)\b/gi, ')')
       .replace(/[ \t]*\n[ \t]*/g, '\n')
       .replace(/\s+,/g, ',')
       .replace(/\s+\./g, '.')

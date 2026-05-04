@@ -9,6 +9,8 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   excluirPendencia: excluirPendencia,
   obterFotoPreviewPendencia: obterFotoPreviewPendencia,
   salvarPrestador: salvarPrestador,
+  alterarStatusPrestador: alterarStatusPrestador,
+  excluirPrestador: excluirPrestador,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
   criarTriggerLimpezaFotos: criarTriggerLimpezaFotos
@@ -43,6 +45,7 @@ function getAppInitData() {
     return createSuccessResponse_('Dados iniciais carregados.', {
       dashboard: getDashboardData(),
       combos: getFormSupportData(),
+      prestadoresAdmin: listarPrestadoresTodos(),
       config: listarConfiguracoes(),
       versao: getConfig('VERSAO_SISTEMA') || '1.0'
     });

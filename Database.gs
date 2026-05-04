@@ -210,3 +210,12 @@ function listarPrestadores() {
     return createErrorResponse_('Nao foi possivel listar os prestadores.', error);
   }
 }
+
+function listarPrestadoresTodos() {
+  try {
+    return createSuccessResponse_('Prestadores administrativos carregados.', getAllSheetData_(APP_CONFIG.SHEETS.PRESTADORES));
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao listar todos os prestadores.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel listar os prestadores administrativos.', error);
+  }
+}
