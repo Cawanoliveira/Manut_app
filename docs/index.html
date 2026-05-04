@@ -23,10 +23,6 @@
       <span class="filter-fab-label">Filtros</span>
     </button>
 
-    <button id="refreshFab" class="refresh-fab primary-button" type="button" onclick="atualizarTelaAtual()">
-      Atualizar
-    </button>
-
     <aside id="filtroDrawer" class="filter-sidebar hidden">
       <div class="drawer-header">
         <h3>Filtros</h3>
@@ -98,6 +94,7 @@
           <div>
             <h2>Painel</h2>
           </div>
+          <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
         </div>
         <div id="dashboardCards" class="cards-grid"></div>
         <div class="summary-grid">
@@ -121,6 +118,7 @@
           <div>
             <h2>Nova Pendencia</h2>
           </div>
+          <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
         </div>
 
         <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
@@ -189,6 +187,7 @@
           <div>
             <h2>Lista</h2>
           </div>
+          <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
         </div>
         <div id="filtroResumo" class="filter-summary">Sem filtros aplicados.</div>
         <div id="listaPendenciasCards" class="list-cards"></div>
@@ -219,7 +218,10 @@
           <div>
             <h2>Detalhes</h2>
           </div>
-          <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
+          <div class="header-actions">
+            <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
+            <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
+          </div>
         </div>
         <div id="detalhesPendencia" class="panel empty-state">Selecione uma pendencia.</div>
       </section>
@@ -230,7 +232,10 @@
             <h2>Editar e programar</h2>
             <p>Somente campos operacionais e de acompanhamento.</p>
           </div>
-          <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
+          <div class="header-actions">
+            <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
+            <button class="ghost-button" onclick="voltarParaLista()">Voltar</button>
+          </div>
         </div>
         <form id="formEditarPendencia" class="panel form-grid" onsubmit="salvarEdicaoPendencia(event)">
           <input id="editIdPendencia" type="hidden">
@@ -289,8 +294,29 @@
             <h2>Historico</h2>
             <p>Itens concluidos ou cancelados.</p>
           </div>
+          <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
         </div>
         <div id="historicoListaCards" class="list-cards"></div>
+        <div class="table-wrapper">
+          <table class="desktop-table listagem-table historico-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>ID</th>
+                <th>Local</th>
+                <th>Setor</th>
+                <th>Classificacao</th>
+                <th>Urgencia</th>
+                <th>Descricao / Observacao</th>
+                <th>Executor</th>
+                <th>Acoes</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="historicoPendenciasTabela"></tbody>
+          </table>
+        </div>
       </section>
 
       <section id="secaoConfiguracoes" class="page-section">
@@ -299,6 +325,7 @@
             <h2>Configuracoes</h2>
             <p>Ajustes do sistema.</p>
           </div>
+          <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
         </div>
 
         <div class="panel section-stack">

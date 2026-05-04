@@ -650,8 +650,8 @@
     document.getElementById('editIdPendencia').value = item.id_pendencia;
     document.getElementById('editExecutor').value = item.executor || '';
     document.getElementById('editStatus').value = item.status || '';
-    document.getElementById('editDataInicio').value = item.data_inicio || '';
-    document.getElementById('editPrevisaoEntrega').value = item.previsao_entrega || '';
+    document.getElementById('editDataInicio').value = normalizeDateForInputValue_(item.data_inicio);
+    document.getElementById('editPrevisaoEntrega').value = normalizeDateForInputValue_(item.previsao_entrega || item.previsao_entrega_label);
     document.getElementById('editTipo').value = item.tipo || '';
     document.getElementById('editPrioridade').value = item.prioridade || '';
     document.getElementById('editObservacao').value = item.observacao || '';
@@ -1386,8 +1386,12 @@
 
   function renderHistoricoGeral(items) {
     var container = document.getElementById('historicoListaCards');
+    var tableEl = document.getElementById('historicoPendenciasTabela');
     if (!items.length) {
       container.innerHTML = '<div class="panel empty-state">Nenhuma pendencia concluida ou cancelada.</div>';
+      if (tableEl) {
+        tableEl.innerHTML = '<tr><td colspan="11" class="empty-state">Nenhuma pendencia concluida ou cancelada.</td></tr>';
+      }
       return;
     }
     container.innerHTML = items.map(function(item) {
@@ -1410,6 +1414,30 @@
         '</div>' +
       '</article>';
     }).join('');
+
+    if (tableEl) {
+      tableEl.innerHTML = items.map(function(item) {
+        return '<tr>' +
+          '<td>' + renderTag('status', item.status || '-') + '</td>' +
+          '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
+          '<td>' + escapeHtml(item.loja || '-') + '</td>' +
+          '<td>' + escapeHtml(item.setor || '-') + '</td>' +
+          '<td>' + escapeHtml(item.tipo || '-') + '</td>' +
+          '<td>' + renderTag('prioridade', item.prioridade || '-') + '</td>' +
+          '<td><div class="descricao-obs-cell">' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+          '</div></td>' +
+          '<td>' + escapeHtml(item.executor || '-') + '</td>' +
+          '<td><div class="table-actions">' +
+            '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+            '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+          '</div></td>' +
+          '<td>' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="clip-placeholder"></span>') + '</td>' +
+          '<td><button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button></td>' +
+        '</tr>';
+      }).join('');
+    }
   }
 
   function renderDetalhesPendencia(item) {
@@ -1765,12 +1793,29 @@
   }
 
   function criarToast_(mensagem, tipo) {
+    var container = document.getElementById('toastContainer');
+    if (!container) {
+      return;
+    }
+    var stack = container.querySelector('.toast-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.className = 'toast-stack';
+      container.appendChild(stack);
+    }
     var toast = document.createElement('div');
     toast.className = 'toast ' + tipo;
-    toast.textContent = mensagem;
-    document.getElementById('toastContainer').appendChild(toast);
+    toast.innerHTML = '<div>' + escapeHtml(mensagem) + '</div><button class="toast-close" type="button" aria-label="Fechar notificacao">&times;</button>';
+    var closeButton = toast.querySelector('.toast-close');
+    closeButton.addEventListener('click', function() {
+      toast.remove();
+    });
+    stack.appendChild(toast);
     setTimeout(function() {
       toast.remove();
+      if (!stack.children.length) {
+        stack.remove();
+      }
     }, 4200);
   }
 
@@ -1943,7 +1988,7 @@
     if (status === 'concluido' || status === 'cancelado') {
       return false;
     }
-    var previsao = parseInputDate_(item.previsao_entrega);
+    var previsao = parseInputDate_(item.previsao_entrega || item.previsao_entrega_label);
     var hoje = parseInputDate_(toInputDate_(new Date()));
     return !!(previsao && hoje && previsao < hoje);
   }
@@ -2373,8 +2418,20 @@
       var parts = value.split('-');
       return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
     }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      var brParts = value.split('/');
+      return new Date(Number(brParts[2]), Number(brParts[1]) - 1, Number(brParts[0]));
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/.test(value)) {
+      return parseInputDate_(value.slice(0, 10));
+    }
     var parsed = new Date(value);
     return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function normalizeDateForInputValue_(value) {
+    var parsed = parseInputDate_(value);
+    return parsed ? toInputDate_(parsed) : '';
   }
 
   function toInputDate_(date) {
