@@ -299,7 +299,11 @@
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch (error) {
-      mostrarMensagemErro('Armazenamento local cheio. Reduza fotos offline antes de continuar.');
+      if (isStorageQuotaError_(error)) {
+        mostrarMensagemErro('O dispositivo ficou sem espaco para guardar dados offline.');
+      } else if (window.console && console.warn) {
+        console.warn('Falha ao salvar cache offline.', error);
+      }
     }
     updateSyncStatusBar_();
   }
@@ -2706,6 +2710,21 @@
 
   function formatDateTimeLocal_(date) {
     return formatDateBr(toInputDate_(date)) + ' ' + toTime_(date);
+  }
+
+  function isStorageQuotaError_(error) {
+    if (!error) {
+      return false;
+    }
+    var name = String(error.name || '');
+    var code = Number(error.code || 0);
+    var message = String(error.message || '').toLowerCase();
+    return name === 'QuotaExceededError' ||
+      name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      code === 22 ||
+      code === 1014 ||
+      message.indexOf('quota') > -1 ||
+      message.indexOf('storage') > -1 && message.indexOf('full') > -1;
   }
 
   function normalizeVoiceTranscript_(value) {
