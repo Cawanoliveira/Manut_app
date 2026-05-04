@@ -102,6 +102,15 @@
     touch-action: none;
   }
 
+  .refresh-fab {
+    position: fixed;
+    top: 42px;
+    right: 12px;
+    z-index: 55;
+    min-width: 102px;
+    box-shadow: var(--shadow-strong);
+  }
+
   .filter-fab-icon {
     font-size: 17px;
     line-height: 1;
@@ -299,6 +308,26 @@
     gap: 10px;
   }
 
+  .filter-groups {
+    gap: 14px;
+  }
+
+  .filter-group {
+    display: grid;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #fffaf4;
+    border: 1px solid #ffe2c3;
+  }
+
+  .filter-group h4 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-strong);
+  }
+
   label {
     display: grid;
     gap: 6px;
@@ -354,6 +383,23 @@
   .voice-commands,
   .file-picker-name {
     font-size: 12px;
+  }
+
+  .voice-help-box {
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fafafa;
+    padding: 10px 12px;
+  }
+
+  .voice-help-box summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .voice-help-box[open] .voice-commands {
+    margin-top: 8px;
   }
 
   .full-width {
@@ -587,16 +633,17 @@
     font-size: 11px;
   }
 
-  .listagem-table th:nth-child(1) { width: 10%; }
-  .listagem-table th:nth-child(2) { width: 7%; }
-  .listagem-table th:nth-child(3) { width: 12%; }
+  .listagem-table th:nth-child(1) { width: 9%; }
+  .listagem-table th:nth-child(2) { width: 6%; }
+  .listagem-table th:nth-child(3) { width: 11%; }
   .listagem-table th:nth-child(4) { width: 11%; }
-  .listagem-table th:nth-child(5) { width: 11%; }
-  .listagem-table th:nth-child(6) { width: 10%; }
-  .listagem-table th:nth-child(7) { width: 15%; }
-  .listagem-table th:nth-child(8) { width: 12%; }
-  .listagem-table th:nth-child(9) { width: 8%; }
+  .listagem-table th:nth-child(5) { width: 10%; }
+  .listagem-table th:nth-child(6) { width: 9%; }
+  .listagem-table th:nth-child(7) { width: 16%; }
+  .listagem-table th:nth-child(8) { width: 10%; }
+  .listagem-table th:nth-child(9) { width: 9%; }
   .listagem-table th:nth-child(10) { width: 4%; }
+  .listagem-table th:nth-child(11) { width: 5%; }
 
   .descricao-obs-cell,
   .table-actions {
@@ -605,7 +652,7 @@
   }
 
   .table-actions {
-    grid-template-columns: repeat(3, auto);
+    grid-template-columns: 1fr;
     align-items: center;
     justify-content: start;
   }
@@ -671,6 +718,42 @@
     box-shadow: var(--shadow);
   }
 
+  .zoom-filter-bar {
+    display: grid;
+    gap: 10px;
+  }
+
+  .zoom-table-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .zoom-main {
+    display: grid;
+    gap: 6px;
+  }
+
+  .zoom-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .zoom-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: #fff0e1;
+    color: var(--primary-strong);
+    font-weight: 800;
+  }
+
+  .zoom-chip.alt {
+    background: #111111;
+    color: #ffffff;
+  }
+
   .modal-card {
     top: 50%;
     left: 10px;
@@ -708,7 +791,7 @@
   }
 
   .spen-textarea {
-    min-height: min(52dvh, 420px);
+    min-height: calc(100dvh - 190px);
     font-size: 18px;
     line-height: 1.5;
     touch-action: none;
@@ -936,7 +1019,8 @@
 
   .spen-open .page-shell,
   .spen-open .bottom-nav,
-  .spen-open .filter-fab {
+  .spen-open .filter-fab,
+  .spen-open .refresh-fab {
     pointer-events: none;
   }
 
@@ -946,12 +1030,25 @@
   }
 
   .spen-modal-card {
-    width: min(720px, calc(100vw - 20px));
-    max-height: min(calc(100dvh - 24px), 92dvh);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    max-height: 100dvh;
+    border-radius: 0;
+    transform: none;
+    padding: 16px;
   }
 
   .spen-modal-card .actions-row {
     justify-content: flex-end;
+  }
+
+  .spen-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .lock-button {
@@ -963,6 +1060,11 @@
     color: #fff;
     font-size: 20px;
     cursor: pointer;
+  }
+
+  #spenCloseButton.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .hidden {
@@ -991,6 +1093,10 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .zoom-filter-bar {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .list-cards {
       display: none;
     }
@@ -999,7 +1105,7 @@
       display: block;
     }
 
-    .modal-card {
+    .modal-card:not(.spen-modal-card) {
       left: 50%;
       right: auto;
       width: min(900px, calc(100vw - 32px));

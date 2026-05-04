@@ -1,5 +1,5 @@
 function obterOuCriarPastaFotos() {
-  var folderName = getConfig('NOME_PASTA_DRIVE_FOTOS') || 'Fotos - Melhorias e Manutencoes';
+  var folderName = 'Fotos - Melhorias e Manutencoes';
   var folders = DriveApp.getFoldersByName(folderName);
   if (folders.hasNext()) {
     return folders.next();

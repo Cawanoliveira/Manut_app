@@ -22,52 +22,68 @@
       <span class="filter-fab-label">Filtros</span>
     </button>
 
+    <button id="refreshFab" class="refresh-fab primary-button" type="button" onclick="atualizarTelaAtual()">
+      Atualizar
+    </button>
+
     <aside id="filtroDrawer" class="filter-sidebar hidden">
       <div class="drawer-header">
         <h3>Filtros</h3>
         <button class="ghost-button compact-button" onclick="toggleFiltroDrawer(false)">Fechar</button>
       </div>
-      <div class="filters-grid">
-        <label>
-          <span>Loja</span>
-          <select id="filtroLoja"></select>
-        </label>
-        <label>
-          <span>Setor</span>
-          <select id="filtroSetor"></select>
-        </label>
-        <label>
-          <span>Status</span>
-          <select id="filtroStatus"></select>
-        </label>
-        <label>
-          <span>Executor</span>
-          <select id="filtroExecutor"></select>
-        </label>
-        <label>
-          <span>Prioridade</span>
-          <select id="filtroPrioridade"></select>
-        </label>
-        <label>
-          <span>Tipo</span>
-          <select id="filtroTipo"></select>
-        </label>
-        <label>
-          <span>Abertura de</span>
-          <input id="filtroDataAberturaDe" type="date">
-        </label>
-        <label>
-          <span>Abertura ate</span>
-          <input id="filtroDataAberturaAte" type="date">
-        </label>
-        <label>
-          <span>Previsao de</span>
-          <input id="filtroPrevisaoDe" type="date">
-        </label>
-        <label>
-          <span>Previsao ate</span>
-          <input id="filtroPrevisaoAte" type="date">
-        </label>
+      <div class="filters-grid filter-groups">
+        <div class="filter-group">
+          <h4>Loja e setor</h4>
+          <label>
+            <span>Loja</span>
+            <select id="filtroLoja"></select>
+          </label>
+          <label>
+            <span>Setor</span>
+            <select id="filtroSetor"></select>
+          </label>
+        </div>
+        <div class="filter-group">
+          <h4>Status, prioridade e tipo</h4>
+          <label>
+            <span>Status</span>
+            <select id="filtroStatus"></select>
+          </label>
+          <label>
+            <span>Prioridade</span>
+            <select id="filtroPrioridade"></select>
+          </label>
+          <label>
+            <span>Tipo</span>
+            <select id="filtroTipo"></select>
+          </label>
+        </div>
+        <div class="filter-group">
+          <h4>Executor</h4>
+          <label>
+            <span>Executor</span>
+            <select id="filtroExecutor"></select>
+          </label>
+        </div>
+        <div class="filter-group">
+          <h4>Datas</h4>
+          <label>
+            <span>Abertura de</span>
+            <input id="filtroDataAberturaDe" type="date">
+          </label>
+          <label>
+            <span>Abertura ate</span>
+            <input id="filtroDataAberturaAte" type="date">
+          </label>
+          <label>
+            <span>Previsao de</span>
+            <input id="filtroPrevisaoDe" type="date">
+          </label>
+          <label>
+            <span>Previsao ate</span>
+            <input id="filtroPrevisaoAte" type="date">
+          </label>
+        </div>
       </div>
       <div class="actions-row drawer-actions">
         <button class="primary-button" onclick="aplicarFiltros()">Aplicar</button>
@@ -80,9 +96,7 @@
         <div class="section-header">
           <div>
             <h2>Painel</h2>
-            <p>Resumo rapido com foco em leitura e toque.</p>
           </div>
-          <button class="secondary-button" onclick="carregarDashboard()">Atualizar</button>
         </div>
         <div id="dashboardCards" class="cards-grid"></div>
         <div class="summary-grid">
@@ -134,9 +148,12 @@
                 <button type="button" class="mic-button" onclick="iniciarDitado('novaDescricao')">Voz</button>
               </div>
             </div>
-            <div class="voice-commands">
-              Comandos de voz possiveis: "nova linha", "novo paragrafo", "virgula", "ponto final", "dois pontos", "ponto e virgula", "abrir parenteses" e "fechar parenteses".
-            </div>
+            <details class="voice-help-box">
+              <summary>Comandos de voz possiveis</summary>
+              <div class="voice-commands">
+                "nova linha", "novo paragrafo", "virgula", "ponto final", "dois pontos", "ponto e virgula", "abrir parenteses" e "fechar parenteses".
+              </div>
+            </details>
           </label>
 
           <label class="full-width">
@@ -171,9 +188,6 @@
           <div>
             <h2>Lista</h2>
           </div>
-          <div class="header-actions">
-            <button class="ghost-button" onclick="listarPendencias()">Atualizar</button>
-          </div>
         </div>
         <div id="filtroResumo" class="filter-summary">Sem filtros aplicados.</div>
         <div id="listaPendenciasCards" class="list-cards"></div>
@@ -190,6 +204,7 @@
                 <th>Descricao / Observacao</th>
                 <th>Executor</th>
                 <th>Acoes</th>
+                <th></th>
                 <th></th>
               </tr>
             </thead>
@@ -273,7 +288,6 @@
             <h2>Historico</h2>
             <p>Itens concluidos ou cancelados.</p>
           </div>
-          <button class="secondary-button" onclick="carregarHistoricoPendencias()">Atualizar</button>
         </div>
         <div id="historicoListaCards" class="list-cards"></div>
       </section>
@@ -317,6 +331,16 @@
           <button class="ghost-button compact-button" onclick="fecharZoomCard()">Fechar</button>
         </div>
         <p id="metricZoomDescription" class="modal-description"></p>
+        <div class="zoom-filter-bar">
+          <label>
+            <span>Loja</span>
+            <select id="metricZoomFiltroLoja" onchange="aplicarFiltrosZoom()"></select>
+          </label>
+          <label>
+            <span>Setor</span>
+            <select id="metricZoomFiltroSetor" onchange="aplicarFiltrosZoom()"></select>
+          </label>
+        </div>
         <div id="metricZoomList" class="summary-list"></div>
       </div>
     </div>
@@ -361,7 +385,10 @@
             <h3 id="spenModalTitle">Escrita com S Pen</h3>
             <p class="modal-description">Modo restrito para escrever livremente com apoio da mao na tela.</p>
           </div>
-          <button class="lock-button" onclick="fecharSpenPopup()">&#128274;</button>
+          <div class="spen-header-actions">
+            <button id="spenLockButton" class="lock-button" type="button" onclick="toggleSpenLock()" aria-label="Travar ou destravar escrita">&#128274;</button>
+            <button id="spenCloseButton" class="icon-button" type="button" onclick="fecharSpenPopup()">&times;</button>
+          </div>
         </div>
         <input id="spenTargetField" type="hidden">
         <textarea id="spenInputArea" class="spen-textarea" rows="8" placeholder="Escreva aqui com a S Pen."></textarea>

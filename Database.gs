@@ -60,6 +60,25 @@ function popularConfiguracoesIniciais_() {
 }
 
 function popularSetoresIniciais_() {
+  var inactiveNames = {
+    'Administracao': true,
+    'Frente de Loja': true,
+    'Caixa': true,
+    'Camara Fria': true,
+    'Sopa': true
+  };
+  getAllSheetData_(APP_CONFIG.SHEETS.SETORES).forEach(function(item) {
+    var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.SETORES, 'id_setor', item.id_setor);
+    if (rowIndex === -1) {
+      return;
+    }
+    if (inactiveNames[item.nome_setor]) {
+      updateSheetRecordByRow_(APP_CONFIG.SHEETS.SETORES, rowIndex, {
+        status: 'Inativo'
+      });
+    }
+  });
+
   APP_CONFIG.DEFAULT_SETORES.forEach(function(setorNome) {
     upsertSheetRecordByKey_(APP_CONFIG.SHEETS.SETORES, 'nome_setor', {
       id_setor: gerarId('SET'),

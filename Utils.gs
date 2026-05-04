@@ -63,7 +63,6 @@ var APP_CONFIG = {
   ],
   DEFAULT_CONFIG: [
     ['DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO', '30', 'Quantidade de dias apos conclusao para excluir fotos'],
-    ['NOME_PASTA_DRIVE_FOTOS', 'Fotos - Melhorias e Manutencoes', 'Pasta onde as fotos serao armazenadas'],
     ['STATUS_PADRAO_NOVO_REGISTRO', 'Aberto', 'Status inicial de novas pendencias'],
     ['PERMITIR_EXCLUSAO_FOTO_AUTOMATICA', 'SIM', 'Define se fotos serao excluidas automaticamente'],
     ['VERSAO_SISTEMA', '1.0', 'Versao inicial do sistema']
@@ -71,14 +70,12 @@ var APP_CONFIG = {
   DEFAULT_SETORES: [
     'Acougue',
     'Padaria',
-    'Mercearia',
+    'Frios',
     'Hortifruti',
-    'Frente de Loja',
-    'Caixa',
+    'Mercearia',
+    'Frente de Caixa',
     'Deposito',
-    'Camara Fria',
-    'Administracao',
-    'Sopa',
+    'Gerencia',
     'Area Externa',
     'Manutencao',
     'Outros'

@@ -502,7 +502,7 @@ function atualizarDashboardBase_(metrics) {
 }
 
 function montarMetricasDashboard_() {
-  var pendencias = listarPendencias({}).data || [];
+  var pendencias = listarPendencias({ incluirFinalizadas: true }).data || [];
   var metrics = {
     total: pendencias.length,
     abertas: 0,
@@ -518,14 +518,15 @@ function montarMetricasDashboard_() {
   pendencias.forEach(function(item) {
     var status = normalizeCompare_(item.status);
     var prioridade = normalizeCompare_(item.prioridade);
+    var possuiExecutor = !!safeString_(item.executor);
     metrics.porLoja[item.loja || 'Sem loja'] = (metrics.porLoja[item.loja || 'Sem loja'] || 0) + 1;
     metrics.porSetor[item.setor || 'Sem setor'] = (metrics.porSetor[item.setor || 'Sem setor'] || 0) + 1;
     metrics.porResponsavel[item.responsavel || 'Nao definido'] = (metrics.porResponsavel[item.responsavel || 'Nao definido'] || 0) + 1;
 
-    if (status === 'aberto') {
+    if (status !== 'concluido' && status !== 'cancelado' && !possuiExecutor) {
       metrics.abertas += 1;
     }
-    if (status === 'em andamento') {
+    if (status !== 'concluido' && status !== 'cancelado' && possuiExecutor) {
       metrics.emAndamento += 1;
     }
     if (status === 'concluido') {

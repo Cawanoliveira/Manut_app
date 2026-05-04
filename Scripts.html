@@ -31,6 +31,14 @@
       speechState: {
         activeTargetId: ''
       },
+      zoomContext: {
+        title: '',
+        description: '',
+        items: [],
+        filterLoja: '',
+        filterSetor: ''
+      },
+      spenLocked: true,
       connection: {
         online: navigator.onLine,
         syncing: false,
@@ -159,27 +167,59 @@
   }
 
   function bindPenInputMode_() {
-    ['novaDescricao', 'novaObservacao', 'editObservacao'].forEach(function(id) {
-      var field = document.getElementById(id);
-      if (!field) {
+    document.addEventListener('pointerdown', function(event) {
+      if (event.pointerType !== 'pen') {
         return;
       }
-      field.addEventListener('pointerdown', function(event) {
-        if (event.pointerType === 'pen') {
-          event.preventDefault();
-          abrirSpenPopup(id, getSpenFieldTitle_(id));
-        }
-      });
+      if (document.getElementById('spenModal') && !document.getElementById('spenModal').classList.contains('hidden')) {
+        return;
+      }
+      var target = event.target;
+      if (!isTextLikeField_(target)) {
+        return;
+      }
+      event.preventDefault();
+      abrirSpenPopup(target.id, getSpenFieldTitle_(target));
     });
   }
 
-  function getSpenFieldTitle_(id) {
+  function isTextLikeField_(target) {
+    if (!target || !target.tagName || !target.id) {
+      return false;
+    }
+    if (target.tagName === 'TEXTAREA') {
+      return true;
+    }
+    if (target.tagName !== 'INPUT') {
+      return false;
+    }
+    var allowed = ['text', 'search', 'email', 'tel', 'url', 'number'];
+    return allowed.indexOf((target.type || 'text').toLowerCase()) > -1 && !target.readOnly && !target.disabled;
+  }
+
+  function getSpenFieldTitle_(target) {
+    var id = typeof target === 'string' ? target : target.id;
     var map = {
       novaDescricao: 'Descricao',
       novaObservacao: 'Observacao',
-      editObservacao: 'Observacao'
+      editObservacao: 'Observacao',
+      novoPrestadorNome: 'Executor / prestador',
+      concluirObservacao: 'Observacao da conclusao'
     };
-    return map[id] || 'Campo';
+    if (map[id]) {
+      return map[id];
+    }
+    if (typeof target !== 'string' && target) {
+      var label = target.closest('label');
+      var titleNode = label ? label.querySelector('span') : null;
+      if (titleNode && titleNode.textContent) {
+        return titleNode.textContent.trim();
+      }
+      if (target.placeholder) {
+        return target.placeholder;
+      }
+    }
+    return 'Campo';
   }
 
   function hydrateFromCache_() {
@@ -233,7 +273,7 @@
     renderConfiguracoes(appState.configs || []);
     renderPrestadoresList_();
     appState.dashboard = buildDashboardFromLocalState_();
-    renderDashboard(appState.dashboard);
+    renderDashboard(buildDashboardFromVisibleState_());
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
     renderFiltroResumo();
@@ -248,25 +288,20 @@
     mostrarLoading();
     return Promise.all([
       serverCall_('getAppInitData', []),
-      serverCall_('listarPendencias', [{ incluirFinalizadas: false, apenasHistorico: false }]),
-      serverCall_('listarPendencias', [{ incluirFinalizadas: true, apenasHistorico: true }])
+      serverCall_('listarPendencias', [{ incluirFinalizadas: true }])
     ]).then(function(results) {
       var initResponse = results[0];
-      var ativosResponse = results[1];
-      var historicoResponse = results[2];
+      var pendenciasResponse = results[1];
       if (!initResponse.success) {
         throw new Error(initResponse.message);
       }
-      if (!ativosResponse.success) {
-        throw new Error(ativosResponse.message);
-      }
-      if (!historicoResponse.success) {
-        throw new Error(historicoResponse.message);
+      if (!pendenciasResponse.success) {
+        throw new Error(pendenciasResponse.message);
       }
 
       appState.combos = initResponse.data.combos;
       appState.configs = initResponse.data.config.data || [];
-      appState.allPendencias = (ativosResponse.data || []).concat(historicoResponse.data || []);
+      appState.allPendencias = pendenciasResponse.data || [];
       appState.dashboard = buildDashboardFromLocalState_();
       appState.connection.lastSyncAt = new Date().toISOString();
       saveCache_();
@@ -304,13 +339,37 @@
   function carregarDashboard() {
     if (!appState.connection.online) {
       appState.dashboard = buildDashboardFromLocalState_();
-      renderDashboard(appState.dashboard);
+      renderDashboard(buildDashboardFromVisibleState_());
       mostrarMensagemSucesso('Dashboard atualizado com os dados offline salvos neste aparelho.');
       return;
     }
     carregarEstadoServidor_().catch(function(error) {
       mostrarMensagemErro(error.message || 'Nao foi possivel atualizar o dashboard.');
     });
+  }
+
+  function atualizarTelaAtual() {
+    var active = document.querySelector('.page-section.active');
+    if (!active) {
+      carregarDashboard();
+      return;
+    }
+    if (active.id === 'secaoHistorico') {
+      carregarHistoricoPendencias();
+      return;
+    }
+    if (active.id === 'secaoListaPendencias') {
+      listarPendencias();
+      return;
+    }
+    if (appState.connection.online) {
+      carregarEstadoServidor_().catch(function(error) {
+        mostrarMensagemErro(error.message || 'Nao foi possivel atualizar os dados.');
+      });
+      return;
+    }
+    renderAll_();
+    mostrarMensagemSucesso('Tela atualizada com o cache offline.');
   }
 
   function preencherCombos(combos) {
@@ -324,7 +383,7 @@
 
     preencherSelect('filtroLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('filtroSetor', combos.setores, 'Todos os setores', true);
-    preencherSelect('filtroStatus', ['Aberto', 'Em andamento', 'Aguardando'], 'Todos os status', true);
+    preencherSelect('filtroStatus', combos.status, 'Todos os status', true);
     preencherSelect('filtroExecutor', combos.prestadores, 'Todos os executores', true);
     preencherSelect('filtroPrioridade', combos.prioridades, 'Todas as prioridades', true);
     preencherSelect('filtroTipo', combos.tipos, 'Todos os tipos', true);
@@ -477,7 +536,7 @@
     return {
       loja: getElementValue_('filtroLoja'),
       setor: getElementValue_('filtroSetor'),
-      status: apenasHistorico ? '' : getElementValue_('filtroStatus'),
+      status: getElementValue_('filtroStatus'),
       executor: getElementValue_('filtroExecutor'),
       prioridade: getElementValue_('filtroPrioridade'),
       tipo: getElementValue_('filtroTipo'),
@@ -492,6 +551,7 @@
 
   function aplicarFiltros() {
     toggleFiltroDrawer(false);
+    renderDashboard(buildDashboardFromVisibleState_());
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
     renderFiltroResumo();
@@ -502,6 +562,7 @@
       .forEach(function(id) {
         document.getElementById(id).value = '';
       });
+    renderDashboard(buildDashboardFromVisibleState_());
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
     renderFiltroResumo();
@@ -1073,7 +1134,6 @@
       { key: 'emAndamento', label: 'Em andamento', value: data.emAndamento || 0, className: 'warning' },
       { key: 'concluidas', label: 'Concluidas', value: data.concluidas || 0, className: 'success' },
       { key: 'vencidas', label: 'Vencidas', value: data.vencidas || 0, className: 'danger' },
-      { key: 'criticas', label: 'Criticas', value: data.criticas || 0, className: 'danger' },
       { key: 'total', label: 'Total geral', value: data.total || 0, className: '' }
     ];
 
@@ -1090,8 +1150,8 @@
   }
 
   function abrirZoomCard(metricKey, buttonEl) {
-    var ativos = getFilteredPendencias_(false, true);
-    var historico = getFilteredPendencias_(true, true);
+    var ativos = getFilteredPendencias_(false);
+    var historico = getFilteredPendencias_(true);
     var title = 'Detalhes';
     var description = '';
     var value = 0;
@@ -1105,12 +1165,12 @@
 
     if (metricKey === 'abertas') {
       title = 'Pendencias abertas';
-      description = 'Itens ainda nao iniciados.';
-      items = ativos.filter(function(item) { return normalizeText_(item.status) === 'aberto'; });
+      description = 'Pendencias sem executor associado.';
+      items = ativos.filter(function(item) { return !safeTrim_(item.executor); });
     } else if (metricKey === 'emAndamento') {
       title = 'Pendencias em andamento';
-      description = 'Itens sendo executados.';
-      items = ativos.filter(function(item) { return normalizeText_(item.status) === 'em andamento'; });
+      description = 'Pendencias com executor associado.';
+      items = ativos.filter(function(item) { return !!safeTrim_(item.executor); });
     } else if (metricKey === 'concluidas') {
       title = 'Pendencias concluidas';
       description = 'Itens finalizados no historico.';
@@ -1119,24 +1179,15 @@
       title = 'Pendencias vencidas';
       description = 'Itens com prazo vencido.';
       items = ativos.filter(function(item) { return item.esta_vencida; });
-    } else if (metricKey === 'criticas') {
-      title = 'Pendencias criticas';
-      description = 'Itens com prioridade critica.';
-      items = ativos.filter(function(item) { return normalizeText_(item.prioridade) === 'critica'; });
     } else {
       title = 'Total geral';
       description = 'Todas as pendencias, incluindo historico.';
-      items = appState.allPendencias.slice().sort(function(a, b) {
+      items = getAllPendenciasFiltered_().slice().sort(function(a, b) {
         return String(b.id_pendencia).localeCompare(String(a.id_pendencia));
       });
     }
 
-    value = items.length;
-    document.getElementById('metricZoomTitle').textContent = title;
-    document.getElementById('metricZoomValue').textContent = value;
-    document.getElementById('metricZoomDescription').textContent = description;
-    document.getElementById('metricZoomList').innerHTML = renderZoomItems_(items);
-    document.getElementById('metricZoomModal').classList.remove('hidden');
+    openMetricZoom_(title, description, items);
   }
 
   function fecharZoomCard() {
@@ -1155,7 +1206,7 @@
       var count = collection[key];
       var ratio = orderedKeys.length === 1 ? 0 : index / Math.max(1, orderedKeys.length - 1);
       var tone = getSummaryTone_(ratio);
-      var bgColor = 'linear-gradient(180deg, ' + tone.start + ' 0%, ' + tone.end + ' 100%)';
+      var bgColor = 'linear-gradient(180deg, ' + tone.end + ' 0%, ' + tone.start + ' 100%)';
       var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
       return '<button class="summary-item clickable' + selectedClass + '" style="background:' + bgColor + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
         '<div><strong>' + escapeHtml(key) + '</strong></div>' +
@@ -1180,7 +1231,7 @@
   }
 
   function abrirResumoAgrupado(tipo, chave, buttonEl) {
-    var ativos = getFilteredPendencias_(false, true);
+    var ativos = getFilteredPendencias_(false);
     var items = ativos.filter(function(item) {
       return tipo === 'loja'
         ? normalizeText_(item.loja) === normalizeText_(chave)
@@ -1192,13 +1243,11 @@
     };
     saveCache_();
     highlightDashboardSelection_(buttonEl, '.summary-item.clickable');
-    document.getElementById('metricZoomTitle').textContent = (tipo === 'loja' ? 'Loja: ' : 'Setor: ') + chave;
-    document.getElementById('metricZoomValue').textContent = items.length;
-    document.getElementById('metricZoomDescription').textContent = tipo === 'loja'
-      ? 'Pendencias ativas desta loja.'
-      : 'Pendencias ativas deste setor em diferentes lojas.';
-    document.getElementById('metricZoomList').innerHTML = renderZoomItems_(items);
-    document.getElementById('metricZoomModal').classList.remove('hidden');
+    openMetricZoom_(
+      (tipo === 'loja' ? 'Loja: ' : 'Setor: ') + chave,
+      tipo === 'loja' ? 'Pendencias ativas desta loja.' : 'Pendencias ativas deste setor por loja.',
+      items
+    );
   }
 
   function renderZoomItems_(items) {
@@ -1206,16 +1255,63 @@
       return '<div class="empty-state">Nenhum item encontrado.</div>';
     }
     return items.slice(0, 40).map(function(item) {
-      return '<div class="zoom-item">' +
-        '<div><strong>' + escapeHtml(item.id_pendencia) + '</strong><div class="muted-text">' +
-        escapeHtml(item.loja + ' | ' + item.setor) + '</div><div class="muted-text">' +
-        escapeHtml(resumirTexto(item.descricao, 80)) + '</div></div>' +
+      return '<div class="zoom-item zoom-table-item">' +
+        '<div class="zoom-main"><div class="zoom-badges">' +
+          '<span class="zoom-chip">' + escapeHtml(item.loja || '-') + '</span>' +
+          '<span class="zoom-chip alt">' + escapeHtml(item.setor || '-') + '</span>' +
+        '</div><div class="muted-text">' + escapeHtml(item.tipo || 'Sem classificacao') + ' | ' + escapeHtml(item.prioridade || 'Sem urgencia') + '</div>' +
+        '<div class="muted-text">' + escapeHtml(resumirTexto(item.descricao || item.observacao || '', 96)) + '</div></div>' +
         '<div class="actions-row">' +
+          '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
-          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">Abrir</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\'); fecharZoomCard();">Detalhes</button>' +
         '</div>' +
       '</div>';
     }).join('');
+  }
+
+  function openMetricZoom_(title, description, items) {
+    appState.zoomContext = {
+      title: title || 'Detalhes',
+      description: description || '',
+      items: (items || []).slice(),
+      filterLoja: '',
+      filterSetor: ''
+    };
+    document.getElementById('metricZoomTitle').textContent = appState.zoomContext.title;
+    document.getElementById('metricZoomDescription').textContent = appState.zoomContext.description;
+    preencherFiltrosZoom_();
+    aplicarFiltrosZoom();
+    document.getElementById('metricZoomModal').classList.remove('hidden');
+  }
+
+  function preencherFiltrosZoom_() {
+    var items = appState.zoomContext.items || [];
+    var lojas = uniqueSorted_(items.map(function(item) { return item.loja || ''; }).filter(Boolean));
+    var setores = uniqueSorted_(items.map(function(item) { return item.setor || ''; }).filter(Boolean));
+    preencherSelect('metricZoomFiltroLoja', lojas, 'Todas as lojas', true);
+    preencherSelect('metricZoomFiltroSetor', setores, 'Todos os setores', true);
+    document.getElementById('metricZoomFiltroLoja').value = appState.zoomContext.filterLoja || '';
+    document.getElementById('metricZoomFiltroSetor').value = appState.zoomContext.filterSetor || '';
+  }
+
+  function aplicarFiltrosZoom() {
+    if (!appState.zoomContext) {
+      return;
+    }
+    appState.zoomContext.filterLoja = getElementValue_('metricZoomFiltroLoja');
+    appState.zoomContext.filterSetor = getElementValue_('metricZoomFiltroSetor');
+    var items = (appState.zoomContext.items || []).filter(function(item) {
+      if (appState.zoomContext.filterLoja && normalizeText_(item.loja) !== normalizeText_(appState.zoomContext.filterLoja)) {
+        return false;
+      }
+      if (appState.zoomContext.filterSetor && normalizeText_(item.setor) !== normalizeText_(appState.zoomContext.filterSetor)) {
+        return false;
+      }
+      return true;
+    });
+    document.getElementById('metricZoomValue').textContent = items.length;
+    document.getElementById('metricZoomList').innerHTML = renderZoomItems_(items);
   }
 
   function highlightDashboardSelection_(buttonEl, selector) {
@@ -1233,7 +1329,7 @@
     var tableEl = document.getElementById('listaPendenciasTabela');
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada.</div>';
-      tableEl.innerHTML = '<tr><td colspan="10" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="11" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
       return;
     }
 
@@ -1251,12 +1347,12 @@
           cardKv_('Classificacao', escapeHtml(item.tipo || '-')) +
           cardKv_('Urgencia', escapeHtml(item.prioridade || '-')) +
           cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
-          cardKv_('Descricao', '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>') +
+          cardKv_('Descricao', '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>') +
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
           '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
-          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
           '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
@@ -1274,18 +1370,16 @@
         '<td>' + escapeHtml(item.tipo || '-') + '</td>' +
         '<td>' + renderTag('prioridade', item.prioridade || '-') + '</td>' +
         '<td><div class="descricao-obs-cell">' +
-          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-          '<button class="warning-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
         '</div></td>' +
         '<td>' + escapeHtml(item.executor || '-') + '</td>' +
         '<td><div class="table-actions">' +
-          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-          ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="clip-placeholder"></span>') +
         '</div></td>' +
-        '<td>' +
-          '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
-        '</td>' +
+        '<td>' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="clip-placeholder"></span>') + '</td>' +
+        '<td><button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button></td>' +
       '</tr>';
     }).join('');
   }
@@ -1308,10 +1402,10 @@
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
-          '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
           '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
-          '<button class="secondary-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
+          '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button>' +
           '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
         '</div>' +
       '</article>';
@@ -1347,8 +1441,8 @@
             { label: 'Conclusao', value: (formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || '') }
           ])) +
           detailsRow_('Acoes', '<span class="details-table-title">Acoes da pendencia</span><div class="details-table-actions">' +
-            '<button class="secondary-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-            '<button class="warning-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
+            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
             (item.id_arquivo_drive ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
             '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
             '<button class="ghost-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
@@ -1385,11 +1479,14 @@
 
   function renderConfiguracoes(items) {
     var container = document.getElementById('configList');
-    if (!items.length) {
+    var visibleItems = (items || []).filter(function(item) {
+      return item.chave !== 'NOME_PASTA_DRIVE_FOTOS';
+    });
+    if (!visibleItems.length) {
       container.innerHTML = '<div class="empty-state">Nenhuma configuracao encontrada.</div>';
       return;
     }
-    container.innerHTML = items.map(function(item) {
+    container.innerHTML = visibleItems.map(function(item) {
       return '<div class="config-item">' +
         '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
         '<div><input type="text" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(item.valor || '') + '"></div>' +
@@ -1400,7 +1497,6 @@
   function formatarNomeConfiguracao_(chave) {
     var mapa = {
       DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO: 'Dias para excluir fotos apos conclusao',
-      NOME_PASTA_DRIVE_FOTOS: 'Nome da pasta de fotos no Drive',
       STATUS_PADRAO_NOVO_REGISTRO: 'Status padrao do novo registro',
       PERMITIR_EXCLUSAO_FOTO_AUTOMATICA: 'Permitir exclusao automatica de fotos',
       VERSAO_SISTEMA: 'Versao do sistema'
@@ -1513,6 +1609,8 @@
     document.getElementById('spenTargetField').value = targetId;
     document.getElementById('spenModalTitle').textContent = 'Escrita com S Pen - ' + title;
     document.getElementById('spenInputArea').value = document.getElementById(targetId).value || '';
+    appState.spenLocked = true;
+    renderSpenLockState_();
     document.body.classList.add('spen-open');
     document.getElementById('spenModal').classList.remove('hidden');
     setTimeout(function() {
@@ -1524,20 +1622,42 @@
     var targetId = document.getElementById('spenTargetField').value;
     var target = document.getElementById(targetId);
     if (!target) {
-      fecharSpenPopup();
+      fecharSpenPopup(true);
       return;
     }
     target.value = document.getElementById('spenInputArea').value || '';
-    fecharSpenPopup();
+    fecharSpenPopup(true);
   }
 
   function limparSpenPopup() {
     document.getElementById('spenInputArea').value = '';
   }
 
-  function fecharSpenPopup() {
+  function fecharSpenPopup(forceClose) {
+    if (appState.spenLocked && !forceClose) {
+      mostrarMensagemErro('Destrave o cadeado para fechar a tela de escrita.');
+      return;
+    }
     document.body.classList.remove('spen-open');
     document.getElementById('spenModal').classList.add('hidden');
+  }
+
+  function toggleSpenLock() {
+    appState.spenLocked = !appState.spenLocked;
+    renderSpenLockState_();
+  }
+
+  function renderSpenLockState_() {
+    var lockButton = document.getElementById('spenLockButton');
+    var closeButton = document.getElementById('spenCloseButton');
+    var modal = document.getElementById('spenModal');
+    if (!lockButton || !closeButton || !modal) {
+      return;
+    }
+    lockButton.innerHTML = appState.spenLocked ? '&#128274;' : '&#128275;';
+    closeButton.disabled = !!appState.spenLocked;
+    closeButton.classList.toggle('disabled', !!appState.spenLocked);
+    modal.classList.toggle('spen-unlocked', !appState.spenLocked);
   }
 
   function captureFormContext_() {
@@ -1673,6 +1793,7 @@
     appState.allPendencias.forEach(function(item) {
       var status = normalizeText_(item.status);
       var prioridade = normalizeText_(item.prioridade);
+      var possuiExecutor = !!safeTrim_(item.executor);
       var loja = item.loja || 'Sem loja';
       var setor = item.setor || 'Sem setor';
       var responsavel = item.responsavel || 'Nao definido';
@@ -1680,9 +1801,9 @@
       dashboard.porSetor[setor] = (dashboard.porSetor[setor] || 0) + 1;
       dashboard.porResponsavel[responsavel] = (dashboard.porResponsavel[responsavel] || 0) + 1;
       dashboard.total += 1;
-      if (status === 'aberto') {
+      if (status !== 'concluido' && status !== 'cancelado' && !possuiExecutor) {
         dashboard.abertas += 1;
-      } else if (status === 'em andamento') {
+      } else if (status !== 'concluido' && status !== 'cancelado' && possuiExecutor) {
         dashboard.emAndamento += 1;
       } else if (status === 'concluido') {
         dashboard.concluidas += 1;
@@ -1709,6 +1830,33 @@
       porSetor: {},
       porResponsavel: {}
     };
+  }
+
+  function buildDashboardFromVisibleState_() {
+    var dashboard = buildEmptyDashboard_();
+    var ativos = getFilteredPendencias_(false);
+    var historico = getFilteredPendencias_(true);
+    ativos.forEach(function(item) {
+      var possuiExecutor = !!safeTrim_(item.executor);
+      dashboard.total += 1;
+      dashboard.porLoja[item.loja || 'Sem loja'] = (dashboard.porLoja[item.loja || 'Sem loja'] || 0) + 1;
+      dashboard.porSetor[item.setor || 'Sem setor'] = (dashboard.porSetor[item.setor || 'Sem setor'] || 0) + 1;
+      if (!possuiExecutor) {
+        dashboard.abertas += 1;
+      } else {
+        dashboard.emAndamento += 1;
+      }
+      if (item.esta_vencida) {
+        dashboard.vencidas += 1;
+      }
+    });
+    historico.forEach(function(item) {
+      dashboard.total += 1;
+      if (normalizeText_(item.status) === 'concluido') {
+        dashboard.concluidas += 1;
+      }
+    });
+    return dashboard;
   }
 
   function getFilteredPendencias_(apenasHistorico, ignoreFilters) {
@@ -2086,6 +2234,58 @@
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim();
+  }
+
+  function safeTrim_(value) {
+    return (value || '').toString().trim();
+  }
+
+  function uniqueSorted_(values) {
+    var map = {};
+    (values || []).forEach(function(value) {
+      var key = safeTrim_(value);
+      if (key) {
+        map[key] = true;
+      }
+    });
+    return Object.keys(map).sort(function(a, b) {
+      return a.localeCompare(b, 'pt-BR');
+    });
+  }
+
+  function getAllPendenciasFiltered_() {
+    var filtros = obterFiltrosTela(false);
+    return appState.allPendencias.filter(function(item) {
+      if (filtros.loja && normalizeText_(item.loja) !== normalizeText_(filtros.loja)) {
+        return false;
+      }
+      if (filtros.setor && normalizeText_(item.setor) !== normalizeText_(filtros.setor)) {
+        return false;
+      }
+      if (filtros.status && normalizeText_(item.status) !== normalizeText_(filtros.status)) {
+        return false;
+      }
+      if (filtros.executor && normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+        return false;
+      }
+      if (filtros.prioridade && normalizeText_(item.prioridade) !== normalizeText_(filtros.prioridade)) {
+        return false;
+      }
+      if (filtros.tipo && normalizeText_(item.tipo) !== normalizeText_(filtros.tipo)) {
+        return false;
+      }
+      if (filtros.dataAberturaDe || filtros.dataAberturaAte) {
+        if (!dateWithinRangeLocal_(item.data_abertura, filtros.dataAberturaDe, filtros.dataAberturaAte)) {
+          return false;
+        }
+      }
+      if (filtros.previsaoEntregaDe || filtros.previsaoEntregaAte) {
+        if (!dateWithinRangeLocal_(item.previsao_entrega, filtros.previsaoEntregaDe, filtros.previsaoEntregaAte)) {
+          return false;
+        }
+      }
+      return true;
+    });
   }
 
   function normalizePrestadores_(values) {
