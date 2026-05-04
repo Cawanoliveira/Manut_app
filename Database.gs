@@ -120,9 +120,12 @@ function aplicarValidacoesBasicas_() {
     .requireValueInRange(setoresSheet.getRange('B2:B'), true)
     .setAllowInvalid(true)
     .build();
-  var tipoValidation = SpreadsheetApp.newDataValidation().requireValueInList(APP_CONFIG.TIPOS_VALIDOS.map(normalizeLabel_), true).build();
-  var prioridadeValidation = SpreadsheetApp.newDataValidation().requireValueInList(APP_CONFIG.PRIORIDADES_VALIDAS.map(normalizeLabel_), true).build();
-  var statusValidation = SpreadsheetApp.newDataValidation().requireValueInList(APP_CONFIG.STATUS_VALIDOS.map(normalizeLabel_), true).build();
+  var tipos = getManagedOptionValues_('tipo');
+  var prioridades = getManagedOptionValues_('prioridade');
+  var statusList = getManagedOptionValues_('status');
+  var tipoValidation = SpreadsheetApp.newDataValidation().requireValueInList(tipos.length ? tipos : APP_CONFIG.TIPOS_VALIDOS.map(normalizeLabel_), true).build();
+  var prioridadeValidation = SpreadsheetApp.newDataValidation().requireValueInList(prioridades.length ? prioridades : APP_CONFIG.PRIORIDADES_VALIDAS.map(normalizeLabel_), true).build();
+  var statusValidation = SpreadsheetApp.newDataValidation().requireValueInList(statusList.length ? statusList : APP_CONFIG.STATUS_VALIDOS.map(normalizeLabel_), true).build();
 
   pendenciasSheet.getRange(startRow, map.loja + 1, numRows, 1).setDataValidation(lojaValidation);
   pendenciasSheet.getRange(startRow, map.setor + 1, numRows, 1).setDataValidation(setorValidation);

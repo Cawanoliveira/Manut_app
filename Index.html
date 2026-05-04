@@ -422,6 +422,43 @@
       </div>
     </div>
 
+    <div id="comboEditorModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="fecharEditorOpcoesSelect()"></div>
+      <div class="modal-card">
+        <div class="drawer-header">
+          <div>
+            <h3 id="comboEditorTitle">Editar opcoes</h3>
+            <p class="modal-description">Apague no X, desative quando houver essa opcao, ou adicione novos itens.</p>
+          </div>
+          <button class="ghost-button compact-button" type="button" onclick="fecharEditorOpcoesSelect()">Fechar</button>
+        </div>
+        <div id="comboEditorList" class="summary-list"></div>
+        <div class="actions-row">
+          <button class="warning-button" type="button" onclick="abrirAdicionarOpcaoModal()">+ Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="comboAddModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="fecharAdicionarOpcaoModal()"></div>
+      <div class="modal-card modal-card-sm">
+        <div class="drawer-header">
+          <div>
+            <h3 id="comboAddTitle">Adicionar opcao</h3>
+          </div>
+          <button class="ghost-button compact-button" type="button" onclick="fecharAdicionarOpcaoModal()">Fechar</button>
+        </div>
+        <label>
+          <span>Novo item</span>
+          <input id="comboAddInput" type="text" placeholder="Digite o nome da opcao">
+        </label>
+        <div class="actions-row">
+          <button class="ghost-button" type="button" onclick="fecharAdicionarOpcaoModal()">Cancelar</button>
+          <button class="primary-button" type="button" onclick="salvarNovaOpcaoSelect()">Salvar</button>
+        </div>
+      </div>
+    </div>
+
     <div id="spenModal" class="modal hidden">
       <div class="modal-backdrop"></div>
       <div class="modal-card spen-modal-card">

@@ -11,6 +11,9 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   salvarPrestador: salvarPrestador,
   alterarStatusPrestador: alterarStatusPrestador,
   excluirPrestador: excluirPrestador,
+  salvarOpcaoCombo: salvarOpcaoCombo,
+  excluirOpcaoCombo: excluirOpcaoCombo,
+  alterarStatusOpcaoCombo: alterarStatusOpcaoCombo,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
   criarTriggerLimpezaFotos: criarTriggerLimpezaFotos
@@ -46,6 +49,7 @@ function getAppInitData() {
       dashboard: getDashboardData(),
       combos: getFormSupportData(),
       prestadoresAdmin: listarPrestadoresTodos(),
+      comboAdmin: listarOpcoesComboGerenciaveis(),
       config: listarConfiguracoes(),
       versao: getConfig('VERSAO_SISTEMA') || '1.0'
     });

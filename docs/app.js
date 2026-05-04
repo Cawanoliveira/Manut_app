@@ -1,4 +1,4 @@
-﻿var CACHE_KEY = 'manutencao_offline_cache_v2';
+var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -13,6 +13,7 @@
       combos: null,
       configs: [],
       prestadoresAdmin: [],
+      comboAdmin: {},
       allPendencias: [],
       detailsById: {},
       dashboard: buildEmptyDashboard_(),
@@ -40,6 +41,11 @@
         filterSetor: '',
         filterStatus: ''
       },
+      comboEditor: {
+        group: '',
+        targetId: '',
+        title: ''
+      },
       spenLocked: true,
       currentSection: 'secaoDashboard',
       navigationStack: [],
@@ -55,6 +61,7 @@
     bindConnectivityHandlers_();
     bindFilterFab_();
     bindPenInputMode_();
+    injectBrandLogos_();
     hydrateFromCache_();
     renderAll_();
     atualizarNomeArquivo('novaFoto', 'novaFotoNome');
@@ -95,6 +102,22 @@
     });
   }
 
+  function injectBrandLogos_() {
+    var template = document.getElementById('brandLogoTemplate');
+    if (!template) {
+      return;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.section-title-wrap'), function(node) {
+      if (node.querySelector('.brand-logo-inline')) {
+        return;
+      }
+      var clone = template.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.className = 'brand-logo-inline';
+      node.insertBefore(clone, node.firstChild);
+    });
+  }
+
   function bindFilterFab_() {
     var fab = document.getElementById('filterFab');
     if (!fab) {
@@ -110,7 +133,7 @@
         startX: event.clientX,
         startY: event.clientY,
         startLeft: parseFloat(fab.style.left) || 12,
-        startTop: parseFloat(fab.style.top) || 58,
+        startTop: parseFloat(fab.style.top) || 42,
         moved: false
       };
       fab.dataset.dragging = '0';
@@ -155,10 +178,13 @@
       return;
     }
     if (fab.style.left && fab.style.top) {
-      setFilterFabPosition_(parseFloat(fab.style.left) || 12, parseFloat(fab.style.top) || 58);
+      setFilterFabPosition_(parseFloat(fab.style.left) || 12, parseFloat(fab.style.top) || 42);
       return;
     }
-    setFilterFabPosition_(12, 58);
+    var viewportWidth = (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 1024;
+    var fabWidth = fab.offsetWidth || 124;
+    var centeredLeft = Math.max(10, (viewportWidth / 2) - (fabWidth / 2));
+    setFilterFabPosition_(centeredLeft, 42);
   }
 
   function setFilterFabPosition_(left, top) {
@@ -171,7 +197,7 @@
     var fabWidth = fab.offsetWidth || 92;
     var fabHeight = fab.offsetHeight || 42;
     var minLeft = 10;
-    var minTop = 58;
+    var minTop = 42;
     var maxLeft = Math.max(minLeft, viewportWidth - fabWidth - 10);
     var maxTop = Math.max(minTop, viewportHeight - fabHeight - 10);
     fab.style.left = Math.min(Math.max(minLeft, left), maxLeft) + 'px';
@@ -245,6 +271,7 @@
       appState.combos = cached.combos || null;
       appState.configs = cached.configs || [];
       appState.prestadoresAdmin = cached.prestadoresAdmin || [];
+      appState.comboAdmin = cached.comboAdmin || {};
       appState.allPendencias = cached.allPendencias || [];
       appState.detailsById = cached.detailsById || {};
       appState.pendingQueue = cached.pendingQueue || [];
@@ -267,6 +294,7 @@
         combos: appState.combos,
         configs: appState.configs,
         prestadoresAdmin: appState.prestadoresAdmin,
+        comboAdmin: appState.comboAdmin,
         allPendencias: appState.allPendencias,
         detailsById: appState.detailsById,
         pendingQueue: appState.pendingQueue,
@@ -278,7 +306,11 @@
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch (error) {
-      mostrarMensagemErro('Armazenamento local cheio. Reduza fotos offline antes de continuar.');
+      if (isStorageQuotaError_(error)) {
+        mostrarMensagemErro('O dispositivo ficou sem espaco para guardar dados offline.');
+      } else if (window.console && console.warn) {
+        console.warn('Falha ao salvar cache offline.', error);
+      }
     }
     updateSyncStatusBar_();
   }
@@ -321,6 +353,7 @@
       appState.combos = initResponse.data.combos;
       appState.configs = initResponse.data.config.data || [];
       appState.prestadoresAdmin = (initResponse.data.prestadoresAdmin && initResponse.data.prestadoresAdmin.data) || [];
+      appState.comboAdmin = initResponse.data.comboAdmin || {};
       appState.allPendencias = pendenciasResponse.data || [];
       appState.dashboard = buildDashboardFromLocalState_();
       appState.connection.lastSyncAt = new Date().toISOString();
@@ -433,6 +466,7 @@
     preencherSelect('editStatus', combos.status, 'Selecione um status');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
+    bindManagedSelects_();
   }
 
   function preencherSelect(elementId, values, placeholder, allowBlank) {
@@ -440,11 +474,14 @@
     if (!select) {
       return;
     }
-    var currentValue = select.value;
+    var currentValue = select.value && select.value !== '__edit__' ? select.value : (select.dataset.lastValue || '');
     var options = ['<option value="">' + (placeholder || 'Selecione') + '</option>'];
     (values || []).forEach(function(value) {
       options.push('<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>');
     });
+    if (getManagedSelectConfig_(elementId)) {
+      options.push('<option value="__edit__">EDITAR</option>');
+    }
     select.innerHTML = options.join('');
     if (currentValue) {
       select.value = currentValue;
@@ -452,6 +489,63 @@
     if (!allowBlank && values && values.length === 1 && !select.value) {
       select.value = values[0];
     }
+    if (select.value && select.value !== '__edit__') {
+      select.dataset.lastValue = select.value;
+    }
+  }
+
+  function bindManagedSelects_() {
+    Object.keys(getManagedSelectMap_()).forEach(function(selectId) {
+      var select = document.getElementById(selectId);
+      if (!select || select.dataset.comboEditorBound === '1') {
+        return;
+      }
+      select.dataset.comboEditorBound = '1';
+      select.addEventListener('focus', function() {
+        if (select.value && select.value !== '__edit__') {
+          select.dataset.lastValue = select.value;
+        }
+      });
+      select.addEventListener('change', function() {
+        if (select.value === '__edit__') {
+          select.value = select.dataset.lastValue || '';
+          abrirEditorOpcoesSelect(selectId);
+          return;
+        }
+        select.dataset.lastValue = select.value || '';
+      });
+    });
+  }
+
+  function getManagedSelectMap_() {
+    return {
+      novaLoja: { group: 'loja', title: 'Lojas' },
+      novoSetor: { group: 'setor', title: 'Setores' },
+      novoTipo: { group: 'tipo', title: 'Tipos' },
+      novaPrioridade: { group: 'prioridade', title: 'Prioridades' },
+      editExecutor: { group: 'executor', title: 'Executor / prestador' },
+      editStatus: { group: 'status', title: 'Status' },
+      editTipo: { group: 'tipo', title: 'Tipos' },
+      editPrioridade: { group: 'prioridade', title: 'Prioridades' }
+    };
+  }
+
+  function getManagedSelectConfig_(selectId) {
+    return getManagedSelectMap_()[selectId] || null;
+  }
+
+  function abrirEditorOpcoesSelect(selectId) {
+    var config = getManagedSelectConfig_(selectId);
+    if (!config) {
+      return;
+    }
+    appState.comboEditor = {
+      group: config.group,
+      targetId: selectId,
+      title: config.title
+    };
+    renderComboEditorModal_();
+    document.getElementById('comboEditorModal').classList.remove('hidden');
   }
 
   async function salvarNovaPendencia(event) {
@@ -1744,6 +1838,7 @@
         }
         appState.combos.prestadores = normalizePrestadores_((response.data && response.data.ativos) || []);
         appState.prestadoresAdmin = (response.data && response.data.todos) || [];
+        appState.comboAdmin.executor = appState.prestadoresAdmin.slice();
         preencherCombos(appState.combos);
         renderPrestadoresList_();
         saveCache_();
@@ -1777,6 +1872,7 @@
         }
         appState.combos.prestadores = normalizePrestadores_((response.data && response.data.ativos) || []);
         appState.prestadoresAdmin = (response.data && response.data.todos) || [];
+        appState.comboAdmin.executor = appState.prestadoresAdmin.slice();
         preencherCombos(appState.combos);
         renderPrestadoresList_();
         renderPendencias(getFilteredPendencias_(false));
@@ -1810,6 +1906,7 @@
         }
         appState.combos.prestadores = normalizePrestadores_((response.data && response.data.ativos) || []);
         appState.prestadoresAdmin = (response.data && response.data.todos) || [];
+        appState.comboAdmin.executor = appState.prestadoresAdmin.slice();
         preencherCombos(appState.combos);
         renderPrestadoresList_();
         renderPendencias(getFilteredPendencias_(false));
@@ -1817,6 +1914,156 @@
         mostrarMensagemSucesso(response.message);
       })
       .catch(handleFailure);
+  }
+
+  function getComboAdminItems_(group) {
+    return (appState.comboAdmin && appState.comboAdmin[group]) || [];
+  }
+
+  function renderComboEditorModal_() {
+    var titleEl = document.getElementById('comboEditorTitle');
+    var listEl = document.getElementById('comboEditorList');
+    if (!titleEl || !listEl) {
+      return;
+    }
+    var group = appState.comboEditor.group;
+    var items = getComboAdminItems_(group);
+    titleEl.textContent = 'Editar ' + (appState.comboEditor.title || 'opcoes');
+    if (!items.length) {
+      listEl.innerHTML = '<div class="empty-state">Nenhuma opcao cadastrada.</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(function(item) {
+      var status = normalizeText_(item.status) === 'inativo' ? 'Inativo' : 'Ativo';
+      var statusButton = item.permiteStatus
+        ? '<button class="ghost-button compact-button" type="button" onclick="alterarStatusOpcaoSelecionavel(\'' + escapeJs(group) + '\', \'' + escapeJs(item.id || item.nome) + '\', \'' + (status === 'Ativo' ? 'Inativo' : 'Ativo') + '\')">' + (status === 'Ativo' ? 'Desativar' : 'Ativar') + '</button>'
+        : '';
+      return '<div class="summary-item combo-editor-item">' +
+        '<div><strong>' + escapeHtml(item.nome || '-') + '</strong><div class="summary-item-sub">' + escapeHtml(status) + '</div></div>' +
+        '<div class="actions-row">' +
+          statusButton +
+          '<button class="icon-button combo-delete-button" type="button" onclick="excluirOpcaoSelecionavel(\'' + escapeJs(group) + '\', \'' + escapeJs(item.id || item.nome) + '\')">&times;</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function fecharEditorOpcoesSelect() {
+    document.getElementById('comboEditorModal').classList.add('hidden');
+  }
+
+  function abrirAdicionarOpcaoModal() {
+    var titleEl = document.getElementById('comboAddTitle');
+    var input = document.getElementById('comboAddInput');
+    if (titleEl) {
+      titleEl.textContent = 'Adicionar em ' + (appState.comboEditor.title || 'opcoes');
+    }
+    if (input) {
+      input.value = '';
+    }
+    document.getElementById('comboAddModal').classList.remove('hidden');
+    setTimeout(function() {
+      if (input) {
+        input.focus();
+      }
+    }, 30);
+  }
+
+  function fecharAdicionarOpcaoModal() {
+    document.getElementById('comboAddModal').classList.add('hidden');
+  }
+
+  function salvarNovaOpcaoSelect() {
+    var input = document.getElementById('comboAddInput');
+    var valor = input ? input.value.trim() : '';
+    if (!valor) {
+      mostrarMensagemErro('Informe um nome para adicionar.');
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a planilha.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('salvarOpcaoCombo', [appState.comboEditor.group, valor])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        applyComboManagementPayload_(response.data);
+        fecharAdicionarOpcaoModal();
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function excluirOpcaoSelecionavel(group, key) {
+    if (!group || !key) {
+      return;
+    }
+    if (!confirm('Deseja remover esta opcao?')) {
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a planilha.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('excluirOpcaoCombo', [group, key])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        applyComboManagementPayload_(response.data);
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function alterarStatusOpcaoSelecionavel(group, key, status) {
+    if (!group || !key || !status) {
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a planilha.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('alterarStatusOpcaoCombo', [group, key, status])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          throw new Error(response.message);
+        }
+        applyComboManagementPayload_(response.data);
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function applyComboManagementPayload_(payload) {
+    if (!payload) {
+      return;
+    }
+    if (payload.combos) {
+      appState.combos = payload.combos;
+      if (appState.combos && appState.combos.prestadores) {
+        appState.combos.prestadores = normalizePrestadores_(appState.combos.prestadores);
+      }
+      preencherCombos(appState.combos);
+      applySavedFormContext_();
+    }
+    if (payload.admin) {
+      appState.comboAdmin = payload.admin;
+      appState.prestadoresAdmin = payload.admin.executor || [];
+      renderPrestadoresList_();
+      renderPendencias(getFilteredPendencias_(false));
+      renderHistoricoGeral(getFilteredPendencias_(true));
+      renderComboEditorModal_();
+    }
+    saveCache_();
   }
 
   function abrirTextoRapido(id, campo) {
@@ -2687,15 +2934,30 @@
     return formatDateBr(toInputDate_(date)) + ' ' + toTime_(date);
   }
 
+  function isStorageQuotaError_(error) {
+    if (!error) {
+      return false;
+    }
+    var name = String(error.name || '');
+    var code = Number(error.code || 0);
+    var message = String(error.message || '').toLowerCase();
+    return name === 'QuotaExceededError' ||
+      name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      code === 22 ||
+      code === 1014 ||
+      message.indexOf('quota') > -1 ||
+      message.indexOf('storage') > -1 && message.indexOf('full') > -1;
+  }
+
   function normalizeVoiceTranscript_(value) {
     return String(value || '')
-      .replace(/\b(nova linha|novo paragrafo|novo parÃ¡grafo)\b/gi, '\n')
-      .replace(/\b(virgula|vÃ­rgula)\b/gi, ',')
+      .replace(/\b(nova linha|novo paragrafo|novo parágrafo)\b/gi, '\n')
+      .replace(/\b(virgula|vírgula)\b/gi, ',')
       .replace(/\b(ponto final)\b/gi, '.')
       .replace(/\b(dois pontos)\b/gi, ':')
       .replace(/\b(ponto e virgula)\b/gi, ';')
-      .replace(/\b(abrir parenteses|abrir parÃªnteses)\b/gi, '(')
-      .replace(/\b(fechar parenteses|fechar parÃªnteses)\b/gi, ')')
+      .replace(/\b(abrir parenteses|abrir parênteses)\b/gi, '(')
+      .replace(/\b(fechar parenteses|fechar parênteses)\b/gi, ')')
       .replace(/[ \t]*\n[ \t]*/g, '\n')
       .replace(/\s+,/g, ',')
       .replace(/\s+\./g, '.')

@@ -320,15 +320,15 @@ function getDisplayTipo_(tipoValue) {
 }
 
 function isStatusValido_(statusValue) {
-  return APP_CONFIG.STATUS_VALIDOS.indexOf(stripAccents_(normalizeLabel_(statusValue))) > -1;
+  return getManagedOptionValues_('status').indexOf(normalizeLabel_(statusValue)) > -1;
 }
 
 function isPrioridadeValida_(priorityValue) {
-  return APP_CONFIG.PRIORIDADES_VALIDAS.indexOf(stripAccents_(normalizeLabel_(priorityValue))) > -1;
+  return getManagedOptionValues_('prioridade').indexOf(normalizeLabel_(priorityValue)) > -1;
 }
 
 function isTipoValido_(tipoValue) {
-  return APP_CONFIG.TIPOS_VALIDOS.indexOf(stripAccents_(normalizeLabel_(tipoValue))) > -1;
+  return getManagedOptionValues_('tipo').indexOf(normalizeLabel_(tipoValue)) > -1;
 }
 
 function registrarLog(tipo, mensagem, detalhe, usuario) {

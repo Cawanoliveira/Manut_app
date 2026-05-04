@@ -63,10 +63,119 @@ function getFormSupportData() {
     prestadores: (listarPrestadores().data || []).map(function(item) {
       return item.nome_prestador;
     }),
-    tipos: APP_CONFIG.TIPOS_VALIDOS.map(normalizeLabel_),
-    prioridades: APP_CONFIG.PRIORIDADES_VALIDAS.map(normalizeLabel_),
-    status: APP_CONFIG.STATUS_VALIDOS.map(normalizeLabel_)
+    tipos: getManagedOptionValues_('tipo'),
+    prioridades: getManagedOptionValues_('prioridade'),
+    status: getManagedOptionValues_('status')
   };
+}
+
+function listarOpcoesComboGerenciaveis() {
+  return {
+    loja: listarItensComboSheet_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', true),
+    setor: listarItensComboSheet_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', true),
+    tipo: listarItensComboConfig_('tipo'),
+    prioridade: listarItensComboConfig_('prioridade'),
+    status: listarItensComboConfig_('status'),
+    executor: listarItensComboSheet_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', true)
+  };
+}
+
+function salvarOpcaoCombo(grupo, valor) {
+  try {
+    var grupoNormalizado = normalizeComboGroup_(grupo);
+    var nome = normalizeLabel_(valor);
+    if (!grupoNormalizado || !nome) {
+      return createErrorResponse_('Informe um grupo e um valor valido.');
+    }
+
+    if (grupoNormalizado === 'loja') {
+      saveSheetComboOption_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', {
+        id_loja: gerarId('LOJ'),
+        nome_loja: nome,
+        cidade: '',
+        status: 'Ativo',
+        data_cadastro: parseDateInput_(formatDateForInput_(now_()))
+      });
+    } else if (grupoNormalizado === 'setor') {
+      saveSheetComboOption_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', {
+        id_setor: gerarId('SET'),
+        nome_setor: nome,
+        status: 'Ativo',
+        data_cadastro: parseDateInput_(formatDateForInput_(now_()))
+      });
+    } else if (grupoNormalizado === 'executor') {
+      saveSheetComboOption_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', {
+        id_prestador: gerarId('PRE'),
+        nome_prestador: nome,
+        status: 'Ativo',
+        data_cadastro: parseDateInput_(formatDateForInput_(now_()))
+      });
+    } else {
+      addManagedConfigOption_(grupoNormalizado, nome);
+    }
+
+    aplicarValidacoesBasicas_();
+    SpreadsheetApp.flush();
+    return createSuccessResponse_('Opcao salva com sucesso.', buildComboManagementPayload_());
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao salvar opcao de combo.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel salvar a opcao.', error);
+  }
+}
+
+function excluirOpcaoCombo(grupo, idOuValor) {
+  try {
+    var grupoNormalizado = normalizeComboGroup_(grupo);
+    var chave = safeString_(idOuValor);
+    if (!grupoNormalizado || !chave) {
+      return createErrorResponse_('Grupo ou opcao invalida.');
+    }
+
+    if (grupoNormalizado === 'loja') {
+      deleteSheetComboItem_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', chave);
+    } else if (grupoNormalizado === 'setor') {
+      deleteSheetComboItem_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', chave);
+    } else if (grupoNormalizado === 'executor') {
+      deleteSheetComboItem_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', chave);
+    } else {
+      removeManagedConfigOption_(grupoNormalizado, chave);
+    }
+
+    aplicarValidacoesBasicas_();
+    SpreadsheetApp.flush();
+    return createSuccessResponse_('Opcao removida com sucesso.', buildComboManagementPayload_());
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao excluir opcao de combo.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel excluir a opcao.', error);
+  }
+}
+
+function alterarStatusOpcaoCombo(grupo, idOuValor, novoStatus) {
+  try {
+    var grupoNormalizado = normalizeComboGroup_(grupo);
+    var chave = safeString_(idOuValor);
+    var status = normalizeLabel_(novoStatus);
+    if (!grupoNormalizado || !chave || !status) {
+      return createErrorResponse_('Dados invalidos para alterar o status.');
+    }
+
+    if (grupoNormalizado === 'loja') {
+      updateSheetComboStatus_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', chave, status);
+    } else if (grupoNormalizado === 'setor') {
+      updateSheetComboStatus_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', chave, status);
+    } else if (grupoNormalizado === 'executor') {
+      updateSheetComboStatus_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', chave, status);
+    } else {
+      return createErrorResponse_('Este grupo nao permite ativar ou desativar itens.');
+    }
+
+    aplicarValidacoesBasicas_();
+    SpreadsheetApp.flush();
+    return createSuccessResponse_('Status da opcao atualizado com sucesso.', buildComboManagementPayload_());
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao alterar status da opcao de combo.', getErrorStack_(error));
+    return createErrorResponse_('Nao foi possivel alterar o status da opcao.', error);
+  }
 }
 
 function salvarPrestador(nomePrestador) {
@@ -132,4 +241,208 @@ function buildPrestadoresPayload_() {
     ativos: getFormSupportData().prestadores || [],
     todos: listarPrestadoresTodos().data || []
   };
+}
+
+function buildComboManagementPayload_() {
+  return {
+    combos: getFormSupportData(),
+    admin: listarOpcoesComboGerenciaveis()
+  };
+}
+
+function getManagedOptionValues_(grupo) {
+  return getManagedOptionItems_(grupo)
+    .filter(function(item) {
+      return normalizeCompare_(item.status || 'Ativo') !== 'inativo';
+    })
+    .map(function(item) {
+      return item.nome;
+    });
+}
+
+function getManagedOptionItems_(grupo) {
+  var grupoNormalizado = normalizeComboGroup_(grupo);
+  if (grupoNormalizado === 'tipo') {
+    return parseManagedConfigOptions_(grupoNormalizado, APP_CONFIG.TIPOS_VALIDOS);
+  }
+  if (grupoNormalizado === 'prioridade') {
+    return parseManagedConfigOptions_(grupoNormalizado, APP_CONFIG.PRIORIDADES_VALIDAS);
+  }
+  if (grupoNormalizado === 'status') {
+    return parseManagedConfigOptions_(grupoNormalizado, APP_CONFIG.STATUS_VALIDOS);
+  }
+  return [];
+}
+
+function parseManagedConfigOptions_(grupo, fallbackValues) {
+  var configKey = getManagedConfigKey_(grupo);
+  var raw = safeString_(getConfig(configKey));
+  var items = [];
+  if (raw) {
+    try {
+      items = JSON.parse(raw);
+    } catch (error) {
+      items = [];
+    }
+  }
+  if (!Array.isArray(items) || !items.length) {
+    items = (fallbackValues || []).map(function(value, index) {
+      return {
+        id: grupo.toUpperCase() + '_' + (index + 1),
+        nome: normalizeLabel_(value),
+        status: 'Ativo'
+      };
+    });
+  }
+  return items.map(function(item, index) {
+    if (typeof item === 'string') {
+      return {
+        id: grupo.toUpperCase() + '_' + (index + 1),
+        nome: normalizeLabel_(item),
+        status: 'Ativo'
+      };
+    }
+    return {
+      id: safeString_(item.id) || (grupo.toUpperCase() + '_' + (index + 1)),
+      nome: normalizeLabel_(item.nome || item.label || item.value),
+      status: normalizeLabel_(item.status || 'Ativo') || 'Ativo'
+    };
+  }).filter(function(item) {
+    return !!item.nome;
+  });
+}
+
+function saveManagedConfigOptions_(grupo, items) {
+  var configKey = getManagedConfigKey_(grupo);
+  setConfig(configKey, JSON.stringify((items || []).map(function(item, index) {
+    return {
+      id: safeString_(item.id) || (grupo.toUpperCase() + '_' + (index + 1)),
+      nome: normalizeLabel_(item.nome),
+      status: normalizeLabel_(item.status || 'Ativo') || 'Ativo'
+    };
+  })));
+}
+
+function addManagedConfigOption_(grupo, nome) {
+  var items = getManagedOptionItems_(grupo);
+  var targetKey = normalizeCompare_(stripAccents_(nome));
+  var existing = items.filter(function(item) {
+    return normalizeCompare_(stripAccents_(item.nome)) === targetKey;
+  })[0];
+  if (existing) {
+    existing.status = 'Ativo';
+    existing.nome = normalizeLabel_(nome);
+  } else {
+    items.push({
+      id: grupo.toUpperCase() + '_' + new Date().getTime(),
+      nome: normalizeLabel_(nome),
+      status: 'Ativo'
+    });
+  }
+  saveManagedConfigOptions_(grupo, items);
+}
+
+function removeManagedConfigOption_(grupo, idOuValor) {
+  var lookup = normalizeCompare_(stripAccents_(idOuValor));
+  var items = getManagedOptionItems_(grupo).filter(function(item) {
+    return normalizeCompare_(stripAccents_(item.id)) !== lookup &&
+      normalizeCompare_(stripAccents_(item.nome)) !== lookup;
+  });
+  saveManagedConfigOptions_(grupo, items);
+}
+
+function listarItensComboConfig_(grupo) {
+  return getManagedOptionItems_(grupo).map(function(item) {
+    return {
+      id: item.id,
+      nome: item.nome,
+      status: normalizeLabel_(item.status || 'Ativo') || 'Ativo',
+      permiteStatus: false,
+      permiteExcluir: true
+    };
+  });
+}
+
+function listarItensComboSheet_(sheetName, idField, nameField, allowStatus) {
+  return getAllSheetData_(sheetName).map(function(item) {
+    return {
+      id: item[idField],
+      nome: normalizeLabel_(item[nameField]),
+      status: normalizeLabel_(item.status || 'Ativo') || 'Ativo',
+      permiteStatus: !!allowStatus,
+      permiteExcluir: true
+    };
+  }).filter(function(item) {
+    return !!item.nome;
+  });
+}
+
+function deleteSheetComboItem_(sheetName, idField, nameField, idOuValor) {
+  var rowIndex = findRowIndexByValue_(sheetName, idField, idOuValor);
+  if (rowIndex === -1) {
+    rowIndex = findRowIndexByValue_(sheetName, nameField, normalizeLabel_(idOuValor));
+  }
+  if (rowIndex === -1) {
+    throw new Error('Opcao nao encontrada para exclusao.');
+  }
+  getSheet_(sheetName).deleteRow(rowIndex);
+}
+
+function updateSheetComboStatus_(sheetName, idField, nameField, idOuValor, status) {
+  var rowIndex = findRowIndexByValue_(sheetName, idField, idOuValor);
+  if (rowIndex === -1) {
+    rowIndex = findRowIndexByValue_(sheetName, nameField, normalizeLabel_(idOuValor));
+  }
+  if (rowIndex === -1) {
+    throw new Error('Opcao nao encontrada para atualizar status.');
+  }
+  updateSheetRecordByRow_(sheetName, rowIndex, {
+    status: status
+  });
+}
+
+function saveSheetComboOption_(sheetName, idField, nameField, data) {
+  var rowIndex = findRowIndexByValue_(sheetName, nameField, data[nameField]);
+  if (rowIndex > -1) {
+    updateSheetRecordByRow_(sheetName, rowIndex, {
+      status: 'Ativo',
+      nome_loja: data.nome_loja,
+      nome_setor: data.nome_setor,
+      nome_prestador: data.nome_prestador
+    });
+    return;
+  }
+  appendSheetRecord_(sheetName, data);
+}
+
+function getManagedConfigKey_(grupo) {
+  var map = {
+    tipo: 'OPCOES_TIPOS',
+    prioridade: 'OPCOES_PRIORIDADES',
+    status: 'OPCOES_STATUS'
+  };
+  var key = map[normalizeComboGroup_(grupo)];
+  if (!key) {
+    throw new Error('Grupo de configuracao nao suportado: ' + grupo);
+  }
+  return key;
+}
+
+function normalizeComboGroup_(grupo) {
+  var normalized = normalizeCompare_(stripAccents_(grupo));
+  var map = {
+    lojas: 'loja',
+    loja: 'loja',
+    setores: 'setor',
+    setor: 'setor',
+    tipos: 'tipo',
+    tipo: 'tipo',
+    prioridades: 'prioridade',
+    prioridade: 'prioridade',
+    status: 'status',
+    prestador: 'executor',
+    prestadores: 'executor',
+    executor: 'executor'
+  };
+  return map[normalized] || '';
 }
