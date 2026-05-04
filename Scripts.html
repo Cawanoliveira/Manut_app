@@ -56,6 +56,7 @@
     bindConnectivityHandlers_();
     bindFilterFab_();
     bindPenInputMode_();
+    injectBrandLogos_();
     hydrateFromCache_();
     renderAll_();
     atualizarNomeArquivo('novaFoto', 'novaFotoNome');
@@ -93,6 +94,22 @@
       saveCache_();
       updateSyncStatusBar_();
       mostrarMensagemErro('Sem internet. As alteracoes serao guardadas localmente.');
+    });
+  }
+
+  function injectBrandLogos_() {
+    var template = document.getElementById('brandLogoTemplate');
+    if (!template) {
+      return;
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('.section-title-wrap'), function(node) {
+      if (node.querySelector('.brand-logo-inline')) {
+        return;
+      }
+      var clone = template.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.className = 'brand-logo-inline';
+      node.insertBefore(clone, node.firstChild);
     });
   }
 
