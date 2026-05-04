@@ -72,11 +72,11 @@
 
   .brand-logo {
     position: fixed;
-    top: 10px;
+    top: 8px;
     left: 10px;
     z-index: 58;
-    width: 86px;
-    max-height: 56px;
+    width: 102px;
+    max-height: 64px;
     height: auto;
     object-fit: contain;
     pointer-events: none;
@@ -125,7 +125,7 @@
 
   .page-shell {
     height: calc(100vh - var(--bottom-nav-height) - env(safe-area-inset-bottom, 0px));
-    padding: 112px 10px 0;
+    padding: 78px 10px 0;
     overflow: hidden;
     background: linear-gradient(180deg, #fffdfb 0%, #ffffff 100%);
   }
@@ -149,7 +149,16 @@
     align-items: flex-start;
     gap: 10px;
     margin-bottom: 10px;
-    padding-top: 2px;
+    padding-top: 0;
+    min-height: 58px;
+  }
+
+  .section-header > div:first-child {
+    padding-left: 96px;
+    min-height: 58px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
   }
 
   .section-header h2 {
@@ -1141,7 +1150,7 @@
 
   @media (min-width: 768px) {
     .page-shell {
-      padding: 112px 16px 0;
+      padding: 78px 16px 0;
     }
 
     .cards-grid {
