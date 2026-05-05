@@ -23,8 +23,8 @@
         key: ''
       },
       dashboardChartMode: {
-        loja: 'vertical',
-        setor: 'vertical'
+        loja: 'list',
+        setor: 'list'
       },
       pendingQueue: [],
       tempIdMap: {},
@@ -1488,21 +1488,24 @@
     var orderedKeys = keys.sort(function(a, b) {
       return collection[b] - collection[a];
     });
-    var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'vertical';
+    var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'list';
     var maxValue = Math.max.apply(null, orderedKeys.map(function(key) { return Number(collection[key] || 0); }));
-    if (mode === 'horizontal') {
-      return '<div class="summary-bar-chart">' + orderedKeys.map(function(key, index) {
-        var count = Number(collection[key] || 0);
-        var ratio = orderedKeys.length === 1 ? 0 : index / Math.max(1, orderedKeys.length - 1);
-        var tone = getSummaryTone_(ratio);
-        var width = maxValue ? Math.max(12, Math.round((count / maxValue) * 100)) : 12;
-        var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
-        return '<button class="summary-bar-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
-          '<span class="summary-bar-label">' + escapeHtml(key) + '</span>' +
-          '<span class="summary-bar-track"><span class="summary-bar-fill" style="width:' + width + '%; background:' + tone.start + '"></span></span>' +
-          '<span class="summary-bar-value">' + count + '</span>' +
-        '</button>';
-      }).join('') + '</div>';
+    if (mode === 'chart') {
+      return '<div class="summary-column-chart"><div class="summary-column-stage">' +
+        '<div class="summary-column-axis-y"></div>' +
+        '<div class="summary-column-axis-x"></div>' +
+        '<div class="summary-column-grid">' + orderedKeys.map(function(key, index) {
+          var count = Number(collection[key] || 0);
+          var ratio = orderedKeys.length === 1 ? 0 : index / Math.max(1, orderedKeys.length - 1);
+          var tone = getSummaryTone_(ratio);
+          var height = maxValue ? Math.max(18, Math.round((count / maxValue) * 100)) : 18;
+          var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
+          return '<button class="summary-column-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
+            '<span class="summary-column-value">' + count + '</span>' +
+            '<span class="summary-column-bar-wrap"><span class="summary-column-bar" style="height:' + height + '%; background:' + tone.start + '"></span></span>' +
+            '<span class="summary-column-label">' + escapeHtml(key) + '</span>' +
+          '</button>';
+        }).join('') + '</div></div></div>';
     }
     return orderedKeys.map(function(key, index) {
       var count = collection[key];
@@ -1521,8 +1524,8 @@
     if (!tipo) {
       return;
     }
-    var current = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'vertical';
-    appState.dashboardChartMode[tipo] = current === 'vertical' ? 'horizontal' : 'vertical';
+    var current = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'list';
+    appState.dashboardChartMode[tipo] = current === 'chart' ? 'list' : 'chart';
     saveCache_();
     renderDashboard(buildDashboardFromVisibleState_());
   }
