@@ -288,11 +288,12 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         appState.pendingQueue = cached.pendingQueue || [];
         appState.tempIdMap = cached.tempIdMap || {};
         appState.formContext = cached.formContext || appState.formContext;
-        appState.dashboardChartMode = cached.dashboardChartMode || appState.dashboardChartMode;
-        appState.currentSection = cached.currentSection || appState.currentSection;
-        appState.navigationStack = cached.navigationStack || [];
-        appState.connection.lastSyncAt = cached.lastSyncAt || '';
-      appState.dashboard = buildDashboardFromLocalState_();
+          appState.dashboardChartMode = cached.dashboardChartMode || appState.dashboardChartMode;
+          appState.currentSection = cached.currentSection || appState.currentSection;
+          appState.navigationStack = cached.navigationStack || [];
+          appState.connection.lastSyncAt = cached.lastSyncAt || '';
+        resetDashboardChartModes_();
+        appState.dashboard = buildDashboardFromLocalState_();
     } catch (error) {
       localStorage.removeItem(CACHE_KEY);
     }
@@ -343,6 +344,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     applyFilterFabPosition_();
     updateSyncStatusBar_();
     refreshBackButtons_();
+  }
+
+  function resetDashboardChartModes_() {
+    appState.dashboardChartMode = {
+      loja: 'list',
+      setor: 'list'
+    };
   }
 
   function carregarEstadoServidor_() {
@@ -398,12 +406,16 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         targetButton.classList.add('active');
       }
     }
-    if (sectionId === 'secaoHistorico') {
-      renderHistoricoGeral(getFilteredPendencias_(true));
-    }
-    if (sectionId === 'secaoListaPendencias') {
-      renderPendencias(getFilteredPendencias_(false));
-    }
+      if (sectionId === 'secaoHistorico') {
+        renderHistoricoGeral(getFilteredPendencias_(true));
+      }
+      if (sectionId === 'secaoDashboard') {
+        resetDashboardChartModes_();
+        renderDashboard(buildDashboardFromVisibleState_());
+      }
+      if (sectionId === 'secaoListaPendencias') {
+        renderPendencias(getFilteredPendencias_(false));
+      }
     saveCache_();
     refreshBackButtons_();
   }
@@ -1495,38 +1507,44 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function renderSummaryList(collection, tipo) {
-    var keys = Object.keys(collection || {});
-    if (!keys.length) {
-      return '<div class="empty-state">Sem dados suficientes.</div>';
-    }
-    var orderedKeys = keys.sort(function(a, b) {
-      return collection[b] - collection[a];
-    });
-    var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'list';
-    var series = getDashboardChartSeries_(tipo, orderedKeys, collection);
-    var maxValue = Math.max.apply(null, series.map(function(item) { return Number(item.count || 0); }).concat([0]));
-    if (mode === 'chart') {
-      var axisSteps = getDashboardAxisSteps_(maxValue);
-      return '<div class="summary-column-chart"><div class="summary-column-stage">' +
-        '<div class="summary-column-axis-y"></div>' +
-        '<div class="summary-column-axis-x"></div>' +
-        axisSteps.map(function(step) {
-          var bottom = maxValue ? Math.round((step / maxValue) * 100) : 0;
-          return '<span class="summary-column-y-label" style="bottom:calc(' + bottom + '% + 26px)">' + step + '</span>' +
-            '<span class="summary-column-grid-line" style="bottom:calc(' + bottom + '% + 26px)"></span>';
-        }).join('') +
-        '<div class="summary-column-grid" style="grid-template-columns:repeat(' + series.length + ', minmax(0, 1fr));">' + series.map(function(item, index) {
-          var count = Number(item.count || 0);
-          var ratio = series.length === 1 ? 0 : index / Math.max(1, series.length - 1);
-          var tone = getSummaryTone_(ratio);
-          var height = maxValue ? Math.max(10, Math.round((count / maxValue) * 100)) : 10;
-          var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === item.key ? ' selected' : '';
-          return '<button class="summary-column-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(item.key) + '\', this)">' +
-            '<span class="summary-column-value">' + count + '</span>' +
-            '<span class="summary-column-bar-wrap"><span class="summary-column-bar" style="height:' + height + '%; background:' + tone.start + '"></span></span>' +
-            '<span class="summary-column-label">' + escapeHtml(item.label) + '</span>' +
-          '</button>';
-        }).join('') + '</div></div></div>';
+      var chartPlotHeight = 132;
+      var chartAxisBase = 28;
+      var keys = Object.keys(collection || {});
+      if (!keys.length) {
+        return '<div class="empty-state">Sem dados suficientes.</div>';
+      }
+      var orderedKeys = keys.sort(function(a, b) {
+        var diff = Number(collection[b] || 0) - Number(collection[a] || 0);
+        if (diff !== 0) {
+          return diff;
+        }
+        return String(a || '').localeCompare(String(b || ''), 'pt-BR');
+      });
+      var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'list';
+      var series = getDashboardChartSeries_(tipo, orderedKeys, collection);
+      var maxValue = Math.max.apply(null, series.map(function(item) { return Number(item.count || 0); }).concat([0]));
+      if (mode === 'chart') {
+        var axisSteps = getDashboardAxisSteps_(maxValue);
+        return '<div class="summary-column-chart"><div class="summary-column-stage">' +
+          '<div class="summary-column-axis-y"></div>' +
+          '<div class="summary-column-axis-x"></div>' +
+          axisSteps.map(function(step) {
+            var bottom = chartAxisBase + (maxValue ? Math.round((step / maxValue) * chartPlotHeight) : 0);
+            return '<span class="summary-column-y-label" style="bottom:' + bottom + 'px">' + step + '</span>' +
+              '<span class="summary-column-grid-line" style="bottom:' + bottom + 'px"></span>';
+          }).join('') +
+          '<div class="summary-column-grid" style="grid-template-columns:repeat(' + series.length + ', minmax(0, 1fr));">' + series.map(function(item, index) {
+            var count = Number(item.count || 0);
+            var ratio = series.length === 1 ? 0 : index / Math.max(1, series.length - 1);
+            var tone = getSummaryTone_(ratio);
+            var height = maxValue ? Math.max(10, Math.round((count / maxValue) * chartPlotHeight)) : 10;
+            var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === item.key ? ' selected' : '';
+            return '<button class="summary-column-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(item.key) + '\', this)">' +
+              '<span class="summary-column-value">' + count + '</span>' +
+              '<span class="summary-column-bar-wrap"><span class="summary-column-bar" style="height:' + height + 'px; background:' + tone.start + '"></span></span>' +
+              '<span class="summary-column-label">' + escapeHtml(item.label) + '</span>' +
+            '</button>';
+          }).join('') + '</div></div></div>';
     }
     return orderedKeys.map(function(key, index) {
       var count = collection[key];
@@ -1542,26 +1560,32 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function getDashboardChartSeries_(tipo, orderedKeys, collection) {
-    if (tipo === 'loja') {
-      return ['Loja 01', 'Loja 02', 'Loja 03', 'Loja 04', 'Loja 05', 'Loja 06', 'Loja 07', 'Loja 08', 'Loja 09', 'Loja 10'].map(function(label) {
-        return {
-          key: label,
+      if (tipo === 'loja') {
+        return ['Loja 01', 'Loja 02', 'Loja 03', 'Loja 04', 'Loja 05', 'Loja 06', 'Loja 07', 'Loja 08', 'Loja 09', 'Loja 10'].map(function(label) {
+          return {
+            key: label,
           label: label.replace('Loja ', 'LJ '),
           count: getDashboardChartLojaCount_(label, collection)
         };
       });
-    }
-    if (tipo === 'setor') {
-      if (appState.combos && Array.isArray(appState.combos.setores) && appState.combos.setores.length) {
-        return appState.combos.setores.slice().map(function(label) {
-          return {
-            key: label,
-            label: label,
-            count: Number(collection[label] || 0)
-          };
-        });
       }
-    }
+      if (tipo === 'setor') {
+        if (appState.combos && Array.isArray(appState.combos.setores) && appState.combos.setores.length) {
+          return appState.combos.setores.slice().map(function(label) {
+            return {
+              key: label,
+              label: label,
+              count: Number(collection[label] || 0)
+            };
+          }).sort(function(a, b) {
+            var diff = Number(b.count || 0) - Number(a.count || 0);
+            if (diff !== 0) {
+              return diff;
+            }
+            return String(a.label || '').localeCompare(String(b.label || ''), 'pt-BR');
+          });
+        }
+      }
     return (orderedKeys || []).slice().map(function(label) {
       return {
         key: label,

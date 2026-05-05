@@ -333,6 +333,8 @@
     position: relative;
     min-height: 220px;
     padding: 10px 2px 0 34px;
+    --summary-plot-height: 132px;
+    --summary-axis-base: 28px;
   }
 
   .summary-column-y-label {
@@ -356,8 +358,8 @@
   .summary-column-axis-y {
     position: absolute;
     left: 18px;
-    top: 8px;
-    bottom: 34px;
+    top: calc(100% - var(--summary-axis-base) - var(--summary-plot-height));
+    bottom: var(--summary-axis-base);
     width: 3px;
     border-radius: 999px;
     background: #556575;
@@ -404,7 +406,7 @@
 
   .summary-column-item {
     display: grid;
-    grid-template-rows: auto minmax(130px, 1fr) auto;
+    grid-template-rows: auto var(--summary-plot-height) auto;
     align-items: end;
     justify-items: center;
     gap: 4px;
@@ -428,7 +430,7 @@
 
   .summary-column-bar-wrap {
     width: 100%;
-    height: 132px;
+    height: var(--summary-plot-height);
     display: flex;
     align-items: flex-end;
     justify-content: center;
