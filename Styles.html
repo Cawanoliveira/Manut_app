@@ -80,7 +80,7 @@
     height: auto;
     object-fit: contain;
     flex: 0 0 auto;
-    align-self: center;
+    align-self: flex-start;
   }
 
   .connection-indicator.online {
@@ -147,7 +147,7 @@
   .section-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     margin-bottom: 6px;
     padding-top: 0;
@@ -156,7 +156,7 @@
 
   .section-title-wrap {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 6px;
     min-height: 0;
   }
@@ -164,9 +164,10 @@
   .section-title-copy {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 2px;
     min-width: 0;
+    padding-top: 22px;
   }
 
   .section-title-copy h2,
@@ -193,6 +194,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .header-actions {
+    padding-top: 22px;
   }
 
   .header-actions {
