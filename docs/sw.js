@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'manutencao-pwa-v4';
+const CACHE_NAME = 'manutencao-pwa-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -43,4 +43,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-

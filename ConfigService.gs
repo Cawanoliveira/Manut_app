@@ -71,8 +71,8 @@ function getFormSupportData() {
 
 function listarOpcoesComboGerenciaveis() {
   return {
-    loja: listarItensComboSheet_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', true),
-    setor: listarItensComboSheet_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', true),
+    loja: listarItensComboSheet_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', false),
+    setor: listarItensComboSheet_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', false),
     tipo: listarItensComboConfig_('tipo'),
     prioridade: listarItensComboConfig_('prioridade'),
     status: listarItensComboConfig_('status'),
@@ -159,11 +159,7 @@ function alterarStatusOpcaoCombo(grupo, idOuValor, novoStatus) {
       return createErrorResponse_('Dados invalidos para alterar o status.');
     }
 
-    if (grupoNormalizado === 'loja') {
-      updateSheetComboStatus_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', chave, status);
-    } else if (grupoNormalizado === 'setor') {
-      updateSheetComboStatus_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', chave, status);
-    } else if (grupoNormalizado === 'executor') {
+    if (grupoNormalizado === 'executor') {
       updateSheetComboStatus_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', chave, status);
     } else {
       return createErrorResponse_('Este grupo nao permite ativar ou desativar itens.');

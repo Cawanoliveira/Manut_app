@@ -51,11 +51,13 @@ function criarCabecalhos() {
 
 function popularConfiguracoesIniciais_() {
   APP_CONFIG.DEFAULT_CONFIG.forEach(function(configRow) {
-    upsertSheetRecordByKey_(APP_CONFIG.SHEETS.CONFIG, 'chave', {
-      chave: configRow[0],
-      valor: configRow[1],
-      descricao: configRow[2]
-    });
+    if (findRowIndexByValue_(APP_CONFIG.SHEETS.CONFIG, 'chave', configRow[0]) === -1) {
+      appendSheetRecord_(APP_CONFIG.SHEETS.CONFIG, {
+        chave: configRow[0],
+        valor: configRow[1],
+        descricao: configRow[2]
+      });
+    }
   });
 }
 

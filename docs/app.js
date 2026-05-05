@@ -1,5 +1,4 @@
-﻿<script>
-  var CACHE_KEY = 'manutencao_offline_cache_v2';
+var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -22,6 +21,10 @@
         type: '',
         key: ''
       },
+      dashboardChartMode: {
+        loja: 'vertical',
+        setor: 'vertical'
+      },
       pendingQueue: [],
       tempIdMap: {},
       formContext: {
@@ -38,6 +41,7 @@
         description: '',
         items: [],
         anchorType: '',
+        anchorKey: '',
         filterLoja: '',
         filterSetor: '',
         filterStatus: ''
@@ -293,12 +297,13 @@
       appState.comboAdmin = cached.comboAdmin || {};
       appState.allPendencias = cached.allPendencias || [];
       appState.detailsById = cached.detailsById || {};
-      appState.pendingQueue = cached.pendingQueue || [];
-      appState.tempIdMap = cached.tempIdMap || {};
-      appState.formContext = cached.formContext || appState.formContext;
-      appState.currentSection = cached.currentSection || appState.currentSection;
-      appState.navigationStack = cached.navigationStack || [];
-      appState.connection.lastSyncAt = cached.lastSyncAt || '';
+        appState.pendingQueue = cached.pendingQueue || [];
+        appState.tempIdMap = cached.tempIdMap || {};
+        appState.formContext = cached.formContext || appState.formContext;
+        appState.dashboardChartMode = cached.dashboardChartMode || appState.dashboardChartMode;
+        appState.currentSection = cached.currentSection || appState.currentSection;
+        appState.navigationStack = cached.navigationStack || [];
+        appState.connection.lastSyncAt = cached.lastSyncAt || '';
       appState.dashboard = buildDashboardFromLocalState_();
     } catch (error) {
       localStorage.removeItem(CACHE_KEY);
@@ -316,12 +321,13 @@
         comboAdmin: appState.comboAdmin,
         allPendencias: appState.allPendencias,
         detailsById: appState.detailsById,
-        pendingQueue: appState.pendingQueue,
-        tempIdMap: appState.tempIdMap,
-        formContext: appState.formContext,
-        currentSection: appState.currentSection,
-        navigationStack: appState.navigationStack,
-        lastSyncAt: appState.connection.lastSyncAt
+          pendingQueue: appState.pendingQueue,
+          tempIdMap: appState.tempIdMap,
+          formContext: appState.formContext,
+          dashboardChartMode: appState.dashboardChartMode,
+          currentSection: appState.currentSection,
+          navigationStack: appState.navigationStack,
+          lastSyncAt: appState.connection.lastSyncAt
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch (error) {
@@ -493,14 +499,11 @@
     if (!select) {
       return;
     }
-    var currentValue = select.value && select.value !== '__edit__' ? select.value : (select.dataset.lastValue || '');
+    var currentValue = select.value || (select.dataset.lastValue || '');
     var options = ['<option value="">' + (placeholder || 'Selecione') + '</option>'];
     (values || []).forEach(function(value) {
       options.push('<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>');
     });
-    if (getManagedSelectConfig_(elementId)) {
-      options.push('<option value="__edit__">EDITAR</option>');
-    }
     select.innerHTML = options.join('');
     if (currentValue) {
       select.value = currentValue;
@@ -508,7 +511,7 @@
     if (!allowBlank && values && values.length === 1 && !select.value) {
       select.value = values[0];
     }
-    if (select.value && select.value !== '__edit__') {
+    if (select.value) {
       select.dataset.lastValue = select.value;
     }
   }
@@ -520,21 +523,16 @@
         return;
       }
       select.dataset.comboEditorBound = '1';
-      select.addEventListener('focus', function() {
-        if (select.value && select.value !== '__edit__') {
-          select.dataset.lastValue = select.value;
-        }
+        select.addEventListener('focus', function() {
+          if (select.value) {
+            select.dataset.lastValue = select.value;
+          }
+        });
+        select.addEventListener('change', function() {
+          select.dataset.lastValue = select.value || '';
+        });
       });
-      select.addEventListener('change', function() {
-        if (select.value === '__edit__') {
-          select.value = select.dataset.lastValue || '';
-          abrirEditorOpcoesSelect(selectId);
-          return;
-        }
-        select.dataset.lastValue = select.value || '';
-      });
-    });
-  }
+    }
 
   function getManagedSelectMap_() {
     return {
@@ -1111,9 +1109,14 @@
 
   function salvarConfiguracoes() {
     var configs = Array.from(document.querySelectorAll('.config-input')).map(function(input) {
+      var value = input.value;
+      if (input.dataset.chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO' && !String(value || '').trim()) {
+        value = '10';
+        input.value = value;
+      }
       return {
         chave: input.dataset.chave,
-        valor: input.value
+        valor: value
       };
     });
     appState.configs = configs.map(function(config) {
@@ -1461,17 +1464,43 @@
     var orderedKeys = keys.sort(function(a, b) {
       return collection[b] - collection[a];
     });
+    var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'vertical';
+    var maxValue = Math.max.apply(null, orderedKeys.map(function(key) { return Number(collection[key] || 0); }));
+    if (mode === 'horizontal') {
+      return '<div class="summary-bar-chart">' + orderedKeys.map(function(key, index) {
+        var count = Number(collection[key] || 0);
+        var ratio = orderedKeys.length === 1 ? 0 : index / Math.max(1, orderedKeys.length - 1);
+        var tone = getSummaryTone_(ratio);
+        var width = maxValue ? Math.max(12, Math.round((count / maxValue) * 100)) : 12;
+        var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
+        return '<button class="summary-bar-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
+          '<span class="summary-bar-label">' + escapeHtml(key) + '</span>' +
+          '<span class="summary-bar-track"><span class="summary-bar-fill" style="width:' + width + '%; background:' + tone.start + '"></span></span>' +
+          '<span class="summary-bar-value">' + count + '</span>' +
+        '</button>';
+      }).join('') + '</div>';
+    }
     return orderedKeys.map(function(key, index) {
       var count = collection[key];
       var ratio = orderedKeys.length === 1 ? 0 : index / Math.max(1, orderedKeys.length - 1);
       var tone = getSummaryTone_(ratio);
-      var bgColor = 'linear-gradient(180deg, ' + tone.end + ' 0%, ' + tone.start + ' 100%)';
+      var bgColor = tone.start;
       var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
       return '<button class="summary-item clickable' + selectedClass + '" style="background:' + bgColor + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
         '<div><strong>' + escapeHtml(key) + '</strong></div>' +
         '<strong>' + count + '</strong>' +
       '</button>';
     }).join('');
+  }
+
+  function alternarGraficoResumo(tipo) {
+    if (!tipo) {
+      return;
+    }
+    var current = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'vertical';
+    appState.dashboardChartMode[tipo] = current === 'vertical' ? 'horizontal' : 'vertical';
+    saveCache_();
+    renderDashboard(buildDashboardFromVisibleState_());
   }
 
   function getSummaryTone_(ratio) {
@@ -1501,12 +1530,13 @@
       key: chave
     };
     saveCache_();
-    highlightDashboardSelection_(buttonEl, '.summary-item.clickable');
+    highlightDashboardSelection_(buttonEl, '.summary-item.clickable, .summary-bar-item');
     openMetricZoom_(
       (tipo === 'loja' ? 'Loja: ' : 'Setor: ') + chave,
       tipo === 'loja' ? 'Pendencias ativas desta loja.' : 'Pendencias ativas deste setor por loja.',
       items,
-      tipo
+      tipo,
+      chave
     );
   }
 
@@ -1532,12 +1562,13 @@
     }).join('');
   }
 
-  function openMetricZoom_(title, description, items, anchorType) {
+  function openMetricZoom_(title, description, items, anchorType, anchorKey) {
     appState.zoomContext = {
       title: title || 'Detalhes',
       description: description || '',
       items: (items || []).slice(),
       anchorType: anchorType || 'metric',
+      anchorKey: anchorKey || '',
       filterLoja: '',
       filterSetor: '',
       filterStatus: ''
@@ -1720,6 +1751,9 @@
       document.getElementById('detalhesPendencia').innerHTML = '<div class="empty-state">Pendencia nao encontrada.</div>';
       return;
     }
+    var anexoButton = (item.id_arquivo_drive || item.foto_preview)
+      ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>'
+      : '<button class="clip-button disabled" type="button" disabled>&#128206;</button>';
     var html = '<div class="details-grid">' +
       '<table class="details-table">' +
         '<tbody>' +
@@ -1743,13 +1777,14 @@
             { label: 'Previsao', value: formatDateBr(item.previsao_entrega) || '-' },
             { label: 'Conclusao', value: (formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || '') }
           ])) +
+          detailsRow_('Textos', groupedDetail_([
+            { label: 'Descricao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' },
+            { label: 'Observacao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' }
+          ], true)) +
           detailsRow_('Acoes', '<span class="details-table-title">Acoes da pendencia</span><div class="details-table-actions">' +
-            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' +
-            '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' +
-            (item.id_arquivo_drive ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
-            '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
-            '<button class="ghost-button compact-button" onclick="alterarStatus(\'' + escapeJs(item.id_pendencia) + '\')">Alterar status</button>' +
             '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
+            '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
+            anexoButton +
             '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
           '</div>') +
         '</tbody>' +
@@ -1790,9 +1825,12 @@
       return;
     }
     container.innerHTML = visibleItems.map(function(item) {
+      var isDias = item.chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO';
+      var inputType = isDias ? 'number' : 'text';
+      var inputValue = isDias ? String(item.valor || '10') : String(item.valor || '');
       return '<div class="config-item">' +
         '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
-        '<div><input type="text" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(item.valor || '') + '"></div>' +
+        '<div><input type="' + inputType + '" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(inputValue) + '"' + (isDias ? ' min="0" step="1"' : '') + '></div>' +
       '</div>';
     }).join('');
   }
@@ -2643,7 +2681,7 @@
 
   function calculateExcluirFotoEm_() {
     var config = findConfigByKey_('DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO');
-    var dias = Number(config && config.valor ? config.valor : 30);
+    var dias = Number(config && config.valor ? config.valor : 10);
     var base = new Date();
     var data = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias);
     return toInputDate_(data);

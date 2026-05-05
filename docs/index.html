@@ -103,20 +103,22 @@
         </div>
         <div id="dashboardCards" class="cards-grid"></div>
         <div class="summary-grid">
-          <article class="panel">
-            <div class="panel-title-row">
-              <h3>Por loja</h3>
-            </div>
-            <div id="resumoPorLoja" class="summary-list empty-state">Nenhum dado carregado.</div>
-          </article>
-          <article class="panel">
-            <div class="panel-title-row">
-              <h3>Por setor</h3>
-            </div>
-            <div id="resumoPorSetor" class="summary-list empty-state">Nenhum dado carregado.</div>
-          </article>
-        </div>
-      </section>
+            <article class="panel">
+              <div class="panel-title-row">
+                <h3>Por loja</h3>
+                <button type="button" class="chart-toggle-button" onclick="alternarGraficoResumo('loja')" title="Alternar grafico por loja">&#128202;</button>
+              </div>
+              <div id="resumoPorLoja" class="summary-list empty-state">Nenhum dado carregado.</div>
+            </article>
+            <article class="panel">
+              <div class="panel-title-row">
+                <h3>Por setor</h3>
+                <button type="button" class="chart-toggle-button" onclick="alternarGraficoResumo('setor')" title="Alternar grafico por setor">&#128202;</button>
+              </div>
+              <div id="resumoPorSetor" class="summary-list empty-state">Nenhum dado carregado.</div>
+            </article>
+          </div>
+        </section>
 
       <section id="secaoNovaPendencia" class="page-section">
         <div class="section-header">
@@ -132,23 +134,35 @@
           </div>
         </div>
 
-        <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
-          <label>
-            <span>Loja *</span>
-            <select id="novaLoja" required></select>
-          </label>
-          <label>
-            <span>Setor *</span>
-            <select id="novoSetor" required></select>
-          </label>
-          <label>
-            <span>Tipo</span>
-            <select id="novoTipo"></select>
-          </label>
-          <label>
-            <span>Prioridade</span>
-            <select id="novaPrioridade"></select>
-          </label>
+          <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
+            <label>
+              <span>Loja *</span>
+              <div class="select-manage-row">
+                <select id="novaLoja" required></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novaLoja')">EDITAR</button>
+              </div>
+            </label>
+            <label>
+              <span>Setor *</span>
+              <div class="select-manage-row">
+                <select id="novoSetor" required></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novoSetor')">EDITAR</button>
+              </div>
+            </label>
+            <label>
+              <span>Tipo</span>
+              <div class="select-manage-row">
+                <select id="novoTipo"></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novoTipo')">EDITAR</button>
+              </div>
+            </label>
+            <label>
+              <span>Prioridade</span>
+              <div class="select-manage-row">
+                <select id="novaPrioridade"></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novaPrioridade')">EDITAR</button>
+              </div>
+            </label>
 
           <label class="full-width">
             <span>Descricao *</span>
@@ -261,14 +275,20 @@
         </div>
         <form id="formEditarPendencia" class="panel form-grid" onsubmit="salvarEdicaoPendencia(event)">
           <input id="editIdPendencia" type="hidden">
-          <label>
-            <span>Executor / prestador</span>
-            <select id="editExecutor"></select>
-          </label>
-          <label>
-            <span>Status</span>
-            <select id="editStatus"></select>
-          </label>
+            <label>
+              <span>Executor / prestador</span>
+              <div class="select-manage-row">
+                <select id="editExecutor"></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editExecutor')">EDITAR</button>
+              </div>
+            </label>
+            <label>
+              <span>Status</span>
+              <div class="select-manage-row">
+                <select id="editStatus"></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editStatus')">EDITAR</button>
+              </div>
+            </label>
           <label>
             <span>Inicio</span>
             <input id="editDataInicio" type="date">
@@ -277,14 +297,20 @@
             <span>Previsao</span>
             <input id="editPrevisaoEntrega" type="date">
           </label>
-          <label>
-            <span>Tipo</span>
-            <select id="editTipo"></select>
-          </label>
-          <label>
-            <span>Prioridade</span>
-            <select id="editPrioridade"></select>
-          </label>
+            <label>
+              <span>Tipo</span>
+              <div class="select-manage-row">
+                <select id="editTipo"></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editTipo')">EDITAR</button>
+              </div>
+            </label>
+            <label>
+              <span>Prioridade</span>
+              <div class="select-manage-row">
+                <select id="editPrioridade"></select>
+                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editPrioridade')">EDITAR</button>
+              </div>
+            </label>
           <label class="full-width">
             <span>Observacao</span>
             <div class="field-with-action">
