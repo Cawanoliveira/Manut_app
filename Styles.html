@@ -57,9 +57,9 @@
   .connection-indicator {
     position: fixed;
     top: 8px;
-    right: 12px;
-    left: auto;
-    transform: none;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
     z-index: 60;
     min-width: 66px;
     text-align: center;
@@ -127,7 +127,7 @@
 
   .page-shell {
     height: calc(100vh - var(--bottom-nav-height) - env(safe-area-inset-bottom, 0px));
-    padding: 14px 10px 0;
+    padding: 8px 10px 0;
     overflow: hidden;
     background: linear-gradient(180deg, #fffdfb 0%, #ffffff 100%);
   }
@@ -1405,7 +1405,7 @@
 
   @media (min-width: 768px) {
     .page-shell {
-      padding: 62px 16px 0;
+      padding: 8px 16px 0;
     }
 
     .summary-grid {

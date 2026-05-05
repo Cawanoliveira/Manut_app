@@ -111,7 +111,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     if (!fab) {
       return;
     }
-    fab.dataset.userMoved = fab.dataset.userMoved || '0';
+    fab.dataset.userMoved = '0';
     applyFilterFabPosition_();
     fab.addEventListener('pointerdown', function(event) {
       if (event.button !== 0) {
@@ -193,6 +193,9 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       return;
     }
     indicator.style.top = '8px';
+    indicator.style.left = '50%';
+    indicator.style.right = 'auto';
+    indicator.style.transform = 'translateX(-50%)';
   }
 
   function setFilterFabPosition_(left, top) {
