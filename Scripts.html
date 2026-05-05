@@ -193,22 +193,7 @@
     if (!indicator || !fab) {
       return;
     }
-
-    var activeSection = document.querySelector('.section.active') || document.querySelector('.section:not(.hidden)');
-    var header = activeSection ? activeSection.querySelector('.section-header') : null;
-    var titleWrap = header ? header.querySelector('.section-title-wrap') : null;
-    var referenceRect = titleWrap ? titleWrap.getBoundingClientRect() : (header ? header.getBoundingClientRect() : null);
-    var indicatorHeight = indicator.offsetHeight || 30;
-    var fabHeight = fab.offsetHeight || 42;
-    var gap = 8;
-    var groupTop = 44;
-
-    if (referenceRect && referenceRect.height) {
-      var groupHeight = indicatorHeight + gap + fabHeight;
-      groupTop = Math.max(12, referenceRect.top + ((referenceRect.height - groupHeight) / 2));
-    }
-
-    indicator.style.top = Math.round(groupTop) + 'px';
+    indicator.style.top = '8px';
   }
 
   function setFilterFabPosition_(left, top) {
@@ -1516,8 +1501,8 @@
       return collection[b] - collection[a];
     });
     var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'list';
-    var categories = getDashboardChartCategories_(tipo, orderedKeys);
-    var maxValue = Math.max.apply(null, categories.map(function(key) { return Number(collection[key] || 0); }).concat([0]));
+    var series = getDashboardChartSeries_(tipo, orderedKeys, collection);
+    var maxValue = Math.max.apply(null, series.map(function(item) { return Number(item.count || 0); }).concat([0]));
     if (mode === 'chart') {
       var axisSteps = getDashboardAxisSteps_(maxValue);
       return '<div class="summary-column-chart"><div class="summary-column-stage">' +
@@ -1528,16 +1513,16 @@
           return '<span class="summary-column-y-label" style="bottom:calc(' + bottom + '% + 26px)">' + step + '</span>' +
             '<span class="summary-column-grid-line" style="bottom:calc(' + bottom + '% + 26px)"></span>';
         }).join('') +
-        '<div class="summary-column-grid">' + categories.map(function(key, index) {
-          var count = Number(collection[key] || 0);
-          var ratio = categories.length === 1 ? 0 : index / Math.max(1, categories.length - 1);
+        '<div class="summary-column-grid" style="grid-template-columns:repeat(' + series.length + ', minmax(0, 1fr));">' + series.map(function(item, index) {
+          var count = Number(item.count || 0);
+          var ratio = series.length === 1 ? 0 : index / Math.max(1, series.length - 1);
           var tone = getSummaryTone_(ratio);
-          var height = maxValue ? Math.max(18, Math.round((count / maxValue) * 100)) : 18;
-          var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
-          return '<button class="summary-column-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(key) + '\', this)">' +
+          var height = maxValue ? Math.max(10, Math.round((count / maxValue) * 100)) : 10;
+          var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === item.key ? ' selected' : '';
+          return '<button class="summary-column-item' + selectedClass + '" onclick="abrirResumoAgrupado(\'' + tipo + '\', \'' + escapeJs(item.key) + '\', this)">' +
             '<span class="summary-column-value">' + count + '</span>' +
             '<span class="summary-column-bar-wrap"><span class="summary-column-bar" style="height:' + height + '%; background:' + tone.start + '"></span></span>' +
-            '<span class="summary-column-label">' + escapeHtml(key) + '</span>' +
+            '<span class="summary-column-label">' + escapeHtml(item.label) + '</span>' +
           '</button>';
         }).join('') + '</div></div></div>';
     }
@@ -1551,19 +1536,57 @@
         '<div><strong>' + escapeHtml(key) + '</strong></div>' +
         '<strong>' + count + '</strong>' +
       '</button>';
-    }).join('');
+      }).join('');
   }
 
-  function getDashboardChartCategories_(tipo, orderedKeys) {
+  function getDashboardChartSeries_(tipo, orderedKeys, collection) {
     if (tipo === 'loja') {
-      return ['Loja 01', 'Loja 02', 'Loja 03', 'Loja 04', 'Loja 05', 'Loja 06', 'Loja 07', 'Loja 08', 'Loja 09', 'Loja 10'];
+      return ['Loja 01', 'Loja 02', 'Loja 03', 'Loja 04', 'Loja 05', 'Loja 06', 'Loja 07', 'Loja 08', 'Loja 09', 'Loja 10'].map(function(label) {
+        return {
+          key: label,
+          label: label.replace('Loja ', 'LJ '),
+          count: getDashboardChartLojaCount_(label, collection)
+        };
+      });
     }
     if (tipo === 'setor') {
       if (appState.combos && Array.isArray(appState.combos.setores) && appState.combos.setores.length) {
-        return appState.combos.setores.slice();
+        return appState.combos.setores.slice().map(function(label) {
+          return {
+            key: label,
+            label: label,
+            count: Number(collection[label] || 0)
+          };
+        });
       }
     }
-    return (orderedKeys || []).slice();
+    return (orderedKeys || []).slice().map(function(label) {
+      return {
+        key: label,
+        label: label,
+        count: Number(collection[label] || 0)
+      };
+    });
+  }
+
+  function getDashboardChartLojaCount_(targetLabel, collection) {
+    var target = normalizeLojaChartKey_(targetLabel);
+    var count = 0;
+    Object.keys(collection || {}).forEach(function(key) {
+      if (normalizeLojaChartKey_(key) === target) {
+        count += Number(collection[key] || 0);
+      }
+    });
+    return count;
+  }
+
+  function normalizeLojaChartKey_(value) {
+    var text = safeTrim_(value).toUpperCase();
+    var match = text.match(/(\d{1,2})/);
+    if (!match) {
+      return text;
+    }
+    return 'LOJA ' + ('0' + Number(match[1])).slice(-2);
   }
 
   function getDashboardAxisSteps_(maxValue) {
