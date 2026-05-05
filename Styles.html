@@ -79,9 +79,8 @@
     max-height: 86px;
     height: auto;
     object-fit: contain;
+    flex: 0 0 auto;
     align-self: center;
-    grid-column: 1;
-    grid-row: 1 / span 2;
   }
 
   .connection-indicator.online {
@@ -156,23 +155,23 @@
   }
 
   .section-title-wrap {
-    display: grid;
-    grid-template-columns: auto 1fr;
+    display: flex;
     align-items: center;
-    column-gap: 8px;
-    row-gap: 0;
+    gap: 6px;
     min-height: 0;
   }
 
-  .section-title-wrap h2,
-  .section-title-wrap p {
-    grid-column: 2;
+  .section-title-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
   }
 
-  .section-title-wrap h2 {
-    align-self: center;
+  .section-title-copy h2,
+  .section-title-copy p {
     margin: 0;
-    transform: translateY(4px);
   }
 
   .section-header h2 {
