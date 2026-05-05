@@ -136,6 +136,9 @@ function listarPendencias(filtros) {
       item.status = normalizeLabel_(item.status);
       item.prioridade = normalizeLabel_(item.prioridade);
       item.tipo = normalizeLabel_(item.tipo);
+      if (!item.solicitante || normalizeCompare_(item.solicitante) === 'usuario_nao_identificado') {
+        item.solicitante = getCurrentUserIdentifier_();
+      }
       item.data_abertura_label = formatarData(item.data_abertura);
       item.previsao_entrega_label = formatarData(item.previsao_entrega);
       item.data_conclusao_label = formatarData(item.data_conclusao);
@@ -408,6 +411,9 @@ function buildPendenciaPayloadById_(id) {
   pendencia.status = normalizeLabel_(pendencia.status);
   pendencia.prioridade = normalizeLabel_(pendencia.prioridade);
   pendencia.tipo = normalizeLabel_(pendencia.tipo);
+  if (!pendencia.solicitante || normalizeCompare_(pendencia.solicitante) === 'usuario_nao_identificado') {
+    pendencia.solicitante = getCurrentUserIdentifier_();
+  }
   pendencia.data_abertura_label = formatarData(pendencia.data_abertura);
   pendencia.previsao_entrega_label = formatarData(pendencia.previsao_entrega);
   pendencia.data_conclusao_label = formatarData(pendencia.data_conclusao);

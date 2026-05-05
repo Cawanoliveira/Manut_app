@@ -111,8 +111,15 @@ function gerarId(prefixo) {
 }
 
 function getCurrentUserIdentifier_() {
-  var email = Session.getActiveUser().getEmail();
-  return email || 'usuario_nao_identificado';
+  var activeEmail = safeString_(Session.getActiveUser().getEmail());
+  if (activeEmail) {
+    return activeEmail;
+  }
+  var effectiveEmail = safeString_(Session.getEffectiveUser().getEmail());
+  if (effectiveEmail) {
+    return effectiveEmail;
+  }
+  return 'usuario_nao_identificado';
 }
 
 function createSuccessResponse_(message, data) {

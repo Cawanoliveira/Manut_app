@@ -1795,14 +1795,14 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
             { label: 'Status', value: renderTag('status', item.status || '-') }
           ], true)) +
           detailsRow_('Solicitante / Executor', groupedDetail_([
-            { label: 'Solicitante', value: item.solicitante || '-' },
+            { label: 'Solicitante', value: displaySolicitante_(item.solicitante) || '-' },
             { label: 'Executor', value: item.executor || '-' }
           ])) +
           detailsRow_('Datas', groupedDetail_([
-            { label: 'Abertura', value: (formatDateBr(item.data_abertura) || '-') + ' ' + (item.hora_abertura || '') },
+            { label: 'Abertura', value: joinDateAndTime_(item.data_abertura, item.hora_abertura) },
             { label: 'Inicio', value: formatDateBr(item.data_inicio) || '-' },
             { label: 'Previsao', value: formatDateBr(item.previsao_entrega) || '-' },
-            { label: 'Conclusao', value: (formatDateBr(item.data_conclusao) || '-') + ' ' + (item.hora_conclusao || '') }
+            { label: 'Conclusao', value: joinDateAndTime_(item.data_conclusao, item.hora_conclusao) }
           ])) +
           detailsRow_('Textos', groupedDetail_([
             { label: 'Descricao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' },
@@ -2953,11 +2953,53 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
       return formatDateBr(value.slice(0, 10));
     }
+    if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+      return value.slice(0, 10);
+    }
     var parsed = new Date(value);
     if (!isNaN(parsed.getTime()) && parsed.getFullYear() >= 2000) {
       return formatDateBr(parsed);
     }
     return value;
+  }
+
+  function formatTimeOnly_(value) {
+    if (!value) {
+      return '';
+    }
+    if (value instanceof Date) {
+      if (isNaN(value.getTime())) {
+        return '';
+      }
+      return [
+        ('0' + value.getHours()).slice(-2),
+        ('0' + value.getMinutes()).slice(-2),
+        ('0' + value.getSeconds()).slice(-2)
+      ].join(':');
+    }
+    var text = String(value).trim();
+    var match = text.match(/(\d{2}:\d{2}:\d{2})$/);
+    if (match) {
+      return match[1];
+    }
+    return '';
+  }
+
+  function joinDateAndTime_(dateValue, timeValue) {
+    var dateText = formatDateBr(dateValue);
+    var timeText = formatTimeOnly_(timeValue);
+    if (dateText && timeText) {
+      return dateText + ' ' + timeText;
+    }
+    return dateText || timeText || '-';
+  }
+
+  function displaySolicitante_(value) {
+    var text = safeTrim_(value);
+    if (!text || normalizeText_(text) === 'usuario_nao_identificado') {
+      return 'cawan.oliveira@bigcompras.local';
+    }
+    return text;
   }
 
   function formatDateTimeHuman_(value) {
