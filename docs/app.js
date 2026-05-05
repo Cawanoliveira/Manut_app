@@ -1,4 +1,5 @@
-var CACHE_KEY = 'manutencao_offline_cache_v2';
+﻿<script>
+  var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -61,7 +62,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     bindConnectivityHandlers_();
     bindFilterFab_();
     bindPenInputMode_();
-    injectBrandLogos_();
     hydrateFromCache_();
     renderAll_();
     atualizarNomeArquivo('novaFoto', 'novaFotoNome');
@@ -99,22 +99,6 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       saveCache_();
       updateSyncStatusBar_();
       mostrarMensagemErro('Sem internet. As alteracoes serao guardadas localmente.');
-    });
-  }
-
-  function injectBrandLogos_() {
-    var template = document.getElementById('brandLogoTemplate');
-    if (!template) {
-      return;
-    }
-    Array.prototype.forEach.call(document.querySelectorAll('.section-title-wrap'), function(node) {
-      if (node.querySelector('.brand-logo-inline')) {
-        return;
-      }
-      var clone = template.cloneNode(true);
-      clone.removeAttribute('id');
-      clone.className = 'brand-logo-inline';
-      node.insertBefore(clone, node.firstChild);
     });
   }
 
@@ -2951,13 +2935,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function normalizeVoiceTranscript_(value) {
     return String(value || '')
-      .replace(/\b(nova linha|novo paragrafo|novo parágrafo)\b/gi, '\n')
-      .replace(/\b(virgula|vírgula)\b/gi, ',')
+      .replace(/\b(nova linha|novo paragrafo|novo parÃ¡grafo)\b/gi, '\n')
+      .replace(/\b(virgula|vÃ­rgula)\b/gi, ',')
       .replace(/\b(ponto final)\b/gi, '.')
       .replace(/\b(dois pontos)\b/gi, ':')
       .replace(/\b(ponto e virgula)\b/gi, ';')
-      .replace(/\b(abrir parenteses|abrir parênteses)\b/gi, '(')
-      .replace(/\b(fechar parenteses|fechar parênteses)\b/gi, ')')
+      .replace(/\b(abrir parenteses|abrir parÃªnteses)\b/gi, '(')
+      .replace(/\b(fechar parenteses|fechar parÃªnteses)\b/gi, ')')
       .replace(/[ \t]*\n[ \t]*/g, '\n')
       .replace(/\s+,/g, ',')
       .replace(/\s+\./g, '.')

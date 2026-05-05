@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manutencao-pwa-v3';
+﻿const CACHE_NAME = 'manutencao-pwa-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,7 +7,8 @@ const APP_SHELL = [
   './config.js',
   './manifest.webmanifest',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './logopretoelaranja.webp'
 ];
 
 self.addEventListener('install', (event) => {
@@ -42,3 +43,4 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
