@@ -167,8 +167,16 @@
     }
     var viewportWidth = (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 1024;
     var fabWidth = fab.offsetWidth || 124;
+    var indicator = document.getElementById('connectionIndicator');
     var centeredLeft = Math.max(10, (viewportWidth / 2) - (fabWidth / 2));
-    setFilterFabPosition_(centeredLeft, 42);
+    var top = 42;
+    if (indicator) {
+      var rect = indicator.getBoundingClientRect();
+      var indicatorCenter = rect.left + (rect.width / 2);
+      centeredLeft = Math.max(10, indicatorCenter - (fabWidth / 2));
+      top = Math.max(42, rect.bottom + 10);
+    }
+    setFilterFabPosition_(centeredLeft, top);
   }
 
   function setFilterFabPosition_(left, top) {
