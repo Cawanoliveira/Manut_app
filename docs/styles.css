@@ -146,7 +146,7 @@
   .section-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     margin-bottom: 6px;
     padding-top: 0;
@@ -192,6 +192,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .header-actions {
+    align-self: flex-start;
+    margin-top: 18px;
   }
 
   .panel {
