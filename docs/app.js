@@ -107,6 +107,7 @@
     if (!fab) {
       return;
     }
+    fab.dataset.userMoved = fab.dataset.userMoved || '0';
     applyFilterFabPosition_();
     fab.addEventListener('pointerdown', function(event) {
       if (event.button !== 0) {
@@ -144,6 +145,7 @@
         return;
       }
       if (filterFabDragState_.moved) {
+        fab.dataset.userMoved = '1';
         fab.dataset.suppressClick = '1';
         setTimeout(function() {
           fab.dataset.suppressClick = '0';
@@ -158,25 +160,50 @@
 
   function applyFilterFabPosition_() {
     var fab = document.getElementById('filterFab');
+    var indicator = document.getElementById('connectionIndicator');
+    positionCenteredHeaderControls_();
     if (!fab) {
       return;
     }
-    if (fab.style.left && fab.style.top) {
+    if (fab.dataset.userMoved === '1' && fab.style.left && fab.style.top) {
       setFilterFabPosition_(parseFloat(fab.style.left) || 12, parseFloat(fab.style.top) || 42);
       return;
     }
     var viewportWidth = (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 1024;
     var fabWidth = fab.offsetWidth || 124;
-    var indicator = document.getElementById('connectionIndicator');
     var centeredLeft = Math.max(10, (viewportWidth / 2) - (fabWidth / 2));
-    var top = 42;
+    var top = 82;
     if (indicator) {
       var rect = indicator.getBoundingClientRect();
       var indicatorCenter = rect.left + (rect.width / 2);
       centeredLeft = Math.max(10, indicatorCenter - (fabWidth / 2));
-      top = Math.max(42, rect.bottom + 10);
+      top = Math.max(54, rect.bottom + 10);
     }
     setFilterFabPosition_(centeredLeft, top);
+  }
+
+  function positionCenteredHeaderControls_() {
+    var indicator = document.getElementById('connectionIndicator');
+    var fab = document.getElementById('filterFab');
+    if (!indicator || !fab) {
+      return;
+    }
+
+    var activeSection = document.querySelector('.section.active') || document.querySelector('.section:not(.hidden)');
+    var header = activeSection ? activeSection.querySelector('.section-header') : null;
+    var titleWrap = header ? header.querySelector('.section-title-wrap') : null;
+    var referenceRect = titleWrap ? titleWrap.getBoundingClientRect() : (header ? header.getBoundingClientRect() : null);
+    var indicatorHeight = indicator.offsetHeight || 30;
+    var fabHeight = fab.offsetHeight || 42;
+    var gap = 8;
+    var groupTop = 44;
+
+    if (referenceRect && referenceRect.height) {
+      var groupHeight = indicatorHeight + gap + fabHeight;
+      groupTop = Math.max(12, referenceRect.top + ((referenceRect.height - groupHeight) / 2));
+    }
+
+    indicator.style.top = Math.round(groupTop) + 'px';
   }
 
   function setFilterFabPosition_(left, top) {
