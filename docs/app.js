@@ -1390,6 +1390,29 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     return '<span class="tag ' + className + '">' + escapeHtml(label) + '</span>';
   }
 
+  function getSetorTheme_(setor) {
+    var normalized = normalizeText_(setor);
+    var map = {
+      'acougue': { bg: '#b91c1c', color: '#ffffff' },
+      'padaria': { bg: '#facc15', color: '#422006' },
+      'mercearia': { bg: '#7c4a2d', color: '#ffffff' },
+      'hortifruti': { bg: '#15803d', color: '#ffffff' },
+      'frente de caixa': { bg: '#9ca3af', color: '#111827' },
+      'deposito': { bg: '#7c3aed', color: '#ffffff' },
+      'area externa': { bg: '#111111', color: '#ffffff' },
+      'manutencao': { bg: '#6b7280', color: '#ffffff' },
+      'outros': { bg: '#6b7280', color: '#ffffff' },
+      'frios': { bg: '#2563eb', color: '#ffffff' },
+      'gerencia': { bg: '#fdba74', color: '#7c2d12' }
+    };
+    return map[normalized] || { bg: '#111111', color: '#ffffff' };
+  }
+
+  function renderSetorBadge_(setor, extraClass) {
+    var theme = getSetorTheme_(setor);
+    return '<span class="setor-badge' + (extraClass ? ' ' + extraClass : '') + '" style="background:' + theme.bg + '; color:' + theme.color + ';">' + escapeHtml(setor || '-') + '</span>';
+  }
+
   function renderDashboard(data) {
     var cards = [
       { key: 'abertas', label: 'Abertas', value: data.abertas || 0, className: '' },
@@ -1549,7 +1572,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       return '<div class="zoom-item zoom-table-item">' +
         '<div class="zoom-main"><div class="zoom-badges">' +
           '<span class="zoom-chip">' + escapeHtml(item.loja || '-') + '</span>' +
-          '<span class="zoom-chip alt">' + escapeHtml(item.setor || '-') + '</span>' +
+          renderSetorBadge_(item.setor || '-', 'zoom-chip alt setor-badge-compact') +
           renderDashboardStatusTag_(statusAtual) +
         '</div><div class="muted-text">' + escapeHtml(item.tipo || 'Sem classificacao') + ' | ' + escapeHtml(item.prioridade || 'Sem urgencia') + '</div>' +
         '<div class="muted-text">' + escapeHtml(resumirTexto(item.descricao || item.observacao || '', 96)) + '</div></div>' +
@@ -1592,6 +1615,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     preencherSelect('metricZoomFiltroStatus', statusList, 'Todos os status', true);
     document.getElementById('metricZoomLojaWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'loja');
     document.getElementById('metricZoomSetorWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'setor');
+    document.getElementById('metricZoomStatusWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'metric');
     document.getElementById('metricZoomFiltroLoja').value = appState.zoomContext.filterLoja || '';
     document.getElementById('metricZoomFiltroSetor').value = appState.zoomContext.filterSetor || '';
     document.getElementById('metricZoomFiltroStatus').value = appState.zoomContext.filterStatus || '';
@@ -1641,7 +1665,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
     cardsEl.innerHTML = items.map(function(item) {
       return '<article class="pendencia-card">' +
-        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + escapeHtml(item.setor) + '</p></div>' +
+        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
         '<div class="card-meta">' +
           renderTag('status', item.status) +
           renderTag('prioridade', item.prioridade) +
@@ -1649,7 +1673,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '</div>' +
         '<div class="card-kv-grid">' +
           cardKv_('Local', escapeHtml(item.loja || '-')) +
-          cardKv_('Setor', escapeHtml(item.setor || '-')) +
+          cardKv_('Setor', renderSetorBadge_(item.setor || '-')) +
           cardKv_('Classificacao', escapeHtml(item.tipo || '-')) +
           cardKv_('Urgencia', escapeHtml(item.prioridade || '-')) +
           cardKv_('Executor', renderExecutorSelect_(item)) +
@@ -1702,13 +1726,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     }
     container.innerHTML = items.map(function(item) {
       return '<article class="pendencia-card">' +
-        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + escapeHtml(item.setor) + '</p></div>' +
+        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
         '<div class="card-meta">' + renderTag('status', item.status) + renderTag('prioridade', item.prioridade) + '</div>' +
         '<div class="card-kv-grid">' +
           cardKv_('Conclusao', escapeHtml(item.data_conclusao_label || formatDateBr(item.data_conclusao) || '-')) +
           cardKv_('Executor', escapeHtml(item.executor || 'Nao definido')) +
           cardKv_('Tipo', escapeHtml(item.tipo || '-')) +
-          cardKv_('Local', escapeHtml(item.loja || '-') + '<br>' + escapeHtml(item.setor || '-')) +
+          cardKv_('Local', escapeHtml(item.loja || '-') + '<br>' + renderSetorBadge_(item.setor || '-')) +
         '</div>' +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
