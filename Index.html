@@ -137,31 +137,19 @@
           <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
             <label>
               <span>Loja *</span>
-              <div class="select-manage-row">
-                <select id="novaLoja" required></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novaLoja')">EDITAR</button>
-              </div>
+              <select id="novaLoja" required></select>
             </label>
             <label>
               <span>Setor *</span>
-              <div class="select-manage-row">
-                <select id="novoSetor" required></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novoSetor')">EDITAR</button>
-              </div>
+              <select id="novoSetor" required></select>
             </label>
             <label>
               <span>Tipo</span>
-              <div class="select-manage-row">
-                <select id="novoTipo"></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novoTipo')">EDITAR</button>
-              </div>
+              <select id="novoTipo"></select>
             </label>
             <label>
               <span>Prioridade</span>
-              <div class="select-manage-row">
-                <select id="novaPrioridade"></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('novaPrioridade')">EDITAR</button>
-              </div>
+              <select id="novaPrioridade"></select>
             </label>
 
           <label class="full-width">
@@ -275,20 +263,14 @@
         </div>
         <form id="formEditarPendencia" class="panel form-grid" onsubmit="salvarEdicaoPendencia(event)">
           <input id="editIdPendencia" type="hidden">
-            <label>
-              <span>Executor / prestador</span>
-              <div class="select-manage-row">
+              <label>
+                <span>Executor / prestador</span>
                 <select id="editExecutor"></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editExecutor')">EDITAR</button>
-              </div>
-            </label>
-            <label>
-              <span>Status</span>
-              <div class="select-manage-row">
+              </label>
+              <label>
+                <span>Status</span>
                 <select id="editStatus"></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editStatus')">EDITAR</button>
-              </div>
-            </label>
+              </label>
           <label>
             <span>Inicio</span>
             <input id="editDataInicio" type="date">
@@ -297,20 +279,14 @@
             <span>Previsao</span>
             <input id="editPrevisaoEntrega" type="date">
           </label>
-            <label>
-              <span>Tipo</span>
-              <div class="select-manage-row">
+              <label>
+                <span>Tipo</span>
                 <select id="editTipo"></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editTipo')">EDITAR</button>
-              </div>
-            </label>
-            <label>
-              <span>Prioridade</span>
-              <div class="select-manage-row">
+              </label>
+              <label>
+                <span>Prioridade</span>
                 <select id="editPrioridade"></select>
-                <button type="button" class="warning-button combo-manage-button" onclick="abrirEditorOpcoesSelect('editPrioridade')">EDITAR</button>
-              </div>
-            </label>
+              </label>
           <label class="full-width">
             <span>Observacao</span>
             <div class="field-with-action">
@@ -395,17 +371,14 @@
           </div>
         </div>
 
-        <div class="panel section-stack">
-          <div class="panel-title-row">
-            <h3>Cadastro de executor / prestador</h3>
+          <div class="panel section-stack">
+            <div class="panel-title-row">
+              <h3>Cadastro</h3>
+            </div>
+            <p class="muted-text">Gerencie executor, loja, setor, tipo, prioridade e status neste agrupador.</p>
+            <div id="cadastroList" class="summary-list empty-state">Carregando cadastros...</div>
           </div>
-          <div class="inline-form">
-            <input id="novoPrestadorNome" type="text" placeholder="Nome do executor ou prestador">
-            <button class="primary-button" onclick="salvarNovoPrestador()">Salvar</button>
-          </div>
-          <div id="prestadoresList" class="summary-list empty-state">Nenhum executor/prestador cadastrado.</div>
-        </div>
-      </section>
+        </section>
     </main>
 
     <div id="metricZoomModal" class="modal hidden">

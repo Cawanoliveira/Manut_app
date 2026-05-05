@@ -346,7 +346,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       applySavedFormContext_();
     }
     renderConfiguracoes(appState.configs || []);
-    renderPrestadoresList_();
+    renderCadastroList_();
     appState.dashboard = buildDashboardFromLocalState_();
     renderDashboard(buildDashboardFromVisibleState_());
     renderPendencias(getFilteredPendencias_(false));
@@ -547,6 +547,17 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     };
   }
 
+  function getManagedGroupCatalog_() {
+    return [
+      { group: 'executor', title: 'Executor / prestador' },
+      { group: 'loja', title: 'Lojas' },
+      { group: 'setor', title: 'Setores' },
+      { group: 'tipo', title: 'Tipos' },
+      { group: 'prioridade', title: 'Prioridades' },
+      { group: 'status', title: 'Status' }
+    ];
+  }
+
   function getManagedSelectConfig_(selectId) {
     return getManagedSelectMap_()[selectId] || null;
   }
@@ -560,6 +571,22 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       group: config.group,
       targetId: selectId,
       title: config.title
+    };
+    renderComboEditorModal_();
+    document.getElementById('comboEditorModal').classList.remove('hidden');
+  }
+
+  function abrirEditorCadastroGrupo(group) {
+    var target = getManagedGroupCatalog_().filter(function(item) {
+      return item.group === group;
+    })[0];
+    if (!target) {
+      return;
+    }
+    appState.comboEditor = {
+      group: target.group,
+      targetId: '',
+      title: target.title
     };
     renderComboEditorModal_();
     document.getElementById('comboEditorModal').classList.remove('hidden');
@@ -1488,14 +1515,21 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       return collection[b] - collection[a];
     });
     var mode = (appState.dashboardChartMode && appState.dashboardChartMode[tipo]) || 'list';
-    var maxValue = Math.max.apply(null, orderedKeys.map(function(key) { return Number(collection[key] || 0); }));
+    var categories = getDashboardChartCategories_(tipo, orderedKeys);
+    var maxValue = Math.max.apply(null, categories.map(function(key) { return Number(collection[key] || 0); }).concat([0]));
     if (mode === 'chart') {
+      var axisSteps = getDashboardAxisSteps_(maxValue);
       return '<div class="summary-column-chart"><div class="summary-column-stage">' +
         '<div class="summary-column-axis-y"></div>' +
         '<div class="summary-column-axis-x"></div>' +
-        '<div class="summary-column-grid">' + orderedKeys.map(function(key, index) {
+        axisSteps.map(function(step) {
+          var bottom = maxValue ? Math.round((step / maxValue) * 100) : 0;
+          return '<span class="summary-column-y-label" style="bottom:calc(' + bottom + '% + 26px)">' + step + '</span>' +
+            '<span class="summary-column-grid-line" style="bottom:calc(' + bottom + '% + 26px)"></span>';
+        }).join('') +
+        '<div class="summary-column-grid">' + categories.map(function(key, index) {
           var count = Number(collection[key] || 0);
-          var ratio = orderedKeys.length === 1 ? 0 : index / Math.max(1, orderedKeys.length - 1);
+          var ratio = categories.length === 1 ? 0 : index / Math.max(1, categories.length - 1);
           var tone = getSummaryTone_(ratio);
           var height = maxValue ? Math.max(18, Math.round((count / maxValue) * 100)) : 18;
           var selectedClass = appState.dashboardSelection.type === tipo && appState.dashboardSelection.key === key ? ' selected' : '';
@@ -1517,6 +1551,36 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '<strong>' + count + '</strong>' +
       '</button>';
     }).join('');
+  }
+
+  function getDashboardChartCategories_(tipo, orderedKeys) {
+    if (tipo === 'loja') {
+      return ['Loja 01', 'Loja 02', 'Loja 03', 'Loja 04', 'Loja 05', 'Loja 06', 'Loja 07', 'Loja 08', 'Loja 09', 'Loja 10'];
+    }
+    if (tipo === 'setor') {
+      if (appState.combos && Array.isArray(appState.combos.setores) && appState.combos.setores.length) {
+        return appState.combos.setores.slice();
+      }
+    }
+    return (orderedKeys || []).slice();
+  }
+
+  function getDashboardAxisSteps_(maxValue) {
+    var max = Math.max(0, Number(maxValue || 0));
+    if (max <= 0) {
+      return [1];
+    }
+    if (max <= 2) {
+      return [1, 2].filter(function(item) { return item <= max; });
+    }
+    if (max <= 5) {
+      return [1, max];
+    }
+    var mid = Math.ceil(max / 2);
+    var items = [1, mid, max];
+    return items.filter(function(value, index) {
+      return items.indexOf(value) === index;
+    });
   }
 
   function alternarGraficoResumo(tipo) {
@@ -1872,29 +1936,19 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     return mapa[chave] || chave;
   }
 
-  function renderPrestadoresList_() {
-    var container = document.getElementById('prestadoresList');
+  function renderCadastroList_() {
+    var container = document.getElementById('cadastroList');
     if (!container) {
       return;
     }
-    var prestadores = appState.prestadoresAdmin || [];
-    if (!prestadores.length) {
-      container.innerHTML = '<div class="empty-state">Nenhum executor/prestador cadastrado.</div>';
-      return;
-    }
-    container.innerHTML = prestadores.map(function(item) {
-      var status = normalizeText_(item.status) === 'inativo' ? 'Inativo' : 'Ativo';
-      var actionButton = status === 'Ativo'
-        ? '<button class="ghost-button compact-button" onclick="alterarStatusPrestadorConfig(\'' + escapeJs(item.id_prestador) + '\', \'Inativo\')">Desativar</button>'
-        : '<button class="secondary-button compact-button" onclick="alterarStatusPrestadorConfig(\'' + escapeJs(item.id_prestador) + '\', \'Ativo\')">Ativar</button>';
-      return '<div class="summary-item">' +
-        '<div><strong>' + escapeHtml(item.nome_prestador || '-') + '</strong><div class="summary-item-sub">' + escapeHtml(status) + '</div></div>' +
-        '<div class="actions-row">' +
-          actionButton +
-          '<button class="icon-button" onclick="excluirPrestadorConfig(\'' + escapeJs(item.id_prestador) + '\')">&#128465;</button>' +
-        '</div>' +
-      '</div>';
-    }).join('');
+    var cards = getManagedGroupCatalog_().map(function(item) {
+      var count = getComboAdminItems_(item.group).length;
+      return '<button type="button" class="cadastro-card" onclick="abrirEditorCadastroGrupo(\'' + escapeJs(item.group) + '\')">' +
+        '<span class="cadastro-card-title">' + escapeHtml(item.title) + '</span>' +
+        '<span class="cadastro-card-meta">' + count + ' itens</span>' +
+      '</button>';
+    });
+    container.innerHTML = cards.join('');
   }
 
   function salvarNovoPrestador() {
@@ -1924,7 +1978,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         appState.prestadoresAdmin = (response.data && response.data.todos) || [];
         appState.comboAdmin.executor = appState.prestadoresAdmin.slice();
         preencherCombos(appState.combos);
-        renderPrestadoresList_();
+        renderCadastroList_();
         saveCache_();
         mostrarMensagemSucesso(response.message);
       })
@@ -1958,7 +2012,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         appState.prestadoresAdmin = (response.data && response.data.todos) || [];
         appState.comboAdmin.executor = appState.prestadoresAdmin.slice();
         preencherCombos(appState.combos);
-        renderPrestadoresList_();
+        renderCadastroList_();
         renderPendencias(getFilteredPendencias_(false));
         saveCache_();
         mostrarMensagemSucesso(response.message);
@@ -1992,7 +2046,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         appState.prestadoresAdmin = (response.data && response.data.todos) || [];
         appState.comboAdmin.executor = appState.prestadoresAdmin.slice();
         preencherCombos(appState.combos);
-        renderPrestadoresList_();
+        renderCadastroList_();
         renderPendencias(getFilteredPendencias_(false));
         saveCache_();
         mostrarMensagemSucesso(response.message);
@@ -2142,7 +2196,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     if (payload.admin) {
       appState.comboAdmin = payload.admin;
       appState.prestadoresAdmin = payload.admin.executor || [];
-      renderPrestadoresList_();
+      renderCadastroList_();
       renderPendencias(getFilteredPendencias_(false));
       renderHistoricoGeral(getFilteredPendencias_(true));
       renderComboEditorModal_();
