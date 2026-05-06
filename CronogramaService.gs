@@ -18,6 +18,7 @@ function gerarCronogramaPdf(filtros) {
     body.clear();
     buildCronogramaDocument_(body, cleanFilters, items);
     document.saveAndClose();
+    Utilities.sleep(1500);
 
     var pdfBlob = DriveApp.getFileById(tempFile.getId()).getAs(MimeType.PDF).setName(buildCronogramaFileName_(cleanFilters, false));
     pdfFile = DriveApp.createFile(pdfBlob);
@@ -29,7 +30,7 @@ function gerarCronogramaPdf(filtros) {
     });
   } catch (error) {
     registrarLog('ERRO', 'Falha ao gerar PDF do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
-    return createErrorResponse_('Nao foi possivel gerar o PDF do cronograma.', error);
+    return createErrorResponse_('Nao foi possivel gerar o PDF do cronograma. Detalhe: ' + safeString_(error && error.message), error);
   } finally {
     if (tempFile) {
       try {
@@ -58,6 +59,7 @@ function gerarCronogramaExcel(filtros) {
     tempSpreadsheet = SpreadsheetApp.create(buildCronogramaSpreadsheetName_(cleanFilters));
     buildCronogramaSpreadsheet_(tempSpreadsheet, cleanFilters, items);
     SpreadsheetApp.flush();
+    Utilities.sleep(1500);
 
     var xlsxBlob = exportSpreadsheetAsXlsx_(tempSpreadsheet.getId(), buildCronogramaExcelFileName_(cleanFilters));
     xlsxFile = DriveApp.createFile(xlsxBlob);
@@ -70,7 +72,7 @@ function gerarCronogramaExcel(filtros) {
     });
   } catch (error) {
     registrarLog('ERRO', 'Falha ao gerar Excel do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
-    return createErrorResponse_('Nao foi possivel gerar o Excel do cronograma.', error);
+    return createErrorResponse_('Nao foi possivel gerar o Excel do cronograma. Detalhe: ' + safeString_(error && error.message), error);
   } finally {
     if (tempSpreadsheet) {
       try {

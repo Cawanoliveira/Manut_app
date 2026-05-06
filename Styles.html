@@ -908,19 +908,26 @@
   }
 
   .cronograma-table th:nth-child(1) { width: 14%; }
-  .cronograma-table th:nth-child(2) { width: 14%; }
-  .cronograma-table th:nth-child(3) { width: 14%; }
+  .cronograma-table th:nth-child(2) { width: 13%; }
+  .cronograma-table th:nth-child(3) { width: 13%; }
   .cronograma-table th:nth-child(4) { width: 12%; }
-  .cronograma-table th:nth-child(5) { width: 34%; }
-  .cronograma-table th:nth-child(6) { width: 12%; }
+  .cronograma-table th:nth-child(5) { width: 12%; }
+  .cronograma-table th:nth-child(6) { width: 28%; }
+  .cronograma-table th:nth-child(7) { width: 8%; }
+
+  .cronograma-table td {
+    vertical-align: top;
+  }
 
   .cronograma-text-cell {
     display: grid;
     gap: 6px;
+    align-content: start;
   }
 
   .cronograma-anexo-cell {
     text-align: center;
+    vertical-align: middle !important;
   }
 
   .cronograma-anexo-thumb {
@@ -950,6 +957,7 @@
 
   .cronograma-card-grid {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
