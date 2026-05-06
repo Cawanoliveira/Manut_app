@@ -918,10 +918,23 @@
     vertical-align: top;
   }
 
+  .cronograma-table tbody tr {
+    height: 100%;
+  }
+
+  .cronograma-table td:nth-child(1),
+  .cronograma-table td:nth-child(2),
+  .cronograma-table td:nth-child(3),
+  .cronograma-table td:nth-child(4),
+  .cronograma-table td:nth-child(5) {
+    font-weight: 700;
+  }
+
   .cronograma-text-cell {
     display: grid;
     gap: 6px;
     align-content: start;
+    min-height: 74px;
   }
 
   .cronograma-anexo-cell {

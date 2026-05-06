@@ -1015,21 +1015,37 @@
           mostrarMensagemErro(response.message);
           return;
         }
-        abrirPdfCronograma_(response.data);
+        baixarArquivoCronograma_(response.data);
         mostrarMensagemSucesso(response.message);
       })
       .catch(handleFailure);
   }
 
   function abrirPdfCronograma_(payload) {
-    if (!payload || !payload.url) {
+    if (!payload || !(payload.openUrl || payload.url)) {
       throw new Error('Arquivo PDF invalido.');
     }
-    var url = payload.url;
+    var url = payload.openUrl || payload.url;
     var anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = payload.fileName || 'cronograma.pdf';
     anchor.target = '_blank';
+    document.body.appendChild(anchor);
+    anchor.click();
+    setTimeout(function() {
+      if (anchor.parentNode) {
+        anchor.parentNode.removeChild(anchor);
+      }
+    }, 600);
+  }
+
+  function baixarArquivoCronograma_(payload) {
+    if (!payload || !(payload.downloadUrl || payload.url)) {
+      throw new Error('Arquivo do cronograma invalido.');
+    }
+    var anchor = document.createElement('a');
+    anchor.href = payload.downloadUrl || payload.url;
+    anchor.download = payload.fileName || 'cronograma.xlsx';
     document.body.appendChild(anchor);
     anchor.click();
     setTimeout(function() {

@@ -26,6 +26,8 @@ function gerarCronogramaPdf(filtros) {
       fileName: pdfFile.getName(),
       fileId: pdfFile.getId(),
       url: pdfFile.getUrl(),
+      openUrl: pdfFile.getUrl(),
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + pdfFile.getId(),
       total: items.length
     });
   } catch (error) {
@@ -67,6 +69,8 @@ function gerarCronogramaExcel(filtros) {
       fileName: xlsxFile.getName(),
       fileId: xlsxFile.getId(),
       url: xlsxFile.getUrl(),
+      openUrl: xlsxFile.getUrl(),
+      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + xlsxFile.getId(),
       total: items.length,
       format: 'xlsx'
     });
@@ -203,7 +207,7 @@ function buildCronogramaDocument_(body, filtros, items) {
   body.appendParagraph(buildCronogramaResumoFiltros_(filtros, items.length)).setFontSize(9).setForegroundColor('#6b7280');
   body.appendHorizontalRule();
 
-  var headerRow = ['Prestador', 'Local', 'Setor', 'Previsao', 'Descricao / Observacao', 'Anexo'];
+  var headerRow = ['Prestador', 'Local', 'Setor', 'Status', 'Previsao', 'Descricao / Observacao', 'Anexo'];
   var table = body.appendTable([headerRow]);
   styleCronogramaHeaderRow_(table.getRow(0));
 
@@ -211,6 +215,7 @@ function buildCronogramaDocument_(body, filtros, items) {
     appendCronogramaTableRow_(table, filtros, item);
   });
 
+  appendCronogramaAttachmentPages_(body, items);
   body.appendParagraph('Emitido em ' + formatDateTime_(now_())).setFontSize(8).setForegroundColor('#6b7280');
 }
 
@@ -249,9 +254,10 @@ function appendCronogramaTableRow_(table, filtros, item) {
   setCronogramaCellText_(row.appendTableCell(), item.executor || filtros.executor || '-');
   setCronogramaCellText_(row.appendTableCell(), item.loja || '-');
   setCronogramaCellText_(row.appendTableCell(), item.setor || '-');
+  setCronogramaCellText_(row.appendTableCell(), item.status_cronograma || '-');
   setCronogramaCellText_(row.appendTableCell(), item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-');
   setCronogramaCellText_(row.appendTableCell(), buildCronogramaDescricaoObservacao_(item));
-  appendCronogramaImageCell_(row.appendTableCell(), item);
+  setCronogramaCellText_(row.appendTableCell(), item.id_arquivo_drive ? 'Com anexo' : 'Sem anexo');
 }
 
 function setCronogramaCellText_(cell, textValue) {
@@ -271,22 +277,38 @@ function buildCronogramaDescricaoObservacao_(item) {
   return parts.join('\n') || 'Sem detalhes adicionais.';
 }
 
-function appendCronogramaImageCell_(cell, item) {
-  cell.setText('');
-  if (!item || !item.id_arquivo_drive) {
-    cell.setText('Sem anexo');
+function appendCronogramaAttachmentPages_(body, items) {
+  var anexos = (items || []).filter(function(item) {
+    return !!(item && item.id_arquivo_drive);
+  });
+  if (!anexos.length) {
     return;
   }
 
-  try {
-    var blob = DriveApp.getFileById(item.id_arquivo_drive).getBlob();
-    var paragraph = cell.appendParagraph('');
-    var image = paragraph.appendInlineImage(blob);
-    image.setWidth(110);
-  } catch (error) {
-    cell.setText('Anexo indisponivel');
-    registrarLog('ALERTA', 'Falha ao anexar imagem no cronograma PDF.', safeString_(item.id_pendencia) + ' | ' + getErrorStack_(error), getCurrentUserIdentifier_());
-  }
+  body.appendPageBreak();
+  body.appendParagraph('Anexos').setHeading(DocumentApp.ParagraphHeading.HEADING1);
+
+  anexos.forEach(function(item, index) {
+    if (index > 0) {
+      body.appendPageBreak();
+    }
+    body.appendParagraph('Pendencia ' + safeString_(item.id_pendencia)).setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph('Local: ' + safeString_(item.loja) + ' | Setor: ' + safeString_(item.setor));
+    body.appendParagraph('Previsao: ' + safeString_(item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-'));
+    body.appendParagraph('Descricao: ' + sanitizeText_(item.descricao));
+    if (safeString_(item.observacao)) {
+      body.appendParagraph('Observacao: ' + sanitizeText_(item.observacao));
+    }
+    try {
+      var blob = DriveApp.getFileById(item.id_arquivo_drive).getBlob();
+      var paragraph = body.appendParagraph('');
+      var image = paragraph.appendInlineImage(blob);
+      image.setWidth(430);
+    } catch (error) {
+      body.appendParagraph('Anexo indisponivel.');
+      registrarLog('ALERTA', 'Falha ao anexar imagem no cronograma PDF.', safeString_(item.id_pendencia) + ' | ' + getErrorStack_(error), getCurrentUserIdentifier_());
+    }
+  });
 }
 
 function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
