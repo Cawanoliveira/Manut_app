@@ -14,6 +14,7 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   salvarOpcaoCombo: salvarOpcaoCombo,
   excluirOpcaoCombo: excluirOpcaoCombo,
   alterarStatusOpcaoCombo: alterarStatusOpcaoCombo,
+  pingBridge: pingBridge,
   gerarCronogramaPdf: gerarCronogramaPdf,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
@@ -41,6 +42,12 @@ function doPost(e) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function pingBridge() {
+  return createSuccessResponse_('Bridge online.', {
+    timestamp: new Date().toISOString()
+  });
 }
 
 function getAppInitData() {

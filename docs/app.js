@@ -63,48 +63,69 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function inicializarApp() {
-    bindConnectivityHandlers_();
-    bindFilterFab_();
-    bindPenInputMode_();
-    hydrateFromCache_();
-    renderAll_();
-    atualizarNomeArquivo('novaFoto', 'novaFotoNome');
-    atualizarNomeArquivo('editFoto', 'editFotoNome');
-
-    if (appState.connection.online) {
-      sincronizarFila_(false)
-        .then(function() {
-          return carregarEstadoServidor_();
-        })
-        .catch(function() {
-          mostrarMensagemErro('Modo offline ativo. Usando os dados salvos neste aparelho.');
-        });
-    } else {
-      mostrarMensagemErro('Sem internet. O app esta usando o cache local e a fila offline.');
+      bindConnectivityHandlers_();
+      bindFilterFab_();
+      bindPenInputMode_();
+      hydrateFromCache_();
+      renderAll_();
+      atualizarNomeArquivo('novaFoto', 'novaFotoNome');
+      atualizarNomeArquivo('editFoto', 'editFotoNome');
+      detectarConectividadeInicial_();
     }
-  }
 
   function bindConnectivityHandlers_() {
     window.addEventListener('online', function() {
-      appState.connection.online = true;
-      updateSyncStatusBar_();
-      mostrarMensagemSucesso('Conexao restabelecida. Sincronizando pendencias pendentes...');
-      sincronizarFila_(true)
-        .then(function() {
-          return carregarEstadoServidor_();
-        })
-        .catch(function(error) {
-          mostrarMensagemErro(error.message || 'Nao foi possivel sincronizar ao voltar a internet.');
-        });
-    });
+        verificarConectividadeServidor_(true);
+      });
 
     window.addEventListener('offline', function() {
-      appState.connection.online = false;
+        setConnectionState_(false);
+        mostrarMensagemErro('Sem internet. As alteracoes serao guardadas localmente.');
+      });
+    }
+
+  function detectarConectividadeInicial_() {
+      if (!navigator.onLine) {
+        setConnectionState_(false);
+        mostrarMensagemErro('Sem internet. O app esta usando o cache local e a fila offline.');
+        return;
+      }
+      verificarConectividadeServidor_(false);
+    }
+
+  function verificarConectividadeServidor_(showRecoveredMessage) {
+      testarServidorDisponivel_()
+        .then(function() {
+          var wasOffline = !appState.connection.online;
+          setConnectionState_(true);
+          if (wasOffline && showRecoveredMessage) {
+            mostrarMensagemSucesso('Conexao restabelecida. Sincronizando pendencias pendentes...');
+          }
+          return sincronizarFila_(showRecoveredMessage)
+            .then(function() {
+              return carregarEstadoServidor_();
+            });
+        })
+        .catch(function() {
+          setConnectionState_(false);
+          if (showRecoveredMessage) {
+            mostrarMensagemErro('Sem internet. O app esta usando o cache local e a fila offline.');
+          }
+        });
+    }
+
+  function testarServidorDisponivel_() {
+      return serverCall_('pingBridge', [], { timeoutMs: 7000, quietOffline: true });
+    }
+
+  function setConnectionState_(isOnline) {
+      appState.connection.online = !!isOnline;
+      if (!isOnline) {
+        appState.connection.syncing = false;
+      }
       saveCache_();
       updateSyncStatusBar_();
-      mostrarMensagemErro('Sem internet. As alteracoes serao guardadas localmente.');
-    });
-  }
+    }
 
   function bindFilterFab_() {
     var fab = document.getElementById('filterFab');
@@ -3061,27 +3082,28 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     return null;
   }
 
-  function serverCall_(functionName, args) {
-    if (window.google && google.script && google.script.run) {
-      return new Promise(function(resolve, reject) {
-        var runner = google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(function(error) {
+  function serverCall_(functionName, args, options) {
+      if (window.google && google.script && google.script.run) {
+        return new Promise(function(resolve, reject) {
+          var runner = google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(function(error) {
             reject(error instanceof Error ? error : new Error(error && error.message ? error.message : 'Falha na chamada ao servidor.'));
           });
-        runner[functionName].apply(runner, args || []);
-      });
+          runner[functionName].apply(runner, args || []);
+        });
+      }
+      return externalBridgeCall_(functionName, args || [], options || {});
     }
-    return externalBridgeCall_(functionName, args || []);
-  }
 
-  function externalBridgeCall_(functionName, args) {
-    return new Promise(function(resolve, reject) {
-      var config = window.PWA_CONFIG || {};
-      var endpoint = (config.appsScriptBridgeUrl || '').trim();
-      if (!endpoint) {
-        reject(new Error('Configure o URL do Apps Script em docs/config.js antes de sincronizar com o servidor.'));
-        return;
+  function externalBridgeCall_(functionName, args, options) {
+      return new Promise(function(resolve, reject) {
+        var opts = options || {};
+        var config = window.PWA_CONFIG || {};
+        var endpoint = (config.appsScriptBridgeUrl || '').trim();
+        if (!endpoint) {
+          reject(new Error('Configure o URL do Apps Script em docs/config.js antes de sincronizar com o servidor.'));
+          return;
       }
       ensureBridgeListener_();
       var requestId = generateLocalId_('BRIDGE');
@@ -3104,10 +3126,13 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       appendHiddenField_(form, 'functionName', functionName);
       appendHiddenField_(form, 'args', JSON.stringify(args || []));
 
-      var timeout = setTimeout(function() {
-        cleanupBridgeRequest_(requestId, iframe, form);
-        reject(new Error('Tempo esgotado ao comunicar com o Apps Script.'));
-      }, 45000);
+        var timeout = setTimeout(function() {
+          cleanupBridgeRequest_(requestId, iframe, form);
+          if (!opts.quietOffline) {
+            setConnectionState_(false);
+          }
+          reject(new Error('Tempo esgotado ao comunicar com o Apps Script.'));
+        }, Number(opts.timeoutMs || 45000));
 
       bridgeResolvers_[requestId] = {
         resolve: resolve,
