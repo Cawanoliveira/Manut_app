@@ -22,6 +22,7 @@ function gerarCronogramaPdf(filtros) {
 
     var pdfBlob = DriveApp.getFileById(tempFile.getId()).getAs(MimeType.PDF).setName(buildCronogramaFileName_(cleanFilters, false));
     pdfFile = DriveApp.createFile(pdfBlob);
+    ensureGeneratedFileSharing_(pdfFile);
     return createSuccessResponse_('PDF do cronograma gerado com sucesso.', {
       fileName: pdfFile.getName(),
       fileId: pdfFile.getId(),
@@ -65,6 +66,7 @@ function gerarCronogramaExcel(filtros) {
 
     var xlsxBlob = exportSpreadsheetAsXlsx_(tempSpreadsheet.getId(), buildCronogramaExcelFileName_(cleanFilters));
     xlsxFile = DriveApp.createFile(xlsxBlob);
+    ensureGeneratedFileSharing_(xlsxFile);
     return createSuccessResponse_('Excel do cronograma gerado com sucesso.', {
       fileName: xlsxFile.getName(),
       fileId: xlsxFile.getId(),
@@ -199,6 +201,17 @@ function buildCronogramaSpreadsheetName_(filtros) {
 
 function buildCronogramaExcelFileName_(filtros) {
   return sanitizeFileName_(['Cronograma', filtros.executor || 'Executor', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
+}
+
+function ensureGeneratedFileSharing_(file) {
+  if (!file) {
+    return;
+  }
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (error) {
+    registrarLog('ALERTA', 'Falha ao liberar compartilhamento do arquivo gerado.', safeString_(file.getId()) + ' | ' + getErrorStack_(error), getCurrentUserIdentifier_());
+  }
 }
 
 function buildCronogramaDocument_(body, filtros, items) {
