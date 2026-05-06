@@ -1,5 +1,6 @@
 function gerarCronogramaPdf(filtros) {
   var tempFile = null;
+  var pdfFile = null;
   try {
     var cleanFilters = normalizeCronogramaFilters_(filtros || {});
     if (!cleanFilters.executor) {
@@ -19,10 +20,11 @@ function gerarCronogramaPdf(filtros) {
     document.saveAndClose();
 
     var pdfBlob = DriveApp.getFileById(tempFile.getId()).getAs(MimeType.PDF).setName(buildCronogramaFileName_(cleanFilters, false));
+    pdfFile = DriveApp.createFile(pdfBlob);
     return createSuccessResponse_('PDF do cronograma gerado com sucesso.', {
-      fileName: pdfBlob.getName(),
-      mimeType: MimeType.PDF,
-      base64: Utilities.base64Encode(pdfBlob.getBytes()),
+      fileName: pdfFile.getName(),
+      fileId: pdfFile.getId(),
+      url: pdfFile.getUrl(),
       total: items.length
     });
   } catch (error) {

@@ -340,13 +340,15 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           lastSyncAt: appState.connection.lastSyncAt
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
-    } catch (error) {
-      if (isStorageQuotaError_(error)) {
-        mostrarMensagemErro('O dispositivo ficou sem espaco para guardar dados offline.');
-      } else if (window.console && console.warn) {
-        console.warn('Falha ao salvar cache offline.', error);
+      } catch (error) {
+        if (isStorageQuotaError_(error)) {
+          if (window.console && console.warn) {
+            console.warn('Sem espaco para salvar cache offline.', error);
+          }
+        } else if (window.console && console.warn) {
+          console.warn('Falha ao salvar cache offline.', error);
+        }
       }
-    }
     updateSyncStatusBar_();
   }
 
@@ -887,15 +889,11 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function renderCronogramaTextoCell_(item) {
-    var html = [];
-    html.push('<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>');
-    if (safeTrim_(item.observacao)) {
+      var html = [];
+      html.push('<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>');
       html.push('<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>');
-    } else {
-      html.push('<span class="muted-text">Sem observacao</span>');
+      return html.join('');
     }
-    return html.join('');
-  }
 
   function renderCronogramaPreview_() {
     var cardsEl = document.getElementById('cronogramaCards');
@@ -966,28 +964,17 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
           mostrarMensagemErro(response.message);
           return;
         }
-        abrirArquivoBase64_(response.data);
+        abrirPdfCronograma_(response.data);
         mostrarMensagemSucesso(response.message);
       })
       .catch(handleFailure);
   }
 
-  function abrirArquivoBase64_(payload) {
-    if (!payload || !payload.base64) {
+  function abrirPdfCronograma_(payload) {
+    if (!payload || !payload.url) {
       throw new Error('Arquivo PDF invalido.');
     }
-    var binary = atob(payload.base64);
-    var bytes = [];
-    for (var offset = 0; offset < binary.length; offset += 1024) {
-      var slice = binary.slice(offset, offset + 1024);
-      var array = new Array(slice.length);
-      for (var i = 0; i < slice.length; i += 1) {
-        array[i] = slice.charCodeAt(i);
-      }
-      bytes.push(new Uint8Array(array));
-    }
-    var blob = new Blob(bytes, { type: payload.mimeType || 'application/pdf' });
-    var url = URL.createObjectURL(blob);
+    var url = payload.url;
     var anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = payload.fileName || 'cronograma.pdf';
@@ -995,11 +982,10 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.body.appendChild(anchor);
     anchor.click();
     setTimeout(function() {
-      URL.revokeObjectURL(url);
       if (anchor.parentNode) {
         anchor.parentNode.removeChild(anchor);
       }
-    }, 1500);
+    }, 600);
   }
 
   function renderFiltroResumo() {
@@ -2510,17 +2496,19 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function abrirTextoRapido(id, campo) {
-    var item = buildDetailFromLocalItem_(getLocalItemById_(id));
-    if (!item) {
-      mostrarMensagemErro('Pendencia nao encontrada.');
-      return;
+      var item = buildDetailFromLocalItem_(getLocalItemById_(id));
+      if (!item) {
+        mostrarMensagemErro('Pendencia nao encontrada.');
+        return;
+      }
+      var titulo = campo === 'observacao' ? 'Observacao' : 'Descricao';
+      var valor = campo === 'observacao'
+        ? (safeTrim_(item.observacao) || 'Nao ha observacao registrada para esta pendencia.')
+        : (item.descricao || 'Sem descricao.');
+      document.getElementById('quickViewTitle').textContent = titulo;
+      document.getElementById('quickViewContent').innerHTML = '<p>' + escapeHtml(valor).replace(/\n/g, '<br>') + '</p>';
+      document.getElementById('quickViewModal').classList.remove('hidden');
     }
-    var titulo = campo === 'observacao' ? 'Observacao' : 'Descricao';
-    var valor = campo === 'observacao' ? (item.observacao || 'Sem observacao.') : (item.descricao || 'Sem descricao.');
-    document.getElementById('quickViewTitle').textContent = titulo;
-    document.getElementById('quickViewContent').innerHTML = '<p>' + escapeHtml(valor).replace(/\n/g, '<br>') + '</p>';
-    document.getElementById('quickViewModal').classList.remove('hidden');
-  }
 
   function abrirFotoRapida(id) {
     var item = buildDetailFromLocalItem_(getLocalItemById_(id));
@@ -2719,8 +2707,16 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function mostrarMensagemErro(mensagem) {
-    criarToast_(mensagem, 'error');
-  }
+      var text = safeTrim_(mensagem);
+      if (text && (
+        normalizeText_(text).indexOf('espaco para guardar dados offline') > -1 ||
+        normalizeText_(text).indexOf('sem espaco no dispositivo') > -1 ||
+        normalizeText_(text).indexOf('armazenamento local cheio') > -1
+      )) {
+        return;
+      }
+      criarToast_(mensagem, 'error');
+    }
 
   function criarToast_(mensagem, tipo) {
     var container = document.getElementById('toastContainer');
