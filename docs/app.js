@@ -340,6 +340,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     renderDashboard(buildDashboardFromVisibleState_());
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
+    renderCronogramaPreview_();
     renderFiltroResumo();
     applyFilterFabPosition_();
     updateSyncStatusBar_();
@@ -413,6 +414,9 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         resetDashboardChartModes_();
         renderDashboard(buildDashboardFromVisibleState_());
       }
+      if (sectionId === 'secaoCronograma') {
+        renderCronogramaPreview_();
+      }
       if (sectionId === 'secaoListaPendencias') {
         renderPendencias(getFilteredPendencias_(false));
       }
@@ -461,6 +465,21 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       listarPendencias();
       return;
     }
+    if (active.id === 'secaoCronograma') {
+      if (appState.connection.online) {
+        carregarEstadoServidor_()
+          .then(function() {
+            renderCronogramaPreview_();
+          })
+          .catch(function(error) {
+            mostrarMensagemErro(error.message || 'Nao foi possivel atualizar o cronograma.');
+          });
+        return;
+      }
+      renderCronogramaPreview_();
+      mostrarMensagemSucesso('Cronograma atualizado com o cache offline.');
+      return;
+    }
     if (appState.connection.online) {
       carregarEstadoServidor_().catch(function(error) {
         mostrarMensagemErro(error.message || 'Nao foi possivel atualizar os dados.');
@@ -491,6 +510,9 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     preencherSelect('editStatus', combos.status, 'Selecione um status');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
+    preencherSelect('cronogramaExecutor', combos.prestadores, 'Selecione um executor');
+    preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
+    preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
     bindManagedSelects_();
   }
 
@@ -745,6 +767,218 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
     renderFiltroResumo();
+  }
+
+  function obterFiltrosCronograma_() {
+    return {
+      executor: getElementValue_('cronogramaExecutor'),
+      loja: getElementValue_('cronogramaLoja'),
+      setor: getElementValue_('cronogramaSetor'),
+      dataAberturaDe: getElementValue_('cronogramaDataAberturaDe'),
+      dataAberturaAte: getElementValue_('cronogramaDataAberturaAte'),
+      previsaoEntregaDe: getElementValue_('cronogramaPrevisaoDe'),
+      previsaoEntregaAte: getElementValue_('cronogramaPrevisaoAte')
+    };
+  }
+
+  function validarFiltrosCronograma_(showFeedback) {
+    var filtros = obterFiltrosCronograma_();
+    if (!filtros.executor) {
+      if (showFeedback) {
+        mostrarMensagemErro('Selecione um executor/prestador para montar o cronograma.');
+      }
+      return null;
+    }
+    return filtros;
+  }
+
+  function aplicarFiltrosCronograma(event) {
+    if (event && event.preventDefault) {
+      event.preventDefault();
+    }
+    if (!validarFiltrosCronograma_(true)) {
+      renderCronogramaPreview_();
+      return;
+    }
+    renderCronogramaPreview_();
+  }
+
+  function limparFiltrosCronograma() {
+    ['cronogramaExecutor', 'cronogramaLoja', 'cronogramaSetor', 'cronogramaDataAberturaDe', 'cronogramaDataAberturaAte', 'cronogramaPrevisaoDe', 'cronogramaPrevisaoAte']
+      .forEach(function(id) {
+        var field = document.getElementById(id);
+        if (field) {
+          field.value = '';
+        }
+      });
+    renderCronogramaPreview_();
+  }
+
+  function getCronogramaItemsLocal_() {
+    var filtros = validarFiltrosCronograma_(false);
+    if (!filtros) {
+      return [];
+    }
+    return appState.allPendencias.filter(function(item) {
+      var status = normalizeText_(item.status);
+      if (status === 'concluido' || status === 'cancelado') {
+        return false;
+      }
+      if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+        return false;
+      }
+      if (filtros.loja && normalizeText_(item.loja) !== normalizeText_(filtros.loja)) {
+        return false;
+      }
+      if (filtros.setor && normalizeText_(item.setor) !== normalizeText_(filtros.setor)) {
+        return false;
+      }
+      if ((filtros.dataAberturaDe || filtros.dataAberturaAte) && !dateWithinRangeLocal_(item.data_abertura, filtros.dataAberturaDe, filtros.dataAberturaAte)) {
+        return false;
+      }
+      if ((filtros.previsaoEntregaDe || filtros.previsaoEntregaAte) && !dateWithinRangeLocal_(item.previsao_entrega, filtros.previsaoEntregaDe, filtros.previsaoEntregaAte)) {
+        return false;
+      }
+      item.esta_vencida = isPendenciaVencidaLocal_(item);
+      item.data_abertura_label = formatDateBr(item.data_abertura);
+      item.previsao_entrega_label = formatDateBr(item.previsao_entrega);
+      return true;
+    }).sort(compareCronogramaItemsLocal_);
+  }
+
+  function compareCronogramaItemsLocal_(a, b) {
+    var aDate = parseInputDate_(a.previsao_entrega);
+    var bDate = parseInputDate_(b.previsao_entrega);
+    var aTime = aDate ? aDate.getTime() : Number.MAX_SAFE_INTEGER;
+    var bTime = bDate ? bDate.getTime() : Number.MAX_SAFE_INTEGER;
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
+    var lojaCompare = safeTrim_(a.loja).localeCompare(safeTrim_(b.loja), 'pt-BR');
+    if (lojaCompare !== 0) {
+      return lojaCompare;
+    }
+    var setorCompare = safeTrim_(a.setor).localeCompare(safeTrim_(b.setor), 'pt-BR');
+    if (setorCompare !== 0) {
+      return setorCompare;
+    }
+    return String(a.id_pendencia || '').localeCompare(String(b.id_pendencia || ''), 'pt-BR');
+  }
+
+  function renderCronogramaTextoCell_(item) {
+    var html = [];
+    html.push('<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>');
+    if (safeTrim_(item.observacao)) {
+      html.push('<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>');
+    } else {
+      html.push('<span class="muted-text">Sem observacao</span>');
+    }
+    return html.join('');
+  }
+
+  function renderCronogramaPreview_() {
+    var cardsEl = document.getElementById('cronogramaCards');
+    var tableEl = document.getElementById('cronogramaTabela');
+    var resumoEl = document.getElementById('cronogramaResumo');
+    if (!cardsEl || !tableEl || !resumoEl) {
+      return;
+    }
+    var filtros = validarFiltrosCronograma_(false);
+    if (!filtros) {
+      resumoEl.textContent = 'Selecione um prestador para visualizar a programacao.';
+      cardsEl.innerHTML = '<div class="panel empty-state">Selecione um prestador para montar o cronograma.</div>';
+      tableEl.innerHTML = '<tr><td colspan="6" class="empty-state">Selecione um prestador para montar o cronograma.</td></tr>';
+      return;
+    }
+
+    var items = getCronogramaItemsLocal_();
+    resumoEl.textContent = items.length
+      ? ('Programacao de ' + filtros.executor + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
+      : ('Nenhuma pendencia ativa encontrada para ' + filtros.executor + '.');
+
+    if (!items.length) {
+      cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</div>';
+      tableEl.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</td></tr>';
+      return;
+    }
+
+    cardsEl.innerHTML = items.map(function(item) {
+      return '<article class="pendencia-card cronograma-card">' +
+        '<div class="cronograma-card-top"><h3>' + escapeHtml(item.executor || filtros.executor) + '</h3>' +
+        ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
+        '</div>' +
+        '<div class="cronograma-card-grid">' +
+          cardKv_('Local', escapeHtml(item.loja || '-')) +
+          cardKv_('Setor', renderSetorBadge_(item.setor || '-')) +
+          cardKv_('Previsao', escapeHtml(item.previsao_entrega_label || '-')) +
+          cardKv_('Descricao / Observacao', renderCronogramaTextoCell_(item)) +
+        '</div>' +
+      '</article>';
+    }).join('');
+
+    tableEl.innerHTML = items.map(function(item) {
+      return '<tr>' +
+        '<td>' + escapeHtml(item.executor || filtros.executor || '-') + '</td>' +
+        '<td>' + escapeHtml(item.loja || '-') + '</td>' +
+        '<td>' + renderSetorBadge_(item.setor || '-') + '</td>' +
+        '<td>' + escapeHtml(item.previsao_entrega_label || '-') + '</td>' +
+        '<td class="cronograma-text-cell">' + renderCronogramaTextoCell_(item) + '</td>' +
+        '<td class="cronograma-anexo-cell">' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="muted-text">Sem anexo</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function gerarPdfCronograma() {
+    var filtros = validarFiltrosCronograma_(true);
+    if (!filtros) {
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('A geracao do PDF do cronograma precisa de internet.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('gerarCronogramaPdf', [filtros])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        abrirArquivoBase64_(response.data);
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
+  function abrirArquivoBase64_(payload) {
+    if (!payload || !payload.base64) {
+      throw new Error('Arquivo PDF invalido.');
+    }
+    var binary = atob(payload.base64);
+    var bytes = [];
+    for (var offset = 0; offset < binary.length; offset += 1024) {
+      var slice = binary.slice(offset, offset + 1024);
+      var array = new Array(slice.length);
+      for (var i = 0; i < slice.length; i += 1) {
+        array[i] = slice.charCodeAt(i);
+      }
+      bytes.push(new Uint8Array(array));
+    }
+    var blob = new Blob(bytes, { type: payload.mimeType || 'application/pdf' });
+    var url = URL.createObjectURL(blob);
+    var anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = payload.fileName || 'cronograma.pdf';
+    anchor.target = '_blank';
+    document.body.appendChild(anchor);
+    anchor.click();
+    setTimeout(function() {
+      URL.revokeObjectURL(url);
+      if (anchor.parentNode) {
+        anchor.parentNode.removeChild(anchor);
+      }
+    }, 1500);
   }
 
   function renderFiltroResumo() {

@@ -14,6 +14,7 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   salvarOpcaoCombo: salvarOpcaoCombo,
   excluirOpcaoCombo: excluirOpcaoCombo,
   alterarStatusOpcaoCombo: alterarStatusOpcaoCombo,
+  gerarCronogramaPdf: gerarCronogramaPdf,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
   criarTriggerLimpezaFotos: criarTriggerLimpezaFotos

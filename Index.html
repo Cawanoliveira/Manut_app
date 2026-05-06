@@ -346,13 +346,85 @@
             </thead>
             <tbody id="historicoPendenciasTabela"></tbody>
           </table>
+          </div>
+        </section>
+
+      <section id="secaoCronograma" class="page-section">
+        <div class="section-header">
+          <div class="section-title-wrap">
+            <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
+            <div class="section-title-copy">
+              <h2>Cronograma</h2>
+              <p>Filtre por prestador e gere um PDF da programacao.</p>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button class="secondary-button back-button" onclick="voltarTelaAnterior()">Voltar</button>
+            <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
+          </div>
+        </div>
+
+        <div class="panel section-stack cronograma-stack">
+          <form id="formCronograma" class="form-grid cronograma-form" onsubmit="aplicarFiltrosCronograma(event)">
+            <label>
+              <span>Prestador *</span>
+              <select id="cronogramaExecutor" required></select>
+            </label>
+            <label>
+              <span>Loja</span>
+              <select id="cronogramaLoja"></select>
+            </label>
+            <label>
+              <span>Setor</span>
+              <select id="cronogramaSetor"></select>
+            </label>
+            <label>
+              <span>Abertura de</span>
+              <input id="cronogramaDataAberturaDe" type="date">
+            </label>
+            <label>
+              <span>Abertura ate</span>
+              <input id="cronogramaDataAberturaAte" type="date">
+            </label>
+            <label>
+              <span>Previsao de</span>
+              <input id="cronogramaPrevisaoDe" type="date">
+            </label>
+            <label>
+              <span>Previsao ate</span>
+              <input id="cronogramaPrevisaoAte" type="date">
+            </label>
+            <div class="full-width actions-row">
+              <button type="submit" class="primary-button">Aplicar</button>
+              <button type="button" class="warning-button" onclick="gerarPdfCronograma()">Gerar PDF</button>
+              <button type="button" class="ghost-button" onclick="limparFiltrosCronograma()">Limpar</button>
+            </div>
+          </form>
+          <div id="cronogramaResumo" class="muted-text">Selecione um prestador para visualizar a programacao.</div>
+        </div>
+
+        <div id="cronogramaCards" class="list-cards"></div>
+        <div class="table-wrapper">
+          <table class="desktop-table cronograma-table">
+            <thead>
+              <tr>
+                <th>Prestador</th>
+                <th>Local</th>
+                <th>Setor</th>
+                <th>Previsao</th>
+                <th>Descricao / Observacao</th>
+                <th>Anexo</th>
+              </tr>
+            </thead>
+            <tbody id="cronogramaTabela"></tbody>
+          </table>
         </div>
       </section>
 
       <section id="secaoConfiguracoes" class="page-section">
-        <div class="section-header">
-          <div class="section-title-wrap">
-            <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
+          <div class="section-header">
+            <div class="section-title-wrap">
+              <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
             <div class="section-title-copy">
               <h2>Configuracoes</h2>
               <p>Ajustes do sistema.</p>
@@ -517,6 +589,10 @@
       <button class="nav-button" data-section="secaoHistorico" onclick="navegar('secaoHistorico', this)">
         <span class="nav-icon">&#8635;</span>
         <span class="nav-label">Historico</span>
+      </button>
+      <button class="nav-button" data-section="secaoCronograma" onclick="navegar('secaoCronograma', this)">
+        <span class="nav-icon">&#128197;</span>
+        <span class="nav-label">Cronograma</span>
       </button>
       <button class="nav-button" data-section="secaoConfiguracoes" onclick="navegar('secaoConfiguracoes', this)">
         <span class="nav-icon">&#9881;</span>
