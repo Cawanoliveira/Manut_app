@@ -41,6 +41,47 @@ function gerarCronogramaPdf(filtros) {
   }
 }
 
+function gerarCronogramaExcel(filtros) {
+  var tempSpreadsheet = null;
+  var xlsxFile = null;
+  try {
+    var cleanFilters = normalizeCronogramaFilters_(filtros || {});
+    if (!cleanFilters.executor) {
+      return createErrorResponse_('Selecione um executor/prestador para gerar o cronograma.');
+    }
+
+    var items = getCronogramaItems_(cleanFilters);
+    if (!items.length) {
+      return createErrorResponse_('Nenhuma pendencia ativa encontrada para os filtros informados.');
+    }
+
+    tempSpreadsheet = SpreadsheetApp.create(buildCronogramaSpreadsheetName_(cleanFilters));
+    buildCronogramaSpreadsheet_(tempSpreadsheet, cleanFilters, items);
+    SpreadsheetApp.flush();
+
+    var xlsxBlob = exportSpreadsheetAsXlsx_(tempSpreadsheet.getId(), buildCronogramaExcelFileName_(cleanFilters));
+    xlsxFile = DriveApp.createFile(xlsxBlob);
+    return createSuccessResponse_('Excel do cronograma gerado com sucesso.', {
+      fileName: xlsxFile.getName(),
+      fileId: xlsxFile.getId(),
+      url: xlsxFile.getUrl(),
+      total: items.length,
+      format: 'xlsx'
+    });
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao gerar Excel do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
+    return createErrorResponse_('Nao foi possivel gerar o Excel do cronograma.', error);
+  } finally {
+    if (tempSpreadsheet) {
+      try {
+        DriveApp.getFileById(tempSpreadsheet.getId()).setTrashed(true);
+      } catch (cleanupError) {
+        registrarLog('ALERTA', 'Falha ao limpar planilha temporaria do cronograma.', getErrorStack_(cleanupError), getCurrentUserIdentifier_());
+      }
+    }
+  }
+}
+
 function normalizeCronogramaFilters_(filtros) {
   return {
     executor: sanitizeText_(filtros.executor),
@@ -118,6 +159,14 @@ function buildCronogramaFileName_(filtros, docName) {
   return sanitizeFileName_(base) + (docName ? '' : '.pdf');
 }
 
+function buildCronogramaSpreadsheetName_(filtros) {
+  return sanitizeFileName_(['Cronograma Planilha', filtros.executor || 'Executor', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - '));
+}
+
+function buildCronogramaExcelFileName_(filtros) {
+  return sanitizeFileName_(['Cronograma', filtros.executor || 'Executor', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
+}
+
 function buildCronogramaDocument_(body, filtros, items) {
   body.appendParagraph('Cronograma do Prestador').setHeading(DocumentApp.ParagraphHeading.HEADING1);
   body.appendParagraph('Prestador: ' + (filtros.executor || '-')).setBold(true);
@@ -190,7 +239,7 @@ function buildCronogramaDescricaoObservacao_(item) {
 }
 
 function appendCronogramaImageCell_(cell, item) {
-  cell.editAsText().setFontSize(8);
+  cell.setText('');
   if (!item || !item.id_arquivo_drive) {
     cell.setText('Sem anexo');
     return;
@@ -198,10 +247,78 @@ function appendCronogramaImageCell_(cell, item) {
 
   try {
     var blob = DriveApp.getFileById(item.id_arquivo_drive).getBlob();
-    var image = cell.appendImage(blob);
+    var paragraph = cell.appendParagraph('');
+    var image = paragraph.appendInlineImage(blob);
     image.setWidth(110);
   } catch (error) {
     cell.setText('Anexo indisponivel');
     registrarLog('ALERTA', 'Falha ao anexar imagem no cronograma PDF.', safeString_(item.id_pendencia) + ' | ' + getErrorStack_(error), getCurrentUserIdentifier_());
   }
+}
+
+function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
+  var sheet = spreadsheet.getSheets()[0];
+  sheet.setName('Cronograma');
+  sheet.clear();
+  sheet.getRange(1, 1).setValue('Cronograma do Prestador').setFontWeight('bold').setFontSize(16).setFontColor('#f26400');
+  sheet.getRange(2, 1).setValue('Prestador: ' + (filtros.executor || '-')).setFontWeight('bold');
+  sheet.getRange(3, 1).setValue(buildCronogramaResumoFiltros_(filtros, items.length)).setFontSize(9).setFontColor('#6b7280');
+
+  var headers = [['Prestador', 'Local', 'Setor', 'Previsao', 'Descricao', 'Observacao', 'Anexo']];
+  sheet.getRange(5, 1, 1, headers[0].length).setValues(headers).setFontWeight('bold').setBackground('#fff1e3').setFontColor('#f26400');
+
+  var data = items.map(function(item) {
+    return [
+      item.executor || filtros.executor || '-',
+      item.loja || '-',
+      item.setor || '-',
+      item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-',
+      sanitizeText_(item.descricao) || '-',
+      sanitizeText_(item.observacao) || '',
+      item.link_foto || ''
+    ];
+  });
+  if (data.length) {
+    sheet.getRange(6, 1, data.length, data[0].length).setValues(data).setVerticalAlignment('middle').setWrap(true);
+  }
+
+  sheet.setFrozenRows(5);
+  sheet.setColumnWidths(1, 1, 150);
+  sheet.setColumnWidths(2, 1, 120);
+  sheet.setColumnWidths(3, 1, 120);
+  sheet.setColumnWidths(4, 1, 90);
+  sheet.setColumnWidths(5, 1, 280);
+  sheet.setColumnWidths(6, 1, 220);
+  sheet.setColumnWidths(7, 1, 180);
+  if (data.length) {
+    sheet.getRange(6, 7, data.length, 1).setNumberFormat('@');
+    items.forEach(function(item, index) {
+      if (!item.id_arquivo_drive) {
+        return;
+      }
+      try {
+        var blob = DriveApp.getFileById(item.id_arquivo_drive).getBlob();
+        sheet.setRowHeight(6 + index, 90);
+        sheet.insertImage(blob, 7, 6 + index, 4, 4).setWidth(120).setHeight(80);
+      } catch (error) {
+        sheet.getRange(6 + index, 7).setValue('Anexo indisponivel');
+        registrarLog('ALERTA', 'Falha ao anexar imagem no cronograma Excel.', safeString_(item.id_pendencia) + ' | ' + getErrorStack_(error), getCurrentUserIdentifier_());
+      }
+    });
+  }
+}
+
+function exportSpreadsheetAsXlsx_(spreadsheetId, fileName) {
+  var url = 'https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/export?format=xlsx';
+  var response = UrlFetchApp.fetch(url, {
+    headers: {
+      Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
+    },
+    muteHttpExceptions: true
+  });
+  var code = response.getResponseCode();
+  if (code >= 300) {
+    throw new Error('Falha ao exportar planilha para Excel. HTTP ' + code);
+  }
+  return response.getBlob().setName(fileName);
 }

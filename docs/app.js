@@ -970,6 +970,29 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       .catch(handleFailure);
   }
 
+  function gerarExcelCronograma() {
+    var filtros = validarFiltrosCronograma_(true);
+    if (!filtros) {
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('A geracao do Excel do cronograma precisa de internet.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('gerarCronogramaExcel', [filtros])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        abrirPdfCronograma_(response.data);
+        mostrarMensagemSucesso(response.message);
+      })
+      .catch(handleFailure);
+  }
+
   function abrirPdfCronograma_(payload) {
     if (!payload || !payload.url) {
       throw new Error('Arquivo PDF invalido.');

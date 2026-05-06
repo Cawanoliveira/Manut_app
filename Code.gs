@@ -16,6 +16,7 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   alterarStatusOpcaoCombo: alterarStatusOpcaoCombo,
   pingBridge: pingBridge,
   gerarCronogramaPdf: gerarCronogramaPdf,
+  gerarCronogramaExcel: gerarCronogramaExcel,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
   criarTriggerLimpezaFotos: criarTriggerLimpezaFotos

@@ -396,7 +396,8 @@
             </label>
             <div class="full-width actions-row">
               <button type="submit" class="primary-button">Aplicar</button>
-              <button type="button" class="warning-button" onclick="gerarPdfCronograma()">Gerar PDF</button>
+              <button type="button" class="danger-button" onclick="gerarPdfCronograma()">Gerar PDF</button>
+              <button type="button" class="success-button" onclick="gerarExcelCronograma()">Gerar Excel</button>
               <button type="button" class="ghost-button" onclick="limparFiltrosCronograma()">Limpar</button>
             </div>
           </form>
@@ -591,7 +592,14 @@
         <span class="nav-label">Historico</span>
       </button>
       <button class="nav-button" data-section="secaoCronograma" onclick="navegar('secaoCronograma', this)">
-        <span class="nav-icon">&#9638;</span>
+        <span class="nav-icon nav-icon-svg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <rect x="3.5" y="5.5" width="17" height="15" rx="2.5"></rect>
+            <line x1="3.5" y1="9" x2="20.5" y2="9"></line>
+            <line x1="8" y1="3.5" x2="8" y2="7"></line>
+            <line x1="16" y1="3.5" x2="16" y2="7"></line>
+          </svg>
+        </span>
         <span class="nav-label">Cronograma</span>
       </button>
       <button class="nav-button" data-section="secaoConfiguracoes" onclick="navegar('secaoConfiguracoes', this)">
