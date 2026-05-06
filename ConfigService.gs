@@ -83,7 +83,7 @@ function listarOpcoesComboGerenciaveis() {
 function salvarOpcaoCombo(grupo, valor) {
   try {
     var grupoNormalizado = normalizeComboGroup_(grupo);
-    var nome = normalizeLabel_(valor);
+    var nome = normalizeComboOptionName_(grupoNormalizado, valor);
     if (!grupoNormalizado || !nome) {
       return createErrorResponse_('Informe um grupo e um valor valido.');
     }
@@ -176,7 +176,7 @@ function alterarStatusOpcaoCombo(grupo, idOuValor, novoStatus) {
 
 function salvarPrestador(nomePrestador) {
   try {
-    var nome = sanitizeText_(nomePrestador);
+    var nome = normalizeComboOptionName_('executor', nomePrestador);
     if (!nome) {
       return createErrorResponse_('Informe o nome do executor/prestador.');
     }
@@ -321,17 +321,18 @@ function saveManagedConfigOptions_(grupo, items) {
 
 function addManagedConfigOption_(grupo, nome) {
   var items = getManagedOptionItems_(grupo);
-  var targetKey = normalizeCompare_(stripAccents_(nome));
+  var normalizedName = normalizeComboOptionName_(grupo, nome);
+  var targetKey = normalizeCompare_(stripAccents_(normalizedName));
   var existing = items.filter(function(item) {
     return normalizeCompare_(stripAccents_(item.nome)) === targetKey;
   })[0];
   if (existing) {
     existing.status = 'Ativo';
-    existing.nome = normalizeLabel_(nome);
+    existing.nome = normalizedName;
   } else {
     items.push({
       id: grupo.toUpperCase() + '_' + new Date().getTime(),
-      nome: normalizeLabel_(nome),
+      nome: normalizedName,
       status: 'Ativo'
     });
   }
@@ -409,6 +410,28 @@ function saveSheetComboOption_(sheetName, idField, nameField, data) {
     return;
   }
   appendSheetRecord_(sheetName, data);
+}
+
+function normalizeComboOptionName_(grupo, valor) {
+  var group = normalizeComboGroup_(grupo);
+  var raw = sanitizeText_(valor);
+  if (!raw) {
+    return '';
+  }
+  if (group === 'loja') {
+    return normalizeLojaOptionName_(raw);
+  }
+  return normalizeLabel_(raw);
+}
+
+function normalizeLojaOptionName_(valor) {
+  var text = stripAccents_(safeString_(valor)).toUpperCase();
+  var match = text.match(/(\d{1,3})/);
+  if (match) {
+    var number = Number(match[1]);
+    return 'LOJA ' + (number < 10 ? '0' + number : String(number));
+  }
+  return text;
 }
 
 function getManagedConfigKey_(grupo) {

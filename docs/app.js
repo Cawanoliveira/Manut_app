@@ -1,4 +1,4 @@
-var CACHE_KEY = 'manutencao_offline_cache_v2';
+﻿var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -31,7 +31,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         loja: '',
         setor: '',
         tipo: '',
-        prioridade: ''
+        prioridade: '',
+        executor: ''
       },
       speechState: {
         activeTargetId: ''
@@ -521,6 +522,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     preencherSelect('novoSetor', combos.setores, 'Selecione um setor');
     preencherSelect('novoTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('novaPrioridade', combos.prioridades, 'Selecione uma prioridade');
+    preencherSelect('novoExecutor', combos.prestadores, 'Selecione um executor', true);
 
     preencherSelect('filtroLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('filtroSetor', combos.setores, 'Todos os setores', true);
@@ -536,6 +538,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     preencherSelect('cronogramaExecutor', combos.prestadores, 'Selecione um executor');
     preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
+    preencherSelect('cronogramaStatus', ['Em andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
     bindManagedSelects_();
   }
 
@@ -645,6 +648,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       setor: document.getElementById('novoSetor').value,
       tipo: document.getElementById('novoTipo').value,
       prioridade: document.getElementById('novaPrioridade').value,
+      executor: document.getElementById('novoExecutor').value,
       descricao: document.getElementById('novaDescricao').value,
       observacao: document.getElementById('novaObservacao').value
     };
@@ -705,7 +709,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       observacao: dados.observacao || '',
       solicitante: 'offline_local',
       responsavel: '',
-      executor: '',
+      executor: dados.executor || '',
       data_inicio: '',
       previsao_entrega: '',
       status: 'Aberto',
@@ -797,6 +801,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       executor: getElementValue_('cronogramaExecutor'),
       loja: getElementValue_('cronogramaLoja'),
       setor: getElementValue_('cronogramaSetor'),
+      status: getElementValue_('cronogramaStatus'),
       dataAberturaDe: getElementValue_('cronogramaDataAberturaDe'),
       dataAberturaAte: getElementValue_('cronogramaDataAberturaAte'),
       previsaoEntregaDe: getElementValue_('cronogramaPrevisaoDe'),
@@ -827,7 +832,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
   }
 
   function limparFiltrosCronograma() {
-    ['cronogramaExecutor', 'cronogramaLoja', 'cronogramaSetor', 'cronogramaDataAberturaDe', 'cronogramaDataAberturaAte', 'cronogramaPrevisaoDe', 'cronogramaPrevisaoAte']
+    ['cronogramaExecutor', 'cronogramaLoja', 'cronogramaSetor', 'cronogramaStatus', 'cronogramaDataAberturaDe', 'cronogramaDataAberturaAte', 'cronogramaPrevisaoDe', 'cronogramaPrevisaoAte']
       .forEach(function(id) {
         var field = document.getElementById(id);
         if (field) {
@@ -843,8 +848,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       return [];
     }
     return appState.allPendencias.filter(function(item) {
-      var status = normalizeText_(item.status);
-      if (status === 'concluido' || status === 'cancelado') {
+      var status = getCronogramaStatusLocal_(item);
+      if (normalizeText_(item.status) === 'cancelado') {
         return false;
       }
       if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
@@ -862,11 +867,31 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       if ((filtros.previsaoEntregaDe || filtros.previsaoEntregaAte) && !dateWithinRangeLocal_(item.previsao_entrega, filtros.previsaoEntregaDe, filtros.previsaoEntregaAte)) {
         return false;
       }
+      if (filtros.status && normalizeText_(status) !== normalizeText_(filtros.status)) {
+        return false;
+      }
       item.esta_vencida = isPendenciaVencidaLocal_(item);
+      item.status_cronograma = status;
       item.data_abertura_label = formatDateBr(item.data_abertura);
       item.previsao_entrega_label = formatDateBr(item.previsao_entrega);
       return true;
     }).sort(compareCronogramaItemsLocal_);
+  }
+
+  function getCronogramaStatusLocal_(item) {
+    if (!item) {
+      return '';
+    }
+    if (normalizeText_(item.status) === 'concluido') {
+      return 'Concluido';
+    }
+    if (isPendenciaVencidaLocal_(item)) {
+      return 'Vencido';
+    }
+    if (safeTrim_(item.executor)) {
+      return 'Em andamento';
+    }
+    return 'Aberto';
   }
 
   function compareCronogramaItemsLocal_(a, b) {
@@ -906,7 +931,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     if (!filtros) {
       resumoEl.textContent = 'Selecione um prestador para visualizar a programacao.';
       cardsEl.innerHTML = '<div class="panel empty-state">Selecione um prestador para montar o cronograma.</div>';
-      tableEl.innerHTML = '<tr><td colspan="6" class="empty-state">Selecione um prestador para montar o cronograma.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="7" class="empty-state">Selecione um prestador para montar o cronograma.</td></tr>';
       return;
     }
 
@@ -917,7 +942,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</div>';
-      tableEl.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</td></tr>';
       return;
     }
 
@@ -929,6 +954,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '<div class="cronograma-card-grid">' +
           cardKv_('Local', escapeHtml(item.loja || '-')) +
           cardKv_('Setor', renderSetorBadge_(item.setor || '-')) +
+          cardKv_('Status', renderTag('status', item.status_cronograma || getCronogramaStatusLocal_(item))) +
           cardKv_('Previsao', escapeHtml(item.previsao_entrega_label || '-')) +
           cardKv_('Descricao / Observacao', renderCronogramaTextoCell_(item)) +
         '</div>' +
@@ -940,6 +966,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         '<td>' + escapeHtml(item.executor || filtros.executor || '-') + '</td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
         '<td>' + renderSetorBadge_(item.setor || '-') + '</td>' +
+        '<td>' + renderTag('status', item.status_cronograma || getCronogramaStatusLocal_(item)) + '</td>' +
         '<td>' + escapeHtml(item.previsao_entrega_label || '-') + '</td>' +
         '<td class="cronograma-text-cell">' + renderCronogramaTextoCell_(item) + '</td>' +
         '<td class="cronograma-anexo-cell">' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="muted-text">Sem anexo</span>') + '</td>' +
@@ -1825,13 +1852,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function getDashboardChartSeries_(tipo, orderedKeys, collection) {
       if (tipo === 'loja') {
-        return ['Loja 01', 'Loja 02', 'Loja 03', 'Loja 04', 'Loja 05', 'Loja 06', 'Loja 07', 'Loja 08', 'Loja 09', 'Loja 10'].map(function(label) {
-          return {
-            key: label,
-          label: label.replace('Loja ', 'LJ '),
-          count: getDashboardChartLojaCount_(label, collection)
-        };
-      });
+        return getDashboardLojaSeries_(collection);
       }
       if (tipo === 'setor') {
         if (appState.combos && Array.isArray(appState.combos.setores) && appState.combos.setores.length) {
@@ -1872,11 +1893,46 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
 
   function normalizeLojaChartKey_(value) {
     var text = safeTrim_(value).toUpperCase();
-    var match = text.match(/(\d{1,2})/);
+    var match = text.match(/(\d{1,3})/);
     if (!match) {
       return text;
     }
-    return 'LOJA ' + ('0' + Number(match[1])).slice(-2);
+    var number = Number(match[1]);
+    return 'LOJA ' + (number < 10 ? '0' + number : String(number));
+  }
+
+  function getDashboardLojaSeries_(collection) {
+    var labelsMap = {};
+    var index;
+    for (index = 1; index <= 10; index += 1) {
+      labelsMap['LOJA ' + ('0' + index).slice(-2)] = true;
+    }
+    ((appState.combos && appState.combos.lojas) || []).forEach(function(label) {
+      var normalized = normalizeLojaChartKey_(label);
+      if (normalized) {
+        labelsMap[normalized] = true;
+      }
+    });
+    Object.keys(collection || {}).forEach(function(label) {
+      var normalized = normalizeLojaChartKey_(label);
+      if (normalized) {
+        labelsMap[normalized] = true;
+      }
+    });
+    return Object.keys(labelsMap).sort(function(a, b) {
+      return extractLojaChartNumber_(a) - extractLojaChartNumber_(b);
+    }).map(function(label) {
+      return {
+        key: label,
+        label: label.replace('LOJA ', 'LJ '),
+        count: getDashboardChartLojaCount_(label, collection)
+      };
+    });
+  }
+
+  function extractLojaChartNumber_(value) {
+    var match = safeTrim_(value).match(/(\d{1,3})/);
+    return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
   }
 
   function getDashboardAxisSteps_(maxValue) {
@@ -2578,6 +2634,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     document.getElementById('spenTargetField').value = targetId;
     document.getElementById('spenModalTitle').textContent = 'Escrita com S Pen - ' + title;
     document.getElementById('spenInputArea').value = document.getElementById(targetId).value || '';
+    document.getElementById('spenInputArea').lang = 'pt-BR';
+    document.getElementById('spenInputArea').spellcheck = true;
     appState.spenLocked = true;
     renderSpenLockState_();
     document.body.classList.add('spen-open');
@@ -2594,8 +2652,34 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       fecharSpenPopup(true);
       return;
     }
-    target.value = document.getElementById('spenInputArea').value || '';
+    target.lang = 'pt-BR';
+    target.spellcheck = true;
+    target.value = normalizePtBrText_(document.getElementById('spenInputArea').value || '');
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
     fecharSpenPopup(true);
+  }
+
+  function normalizePtBrText_(value) {
+    var text = String(value || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\s+([,.;:!?])/g, '$1')
+      .replace(/([,.;:!?])([^\s\n])/g, '$1 $2')
+      .trim();
+    if (!text) {
+      return '';
+    }
+    return text.split(/(\n+)/).map(function(part) {
+      if (!part || /^\n+$/.test(part)) {
+        return part;
+      }
+      return part.replace(/(^|[.!?]\s+)([a-zà-ÿ])/g, function(match, prefix, letter) {
+        return prefix + letter.toUpperCase();
+      });
+    }).join('');
   }
 
   function limparSpenPopup() {
@@ -2634,7 +2718,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       loja: getElementValue_('novaLoja'),
       setor: getElementValue_('novoSetor'),
       tipo: getElementValue_('novoTipo'),
-      prioridade: getElementValue_('novaPrioridade')
+      prioridade: getElementValue_('novaPrioridade'),
+      executor: getElementValue_('novoExecutor')
     };
     saveCache_();
   }
@@ -2647,6 +2732,7 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
     setElementValueIfExists_('novoSetor', appState.formContext.setor);
     setElementValueIfExists_('novoTipo', appState.formContext.tipo);
     setElementValueIfExists_('novaPrioridade', appState.formContext.prioridade);
+    setElementValueIfExists_('novoExecutor', appState.formContext.executor);
   }
 
   function limparContextoRapido() {
@@ -2654,7 +2740,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
       loja: '',
       setor: '',
       tipo: '',
-      prioridade: ''
+      prioridade: '',
+      executor: ''
     };
     saveCache_();
     applySavedFormContext_();
@@ -2705,7 +2792,8 @@ var CACHE_KEY = 'manutencao_offline_cache_v2';
         loja: '',
         setor: '',
         tipo: '',
-        prioridade: ''
+        prioridade: '',
+        executor: ''
       };
       saveCache_();
     } else {

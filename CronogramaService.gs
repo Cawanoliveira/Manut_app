@@ -87,6 +87,7 @@ function normalizeCronogramaFilters_(filtros) {
     executor: sanitizeText_(filtros.executor),
     loja: sanitizeText_(filtros.loja),
     setor: sanitizeText_(filtros.setor),
+    status: normalizeLabel_(filtros.status),
     dataAberturaDe: normalizeCronogramaDateFilter_(filtros.dataAberturaDe),
     dataAberturaAte: normalizeCronogramaDateFilter_(filtros.dataAberturaAte),
     previsaoEntregaDe: normalizeCronogramaDateFilter_(filtros.previsaoEntregaDe),
@@ -111,6 +112,7 @@ function getCronogramaItems_(filtros) {
     item.previsao_entrega_label = formatarData(item.previsao_entrega);
     item.data_conclusao_label = formatarData(item.data_conclusao);
     item.esta_vencida = isPendenciaVencida_(item);
+    item.status_cronograma = getCronogramaStatusServer_(item);
     return item;
   });
 
@@ -122,10 +124,36 @@ function getCronogramaItems_(filtros) {
     dataAberturaAte: filtros.dataAberturaAte,
     previsaoEntregaDe: filtros.previsaoEntregaDe,
     previsaoEntregaAte: filtros.previsaoEntregaAte,
-    incluirFinalizadas: false
+    incluirFinalizadas: true
+  });
+
+  filtered = filtered.filter(function(item) {
+    if (normalizeCompare_(item.status) === 'cancelado') {
+      return false;
+    }
+    if (filtros.status && normalizeCompare_(item.status_cronograma) !== normalizeCompare_(filtros.status)) {
+      return false;
+    }
+    return true;
   });
 
   return filtered.sort(compareCronogramaItems_);
+}
+
+function getCronogramaStatusServer_(item) {
+  if (!item) {
+    return '';
+  }
+  if (normalizeCompare_(item.status) === 'concluido') {
+    return 'Concluido';
+  }
+  if (isPendenciaVencida_(item)) {
+    return 'Vencido';
+  }
+  if (safeString_(item.executor)) {
+    return 'Em andamento';
+  }
+  return 'Aberto';
 }
 
 function compareCronogramaItems_(a, b) {
@@ -191,6 +219,9 @@ function buildCronogramaResumoFiltros_(filtros, total) {
   }
   if (filtros.setor) {
     parts.push('Setor: ' + filtros.setor);
+  }
+  if (filtros.status) {
+    parts.push('Status: ' + filtros.status);
   }
   if (filtros.dataAberturaDe || filtros.dataAberturaAte) {
     parts.push('Abertura: ' + (filtros.dataAberturaDe ? formatarData(filtros.dataAberturaDe) : '...') + ' ate ' + (filtros.dataAberturaAte ? formatarData(filtros.dataAberturaAte) : '...'));
