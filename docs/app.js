@@ -1045,6 +1045,8 @@
     var anchor = document.createElement('a');
     anchor.href = payload.downloadUrl || payload.url;
     anchor.download = payload.fileName || 'cronograma.xlsx';
+    anchor.target = '_self';
+    anchor.rel = 'noopener';
     document.body.appendChild(anchor);
     anchor.click();
     setTimeout(function() {
