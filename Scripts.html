@@ -1043,18 +1043,22 @@
     if (!payload || !(payload.downloadUrl || payload.url)) {
       throw new Error('Arquivo do cronograma invalido.');
     }
-    var anchor = document.createElement('a');
-    anchor.href = payload.downloadUrl || payload.url;
-    anchor.download = payload.fileName || 'cronograma.xlsx';
-    anchor.target = '_self';
-    anchor.rel = 'noopener';
-    document.body.appendChild(anchor);
-    anchor.click();
-    setTimeout(function() {
-      if (anchor.parentNode) {
-        anchor.parentNode.removeChild(anchor);
-      }
-    }, 600);
+    var targetUrl = payload.downloadUrl || payload.url;
+    try {
+      window.location.assign(targetUrl);
+    } catch (error) {
+      var anchor = document.createElement('a');
+      anchor.href = targetUrl;
+      anchor.target = '_self';
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      setTimeout(function() {
+        if (anchor.parentNode) {
+          anchor.parentNode.removeChild(anchor);
+        }
+      }, 600);
+    }
   }
 
   function renderFiltroResumo() {
