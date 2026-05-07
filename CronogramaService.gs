@@ -219,6 +219,8 @@ function ensureGeneratedFileSharing_(file) {
 
 function buildCronogramaDocument_(body, filtros, items) {
   buildCronogramaHeader_(body, filtros, items);
+  body.appendParagraph('Emitido em ' + formatarData(now_()) + ' as ' + Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss')).setFontSize(8).setForegroundColor('#666666');
+  body.appendParagraph('');
   body.appendParagraph('CRONOGRAMA DE PENDENCIAS').setHeading(DocumentApp.ParagraphHeading.HEADING2).setForegroundColor('#E8720C');
 
   var headerRow = ['Prestador', 'Local', 'Setor', 'Status', 'Previsao', 'Descricao / Observacao'];
@@ -237,19 +239,16 @@ function buildCronogramaDocument_(body, filtros, items) {
 function buildCronogramaHeader_(body, filtros, items) {
   var table = body.appendTable([['', '']]);
   var row = table.getRow(0);
-  var textCell = row.getCell(0);
-  var logoCell = row.getCell(1);
+  var logoCell = row.getCell(0);
+  var textCell = row.getCell(1);
 
   styleCronogramaHeaderTable_(table);
-  textCell.setBackgroundColor('#E8720C');
   logoCell.setBackgroundColor('#E8720C');
-  textCell.appendParagraph('SUPERMERCADOS BIG COMPRA').setFontSize(8).setBold(true).setForegroundColor('#FFE0C0');
-  textCell.appendParagraph('Cronograma do Prestador').setHeading(DocumentApp.ParagraphHeading.HEADING1).setForegroundColor('#FFFFFF');
-  textCell.appendParagraph('Relatorio de pendencias por prestador de servico').setFontSize(9).setForegroundColor('#FFE0C0');
+  textCell.setBackgroundColor('#E8720C');
   appendCronogramaLogo_(logoCell);
+  textCell.appendParagraph('Cronograma do Prestador').setFontSize(13).setBold(true).setForegroundColor('#FFFFFF');
+  textCell.appendParagraph('Relatorio de pendencias por prestador de servico').setFontSize(8).setForegroundColor('#FFE0C0');
   appendCronogramaHeaderDivider_(body);
-
-  body.appendParagraph('Emitido em ' + formatarData(now_()) + ' as ' + Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss')).setFontSize(8).setForegroundColor('#666666');
 
   var metaTable = body.appendTable([
     ['PRESTADOR', 'TOTAL DE PENDENCIAS', 'DATA DE EMISSAO'],
@@ -267,8 +266,8 @@ function styleCronogramaHeaderTable_(table) {
     // Mantem o PDF gerando mesmo se o estilo da tabela variar por ambiente.
   }
   try {
-    table.getRow(0).getCell(0).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(12).setPaddingRight(12);
-    table.getRow(0).getCell(1).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(12).setPaddingRight(12);
+    table.getRow(0).getCell(0).setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(8).setPaddingRight(6);
+    table.getRow(0).getCell(1).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(4).setPaddingRight(12);
   } catch (errorPadding) {}
 }
 
@@ -276,10 +275,10 @@ function appendCronogramaLogo_(cell) {
   try {
     var blob = Utilities.newBlob(Utilities.base64Decode(CRONOGRAMA_PDF_LOGO_BASE64), 'image/png', 'cronograma-logo.png');
     var paragraph = cell.appendParagraph('');
-    paragraph.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    paragraph.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
     var image = paragraph.appendInlineImage(blob);
-    image.setWidth(54);
-    image.setHeight(54);
+    image.setWidth(44);
+    image.setHeight(44);
   } catch (error) {
     registrarLog('ALERTA', 'Falha ao montar logo do cronograma PDF.', getErrorStack_(error), getCurrentUserIdentifier_());
   }
@@ -314,6 +313,18 @@ function styleCronogramaMetaTable_(table) {
       valueCell.setBorderColor('#E0E0E0');
       headerCell.setBorderWidth(1);
       valueCell.setBorderWidth(1);
+      if (col === 0) {
+        headerCell.setBorderTopColor('#E8720C');
+        valueCell.setBorderTopColor('#E8720C');
+      } else if (col === 1) {
+        headerCell.setBorderTopColor('#1A1A1A');
+        valueCell.setBorderTopColor('#1A1A1A');
+      } else {
+        headerCell.setBorderTopColor('#E8720C');
+        valueCell.setBorderTopColor('#E8720C');
+      }
+      headerCell.setBorderTopWidth(3);
+      valueCell.setBorderTopWidth(3);
     } catch (error) {}
   }
 }
