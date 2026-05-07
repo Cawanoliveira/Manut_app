@@ -1,3 +1,5 @@
+var CRONOGRAMA_PDF_LOGO_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAG8AAABwCAYAAAAQRS4uAAAKMWlDQ1BJQ0MgUHJvZmlsZQAAeJydlndUU9kWh8+9N71QkhCKlNBraFICSA29SJEuKjEJEErAkAAiNkRUcERRkaYIMijggKNDkbEiioUBUbHrBBlE1HFwFBuWSWStGd+8ee/Nm98f935rn73P3Wfvfda6AJD8gwXCTFgJgAyhWBTh58WIjYtnYAcBDPAAA2wA4HCzs0IW+EYCmQJ82IxsmRP4F726DiD5+yrTP4zBAP+flLlZIjEAUJiM5/L42VwZF8k4PVecJbdPyZi2NE3OMErOIlmCMlaTc/IsW3z2mWUPOfMyhDwZy3PO4mXw5Nwn4405Er6MkWAZF+cI+LkyviZjg3RJhkDGb+SxGXxONgAoktwu5nNTZGwtY5IoMoIt43kA4EjJX/DSL1jMzxPLD8XOzFouEiSniBkmXFOGjZMTi+HPz03ni8XMMA43jSPiMdiZGVkc4XIAZs/8WRR5bRmyIjvYODk4MG0tbb4o1H9d/JuS93aWXoR/7hlEH/jD9ld+mQ0AsKZltdn6h21pFQBd6wFQu/2HzWAvAIqyvnUOfXEeunxeUsTiLGcrq9zcXEsBn2spL+jv+p8Of0NffM9Svt3v5WF485M4knQxQ143bmZ6pkTEyM7icPkM5p+H+B8H/nUeFhH8JL6IL5RFRMumTCBMlrVbyBOIBZlChkD4n5r4D8P+pNm5lona+BHQllgCpSEaQH4eACgqESAJe2Qr0O99C8ZHA/nNi9GZmJ37z4L+fVe4TP7IFiR/jmNHRDK4ElHO7Jr8WgI0IABFQAPqQBvoAxPABLbAEbgAD+ADAkEoiARxYDHgghSQAUQgFxSAtaAYlIKtYCeoBnWgETSDNnAYdIFj4DQ4By6By2AE3AFSMA6egCnwCsxAEISFyBAVUod0IEPIHLKFWJAb5AMFQxFQHJQIJUNCSAIVQOugUqgcqobqoWboW+godBq6AA1Dt6BRaBL6FXoHIzAJpsFasBFsBbNgTzgIjoQXwcnwMjgfLoK3wJVwA3wQ7oRPw5fgEVgKP4GnEYAQETqiizARFsJGQpF4JAkRIauQEqQCaUDakB6kH7mKSJGnyFsUBkVFMVBMlAvKHxWF4qKWoVahNqOqUQdQnag+1FXUKGoK9RFNRmuizdHO6AB0LDoZnYsuRlegm9Ad6LPoEfQ4+hUGg6FjjDGOGH9MHCYVswKzGbMb0445hRnGjGGmsVisOtYc64oNxXKwYmwxtgp7EHsSewU7jn2DI+J0cLY4X1w8TogrxFXgWnAncFdwE7gZvBLeEO+MD8Xz8MvxZfhGfA9+CD+OnyEoE4wJroRIQiphLaGS0EY4S7hLeEEkEvWITsRwooC4hlhJPEQ8TxwlviVRSGYkNimBJCFtIe0nnSLdIr0gk8lGZA9yPFlM3kJuJp8h3ye/UaAqWCoEKPAUVivUKHQqXFF4pohXNFT0VFysmK9YoXhEcUjxqRJeyUiJrcRRWqVUo3RU6YbStDJV2UY5VDlDebNyi/IF5UcULMWI4kPhUYoo+yhnKGNUhKpPZVO51HXURupZ6jgNQzOmBdBSaaW0b2iDtCkVioqdSrRKnkqNynEVKR2hG9ED6On0Mvph+nX6O1UtVU9Vvuom1TbVK6qv1eaoeajx1UrU2tVG1N6pM9R91NPUt6l3qd/TQGmYaYRr5Grs0Tir8XQObY7LHO6ckjmH59zWhDXNNCM0V2ju0xzQnNbS1vLTytKq0jqj9VSbru2hnaq9Q/uE9qQOVcdNR6CzQ+ekzmOGCsOTkc6oZPQxpnQ1df11Jbr1uoO6M3rGelF6hXrtevf0Cfos/ST9Hfq9+lMGOgYhBgUGrQa3DfGGLMMUw12G/YavjYyNYow2GHUZPTJWMw4wzjduNb5rQjZxN1lm0mByzRRjyjJNM91tetkMNrM3SzGrMRsyh80dzAXmu82HLdAWThZCiwaLG0wS05OZw2xljlrSLYMtCy27LJ9ZGVjFW22z6rf6aG1vnW7daH3HhmITaFNo02Pzq62ZLde2xvbaXPJc37mr53bPfW5nbse322N3055qH2K/wb7X/oODo4PIoc1h0tHAMdGx1vEGi8YKY21mnXdCO3k5rXY65vTW2cFZ7HzY+RcXpkuaS4vLo3nG8/jzGueNueq5clzrXaVuDLdEt71uUnddd457g/sDD30PnkeTx4SnqWeq50HPZ17WXiKvDq/XbGf2SvYpb8Tbz7vEe9CH4hPlU+1z31fPN9m31XfKz95vhd8pf7R/kP82/xsBWgHcgOaAqUDHwJWBfUGkoAVB1UEPgs2CRcE9IXBIYMj2kLvzDecL53eFgtCA0O2h98KMw5aFfR+OCQ8Lrwl/GGETURDRv4C6YMmClgWvIr0iyyLvRJlESaJ6oxWjE6K04gTxHXHY+Oj45vipxf6LNy5cDzBPqE44foi40V5iy4s1licvvj4EsUlnCVHEtGJMYktie85oZwGzvTSgKW1S6e4bO4u7hOeB28Hb5Lvyi/nTyS5JpUnPUp2Td6ePJninlKR8lTAFlQLnqf6p9alvk4LTduf9ik9Jr09A5eRmHFUSBGmCfsytTPzMoezzLOKs6TLnJftXDYlChI1ZUPZi7K7xTTZz9SAxESyXjKa45ZTk/MmNzr3SJ5ynjBvYLnZ8k3LJ/J9879egVrBXdFboFuwtmB0pefK+lXQqqWrelfrry5aPb7Gb82BtYS1aWt/KLQuLC98uS5mXU+RVtGaorH1futbixWKRcU3NrhsqNuI2ijYOLhp7qaqTR9LeCUXS61LK0rfb+ZuvviVzVeVX33akrRlsMyhbM9WzFbh1uvb3LcdKFcuzy8f2x6yvXMHY0fJjpc7l+y8UGFXUbeLsEuyS1oZXNldZVC1tep9dUr1SI1XTXutZu2m2te7ebuv7PHY01anVVda926vYO/Ner/6zgajhop9mH05+x42Rjf2f836urlJo6m06cN+4X7pgYgDfc2Ozc0tmi1lrXCrpHXyYMLBy994f9Pdxmyrb6e3lx4ChySHHn+b+O31w0GHe4+wjrR9Z/hdbQe1o6QT6lzeOdWV0iXtjusePhp4tLfHpafje8vv9x/TPVZzXOV42QnCiaITn07mn5w+lXXq6enk02O9S3rvnIk9c60vvG/wbNDZ8+d8z53p9+w/ed71/LELzheOXmRd7LrkcKlzwH6g4wf7HzoGHQY7hxyHui87Xe4Znjd84or7ldNXva+euxZw7dLI/JHh61HXb95IuCG9ybv56Fb6ree3c27P3FlzF3235J7SvcbfjT9sV3qID0+6j068GDBgztj3LEnP2X/9H686CH5YcWEzkTzI9tHxyZ9Jy8/Xvh4/EnWk5mnxT8r/1z7zOTZd794/DIwFTs1/lz0/NOvm1+ov9j/0u5l73TY9P1XGa9mXpe8UX9z4C3rbf+7mHcTM7nvse8rP5h+6PkY9PHup4xPn34D94Tz+6TMXDkAAAbdSURBVHic7V3hces2DIZz+R9uEG3wtEG0QdUJyg3qTFCPoA3qN0GVDZQJqkxQZQNmAvXgR11VP8mmSIoAJX53uORyjmzrE0AQ/EAeYF/IAaAAgEz/jmgAoBv9TGCGAgBaAOjvWK2JTWAAAQBnA9Ku7UT9wWO+4cUorLlcp7UgbjAkPcEAUocsNXETW+0JSIYpcj1+9Y52TOzNo1hwk5HY6s6YlFuGyVvGdgw8EHvbn5b/+6k9Em0gDe0Z/OMNAMoVrhstpGfv6Fc2jBAJ+kb0kZnykEBtAj4SiT4RGB4lAxJ6R7uX+Q5TnbFtImHBTPA32AbeRkmT0FkpPpzfZl7/XX9/LMNFiVhDZu/RqoVzVjaehx8+AeBDh1NMhKzxEPBOpnT7P3zzET4fAs/tEv5P4CmGsImD+T+B3ismfOl7o7h6ntBF54Sf8eRSensIRNxc+pwAPMmTeg70suJ7bAGCaswbNCHjD5Dpv61R4d/quCdCvqEMPeEWQvTH47FvmqZXSvUmYDAhN7FgFZfcUVpgRVpVVUZkXYMBMWzIy2dkCqtZnud913W9LYCeGBZamWEuEuxLSSmNw+McGBBjYqtPo5rQHucDQE8MedgsQ49xrh43gAExpibWmucFrUlWVQVPT1h42BXKNS4qQj6BRVH0PgH0HmVq3RqeF1R0I+VuFx6e15DYFyHHOt8Aeo9aapLret5NlGXStcIPEfIpOvKKIi20a/yhq1ilK3nBmg3zPGlaR8AltL90YWRWamiyqtCFWCH4MUT5xeFA2YrhFZ/aE4feDOOwmVbB6YHO8/d1QvNoSN7vwBjv7+/QNNFqWZeguuqOMipKr54mu+B0OlGn+CGtXRI20w4J/JIZaUoe287QHePSbp3Ii9f7MhPyUumDJ7LHrZGXZdllwj+YEOLyc2qZ6evrC9q2vRhmq3Ud1ayoYNM77oK6rvvz+eykd0HgIjBeJ8sy6ozSxG7WQEVI3Qo3nM/ny0oHA5Lm7GZEDCrx4wilVF+WJTVJc5avse3TZshjXARQa277tCnyhjDKgLTBqutVhUx7HIn6x/eqwpfOJAfMZZxL8Pr6ehFIMehtGJyMRpu5lufVdX3RfU69B45f2OvgAgZj4JHddlI+IKU0ei9sWHFJYgiz0IblFhuhkwoppZN3E92nnybmOTVxruQpS2+w7T5CoMY08D2aXMM7xk7e2TITdJHW49hJXVF5CN2VuQa6zm7JUSllXc98eXkJLZpq2Er/qFA7FKOPR9pdjHdPXuOgfaEWCu+ePKXst//CST+lWBjJ24Xs6p76zBYBySvmyENRZwJv8sq5sLnrAyDaUQ3UZuU+oG6lmCKv2rP3KYdx7/k56F5B1RR5SrslVqwTItnmcZxtttotE4F8Q+fQApZNTRUGAncF5RA2Cci7KbpFAl9hR2gdEhYiXDLPxxsDYxlyu0WXuVZnWduMGJglZVs7Nqan2EKE6HMXt8pjOHm3d4eIkEfaUn2vtrmLybsQYpPkRSXep8DHB55vQQJ1jzy158oL40wV5+Jt6owFt7BJRN4lIu5+Pc81YSFqC7vkIok8x/GOYI75fckaLKmSek5z2XWdN/GrLVC8G/i7D2f1GSPo3tJzhkShsHYs1ZOGCul7141EOb2YOKAmDfsOUJc5hbZtna+PvQcRtH3hwGqVVZGQZtoUUjgql+ceDCZe17iu8pCETdP+8tbB+7D3nLHXeRGFNtyLxSfLm4kNI0vhI1TfMeVzTfVEQd7SRhC5MHmxafPCcBlgpwivVXLSLiJ80n2m7sLhbKIAnUGr7JAefIOB8c1eQmDXdRcvvE4o0GOQXNu9WnxMS+5YvYlTTVwJHMP2/8ahMgBxaKsKYZpYCbQFeulcf7tnW33dVFC3P7uMV0uBmWjACkq+yTP0pgwTh85xn7E54HUDtywHrWwP+7X01Cal9BZK8TqBxrZrI5GanDh4Iej6J4bTpUTi6/H/Ao1rc2Z9htDBwzhYasOqAPnZaULvrznstXkNXH9DY7Qb/K9ctEIZJ4+EOIyd7lBo1TX1jemZm1uTxMog3xYLeBt7XWwiEGbJi+LYg5rBU94zM/K9H1mePQv8zUqPQokzg5vWb4m4kLpNFnMZYrzp+TDrLHMO/U6tWaNd3OREE99P3i+wDXxqUjodCrOJcNiNXhM9ttBte+ZYFQkFdvJ5IFB1xYoswtpnG1tqv/lFXTAzHK8ScRMe2Fh4wHFizMn139dYJN7t+GZa+2w9ptqFR62N9UJpCByYeWJ+9aS3mrilk1qhs0KXaQluY7L7BCXGklyTxjkeOC5IjhT3ULlHiDsJTatJiyqr5DTmhUQx+p2NEmkp/gX+90/Z55NexQAAAABJRU5ErkJggg==';
+
 function gerarCronogramaPdf(filtros) {
   var tempFile = null;
   var pdfFile = null;
@@ -216,10 +218,9 @@ function ensureGeneratedFileSharing_(file) {
 
 function buildCronogramaDocument_(body, filtros, items) {
   buildCronogramaHeader_(body, filtros, items);
-  body.appendHorizontalRule();
-  body.appendParagraph('CRONOGRAMA DE PENDENCIAS').setHeading(DocumentApp.ParagraphHeading.HEADING2).setForegroundColor('#f26400');
+  body.appendParagraph('▌  CRONOGRAMA DE PENDENCIAS').setHeading(DocumentApp.ParagraphHeading.HEADING2).setForegroundColor('#f26400');
 
-  var headerRow = ['Prestador', 'Local', 'Setor', 'Status', 'Previsao de conclusao', 'Descricao / Observacao'];
+  var headerRow = ['Prestador', 'Local', 'Setor', 'Status', 'Previsao', 'Descricao / Observacao'];
   var table = body.appendTable([headerRow]);
   styleCronogramaHeaderRow_(table.getRow(0));
 
@@ -227,22 +228,25 @@ function buildCronogramaDocument_(body, filtros, items) {
     appendCronogramaTableRow_(table, filtros, item);
   });
 
-  body.appendParagraph('RESUMO').setHeading(DocumentApp.ParagraphHeading.HEADING3).setForegroundColor('#f26400');
-  body.appendParagraph(buildCronogramaStatusSummary_(items)).setFontSize(9).setForegroundColor('#6b7280');
+  body.appendParagraph('');
+  appendCronogramaSummaryBar_(body, items);
 }
 
 function buildCronogramaHeader_(body, filtros, items) {
-  var table = body.appendTable();
-  var row = table.appendTableRow();
-  var logoCell = row.appendTableCell('');
-  var textCell = row.appendTableCell('');
+  var table = body.appendTable([['', '']]);
+  var row = table.getRow(0);
+  var textCell = row.getCell(0);
+  var logoCell = row.getCell(1);
 
   styleCronogramaHeaderTable_(table);
+  textCell.setBackgroundColor('#E8720C');
+  logoCell.setBackgroundColor('#E8720C');
+  textCell.appendParagraph('Cronograma do Prestador').setHeading(DocumentApp.ParagraphHeading.HEADING1).setForegroundColor('#FFFFFF');
+  textCell.appendParagraph('Relatorio de pendencias por prestador de servico').setFontSize(9).setForegroundColor('#FFE0C0');
   appendCronogramaLogo_(logoCell);
 
-  textCell.appendParagraph('SUPERMERCADOS BIG COMPRA').setFontSize(9).setBold(true).setForegroundColor('#f26400');
-  textCell.appendParagraph('Cronograma do Prestador').setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  textCell.appendParagraph('Relatorio de pendencias por prestador de servico').setFontSize(9).setForegroundColor('#6b7280');
+  body.appendParagraph('Emitido em ' + formatarData(now_()) + ' as ' + Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss')).setFontSize(8).setForegroundColor('#666666');
+  body.appendParagraph('');
 
   var metaTable = body.appendTable([
     ['PRESTADOR', 'TOTAL DE PENDENCIAS', 'DATA DE EMISSAO'],
@@ -259,6 +263,10 @@ function styleCronogramaHeaderTable_(table) {
   } catch (error) {
     // Mantem o PDF gerando mesmo se o estilo da tabela variar por ambiente.
   }
+  try {
+    table.getRow(0).getCell(0).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(12).setPaddingRight(12);
+    table.getRow(0).getCell(1).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(12).setPaddingRight(12);
+  } catch (errorPadding) {}
 }
 
 function appendCronogramaLogo_(cell) {
@@ -266,7 +274,7 @@ function appendCronogramaLogo_(cell) {
     var blob = Utilities.newBlob(Utilities.base64Decode(CRONOGRAMA_PDF_LOGO_BASE64), 'image/png', 'cronograma-logo.png');
     var paragraph = cell.appendParagraph('');
     var image = paragraph.appendInlineImage(blob);
-    image.setWidth(34);
+    image.setWidth(28);
   } catch (error) {
     registrarLog('ALERTA', 'Falha ao montar logo do cronograma PDF.', getErrorStack_(error), getCurrentUserIdentifier_());
   }
@@ -276,6 +284,8 @@ function styleCronogramaMetaTable_(table) {
   for (var col = 0; col < table.getRow(0).getNumCells(); col += 1) {
     table.getRow(0).getCell(col).editAsText().setBold(true).setFontSize(8).setForegroundColor('#f26400');
     table.getRow(1).getCell(col).editAsText().setBold(true).setFontSize(10).setForegroundColor('#111111');
+    table.getRow(0).getCell(col).setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFAF5');
+    table.getRow(1).getCell(col).setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFFFF');
   }
 }
 
@@ -304,25 +314,33 @@ function styleCronogramaHeaderRow_(row) {
     var cell = row.getCell(i);
     var text = cell.editAsText();
     text.setBold(true);
-    text.setFontSize(9);
-    text.setForegroundColor('#f26400');
+    text.setFontSize(8);
+    text.setForegroundColor('#FFFFFF');
+    cell.setBackgroundColor(i === 0 ? '#E8720C' : '#1A1A1A');
   }
 }
 
 function appendCronogramaTableRow_(table, filtros, item) {
   var row = table.appendTableRow();
-  setCronogramaCellText_(row.appendTableCell(), item.executor || filtros.executor || '-');
+  setCronogramaCellText_(row.appendTableCell(), item.executor || filtros.executor || '-', true);
   setCronogramaCellText_(row.appendTableCell(), item.loja || '-');
   setCronogramaCellText_(row.appendTableCell(), item.setor || '-');
   setCronogramaCellText_(row.appendTableCell(), buildCronogramaStatusLabel_(item.status_cronograma || '-'));
-  setCronogramaCellText_(row.appendTableCell(), item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-');
-  setCronogramaCellText_(row.appendTableCell(), buildCronogramaDescricaoObservacao_(item));
+  setCronogramaCellText_(row.appendTableCell(), item.previsao_entrega_label || formatarData(item.previsao_entrega) || '—');
+  setCronogramaCellText_(row.appendTableCell(), sanitizeText_(item.descricao) || '—');
+  try {
+    var rowIndex = table.getNumRows() - 1;
+    var bgColor = rowIndex % 2 === 0 ? '#FFF3E8' : '#FFFFFF';
+    for (var i = 0; i < row.getNumCells(); i += 1) {
+      row.getCell(i).setBackgroundColor(bgColor);
+    }
+  } catch (errorBg) {}
 }
 
-function setCronogramaCellText_(cell, textValue) {
+function setCronogramaCellText_(cell, textValue, bold) {
   var value = safeString_(textValue) || '-';
   cell.setText(value);
-  cell.editAsText().setFontSize(8);
+  cell.editAsText().setFontSize(8).setBold(!!bold);
 }
 
 function buildCronogramaDescricaoObservacao_(item) {
@@ -356,6 +374,18 @@ function buildCronogramaStatusSummary_(items) {
     }
   });
   return 'Total de registros: ' + total + ' | Em andamento: ' + andamento + ' | Concluidos: ' + concluidos + ' | Vencidos: ' + vencidos;
+}
+
+function appendCronogramaSummaryBar_(body, items) {
+  var summaryTable = body.appendTable([
+    ['RESUMO', buildCronogramaStatusSummary_(items)]
+  ]);
+  try {
+    summaryTable.getRow(0).getCell(0).setBackgroundColor('#E8720C');
+    summaryTable.getRow(0).getCell(1).setBackgroundColor('#2C2C2C');
+    summaryTable.getRow(0).getCell(0).editAsText().setBold(true).setFontSize(8).setForegroundColor('#FFFFFF');
+    summaryTable.getRow(0).getCell(1).editAsText().setFontSize(8).setForegroundColor('#FFFFFF');
+  } catch (errorSummary) {}
 }
 
 function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
