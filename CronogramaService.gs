@@ -1,7 +1,6 @@
 ﻿var CRONOGRAMA_PDF_LOGO_BASE64 = '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';
 
 function gerarCronogramaPdf(filtros) {
-  var tempFile = null;
   var pdfFile = null;
   try {
     var cleanFilters = normalizeCronogramaFilters_(filtros || {});
@@ -14,16 +13,12 @@ function gerarCronogramaPdf(filtros) {
       return createErrorResponse_('Nenhuma pendencia ativa encontrada para os filtros informados.');
     }
 
-    tempFile = DocumentApp.create(buildCronogramaFileName_(cleanFilters, true));
-    var document = DocumentApp.openById(tempFile.getId());
-    var body = document.getBody();
-    body.clear();
-    buildCronogramaDocument_(body, cleanFilters, items);
-    document.saveAndClose();
-    applyCronogramaDocumentStyle_(tempFile.getId());
-    Utilities.sleep(1500);
-
-    var pdfBlob = DriveApp.getFileById(tempFile.getId()).getAs(MimeType.PDF).setName(buildCronogramaFileName_(cleanFilters, false));
+    var pdfData = buildCronogramaPdfData_(cleanFilters, items);
+    var html = montarHtmlCronogramaPrestador_(pdfData);
+    var pdfBlob = Utilities
+      .newBlob(html, 'text/html', 'cronograma.html')
+      .getAs(MimeType.PDF)
+      .setName(buildCronogramaFileName_(cleanFilters, false));
     pdfFile = DriveApp.createFile(pdfBlob);
     ensureGeneratedFileSharing_(pdfFile);
     return createSuccessResponse_('PDF do cronograma gerado com sucesso.', {
@@ -37,14 +32,6 @@ function gerarCronogramaPdf(filtros) {
   } catch (error) {
     registrarLog('ERRO', 'Falha ao gerar PDF do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
     return createErrorResponse_('Nao foi possivel gerar o PDF do cronograma. Detalhe: ' + safeString_(error && error.message), error);
-  } finally {
-    if (tempFile) {
-      try {
-        DriveApp.getFileById(tempFile.getId()).setTrashed(true);
-      } catch (cleanupError) {
-        registrarLog('ALERTA', 'Falha ao limpar arquivo temporario do cronograma.', getErrorStack_(cleanupError), getCurrentUserIdentifier_());
-      }
-    }
   }
 }
 
@@ -204,6 +191,188 @@ function buildCronogramaSpreadsheetName_(filtros) {
 
 function buildCronogramaExcelFileName_(filtros) {
   return sanitizeFileName_(['Cronograma', filtros.executor || 'Executor', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
+}
+
+function buildCronogramaPdfData_(filtros, items) {
+  var summary = buildCronogramaStatusSummaryMap_(items);
+  return {
+    prestador: filtros.executor || '-',
+    dataEmissao: formatarData(now_()),
+    horaEmissao: Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss'),
+    emAndamento: String(summary.emAndamento),
+    concluidos: String(summary.concluidos),
+    vencidos: String(summary.vencidos),
+    totalRegistros: String(summary.total),
+    logoUrl: buildCronogramaLogoDataUrl_(),
+    pendencias: (items || []).map(function(item) {
+      return {
+        local: safeString_(item.loja) || '-',
+        setor: safeString_(item.setor) || '-',
+        status: safeString_(item.status_cronograma) || '-',
+        previsao: safeString_(item.previsao_entrega_label || formatarData(item.previsao_entrega)) || '-',
+        descricao: sanitizeText_(item.descricao) || '-',
+        observacao: sanitizeText_(item.observacao) || '-'
+      };
+    })
+  };
+}
+
+function buildCronogramaLogoDataUrl_() {
+  return CRONOGRAMA_PDF_LOGO_BASE64
+    ? 'data:image/png;base64,' + CRONOGRAMA_PDF_LOGO_BASE64
+    : '';
+}
+
+function buildCronogramaStatusSummaryMap_(items) {
+  var total = (items || []).length;
+  var emAndamento = 0;
+  var concluidos = 0;
+  var vencidos = 0;
+  (items || []).forEach(function(item) {
+    var status = normalizeCompare_(item.status_cronograma || '');
+    if (status === 'em andamento') {
+      emAndamento += 1;
+    } else if (status === 'concluido') {
+      concluidos += 1;
+    } else if (status === 'vencido') {
+      vencidos += 1;
+    }
+  });
+  return {
+    total: total,
+    emAndamento: emAndamento,
+    concluidos: concluidos,
+    vencidos: vencidos
+  };
+}
+
+function chunkCronogramaItems_(items, size) {
+  var result = [];
+  var list = items || [];
+  var chunkSize = size || 2;
+  for (var i = 0; i < list.length; i += chunkSize) {
+    result.push(list.slice(i, i + chunkSize));
+  }
+  return result.length ? result : [[]];
+}
+
+function montarHtmlCronogramaPrestador_(dados) {
+  var pages = chunkCronogramaItems_(dados.pendencias || [], 2).map(function(group, index, allPages) {
+    return montarPaginaCronogramaPrestador_(dados, group, index === allPages.length - 1);
+  }).join('');
+
+  return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
+    '@page{size:1024px 1200px;margin:0;}' +
+    'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,Helvetica,sans-serif;}' +
+    '*{box-sizing:border-box;}' +
+    '.page{position:relative;width:1024px;height:1200px;overflow:hidden;background:#fff;page-break-after:always;}' +
+    '.page.last{page-break-after:auto;}' +
+    '.top-orange{position:absolute;left:0;top:0;width:100%;height:67px;background:#ef7200;}' +
+    '.main-title{position:absolute;left:130px;top:14px;font-size:30px;line-height:36px;color:#fff;font-weight:700;}' +
+    '.logo{position:absolute;left:27px;top:28px;width:77px;height:77px;object-fit:contain;z-index:5;}' +
+    '.logo-fallback{background:#000;color:#fff;border-radius:50%;font-family:Arial Black,Arial,sans-serif;font-size:58px;line-height:72px;text-align:center;}' +
+    '.subtitle-bar{position:absolute;left:0;top:67px;width:100%;height:60px;background:#000;}' +
+    '.subtitle{position:absolute;left:130px;top:82px;color:#fff;font-family:"Times New Roman",serif;font-size:30px;line-height:36px;font-weight:400;}' +
+    '.white-strip{position:absolute;left:0;top:127px;width:100%;height:26px;background:#fff;}' +
+    '.info-labels{position:absolute;left:0;top:153px;width:100%;height:28px;display:grid;grid-template-columns:500px 524px;background:#f8e6d8;}' +
+    '.info-label{color:#000;font-size:16px;font-weight:800;text-align:center;line-height:28px;letter-spacing:.3px;}' +
+    '.info-values{position:absolute;left:0;top:181px;width:100%;height:52px;display:grid;grid-template-columns:500px 524px;}' +
+    '.prestador-value{background:#000;color:#fff;font-size:25px;padding-left:20px;line-height:52px;}' +
+    '.date-value{background:#fff;color:#000;font-family:"Times New Roman",serif;font-size:34px;line-height:52px;text-align:center;}' +
+    '.blank-white{position:absolute;left:0;top:233px;width:100%;height:105px;background:#fff;}' +
+    '.section-title{position:absolute;left:7px;top:283px;color:#ef7200;font-size:30px;font-style:italic;font-weight:400;letter-spacing:2px;line-height:40px;}' +
+    '.block{position:absolute;left:0;width:1000px;border:2px solid #ff7900;background:#000;}' +
+    '.block.one{top:338px;}.block.two{top:714px;}' +
+    '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}' +
+    '.head{height:43px;background:#1d1d1d;border-bottom:2px solid #ff7900;}' +
+    '.head div{color:#fff;font-size:16px;font-weight:800;text-align:center;line-height:43px;border-right:2px solid #ff7900;}' +
+    '.head div:last-child{border-right:none;}' +
+    '.values{height:112px;background:#000;border-bottom:2px solid #ff7900;}' +
+    '.values div{color:#fff;font-size:23px;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;border-right:2px solid #ff7900;padding:8px;}' +
+    '.values div:last-child{border-right:none;}' +
+    '.text-label{height:34px;background:#000;color:#fff;font-size:16px;font-style:italic;font-weight:700;padding:8px 10px;border-bottom:2px solid #ff7900;}' +
+    '.text-box{background:#000;color:#fff;font-size:22px;line-height:1.35;padding:10px 12px;border-bottom:2px solid #ff7900;white-space:pre-wrap;overflow:hidden;}' +
+    '.text-box.obs{height:85px;border-bottom:none;}.text-box.desc{height:109px;}' +
+    '.divider-bar{position:absolute;left:0;width:1000px;height:27px;background:repeating-linear-gradient(90deg,#000 0px,#000 123px,#fff 123px,#fff 126px,#000 126px,#000 250px);border-top:2px solid #ff7900;border-bottom:2px solid #ff7900;}' +
+    '.divider-one{top:688px;}.divider-two{top:1065px;}' +
+    '.summary{position:absolute;left:0;top:1092px;width:1000px;height:108px;display:grid;grid-template-columns:500px 125px 125px 125px 125px;border-top:2px solid #ff7900;border-right:2px solid #ff7900;}' +
+    '.summary-title{grid-row:span 2;background:#ef7200;color:#000;border-right:2px solid #000;font-size:27px;font-weight:900;letter-spacing:1px;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-label{height:43px;background:#ef7200;color:#000;border-right:2px solid #000;border-bottom:2px solid #000;font-size:14px;font-weight:800;display:flex;align-items:center;padding-left:5px;letter-spacing:.5px;}' +
+    '.summary-value{height:65px;background:#000;color:#fff;border-right:2px solid #ff7900;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '</style></head><body>' + pages + '</body></html>';
+}
+
+function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
+  var logoHtml = dados.logoUrl
+    ? '<img class="logo" src="' + escapeHtml_(dados.logoUrl) + '">'
+    : '<div class="logo logo-fallback">b</div>';
+  var first = pendencias[0] || createCronogramaBlankItem_();
+  var second = pendencias[1] || createCronogramaBlankItem_();
+  var summaryHtml = includeSummary ? (
+    '<div class="divider-bar divider-two"></div>' +
+    '<div class="summary">' +
+      '<div class="summary-title">RESUMO</div>' +
+      '<div class="summary-label">Em andamento</div>' +
+      '<div class="summary-label">Concluidos</div>' +
+      '<div class="summary-label">Vencidos</div>' +
+      '<div class="summary-label">Total Registros</div>' +
+      '<div class="summary-value">' + escapeHtml_(dados.emAndamento) + '</div>' +
+      '<div class="summary-value">' + escapeHtml_(dados.concluidos) + '</div>' +
+      '<div class="summary-value">' + escapeHtml_(dados.vencidos) + '</div>' +
+      '<div class="summary-value">' + escapeHtml_(dados.totalRegistros) + '</div>' +
+    '</div>'
+  ) : '';
+
+  return '<div class="page' + (includeSummary ? ' last' : '') + '">' +
+    '<div class="top-orange"><div class="main-title">Cronograma do Prestador</div></div>' +
+    logoHtml +
+    '<div class="subtitle-bar"></div>' +
+    '<div class="subtitle">Relatorio de pendencias por prestador de servico</div>' +
+    '<div class="white-strip"></div>' +
+    '<div class="info-labels"><div class="info-label">PRESTADOR</div><div class="info-label">DATA DE EMISSAO</div></div>' +
+    '<div class="info-values"><div class="prestador-value">' + escapeHtml_(dados.prestador) + '</div><div class="date-value">' + escapeHtml_(dados.dataEmissao) + '</div></div>' +
+    '<div class="blank-white"></div>' +
+    '<div class="section-title">CRONOGRAMA DE PENDENCIAS</div>' +
+    montarBlocoCronogramaPrestador_(first, 'one') +
+    '<div class="divider-bar divider-one"></div>' +
+    montarBlocoCronogramaPrestador_(second, 'two') +
+    summaryHtml +
+  '</div>';
+}
+
+function montarBlocoCronogramaPrestador_(item, cssClass) {
+  return '<div class="block ' + cssClass + '">' +
+    '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>PREVISAO</div></div>' +
+    '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.previsao) + '</div></div>' +
+    '<div class="text-label">Descricao:</div>' +
+    '<div class="text-box desc">' + nl2brHtml_(item.descricao) + '</div>' +
+    '<div class="text-label">Observacao:</div>' +
+    '<div class="text-box obs">' + nl2brHtml_(item.observacao) + '</div>' +
+  '</div>';
+}
+
+function createCronogramaBlankItem_() {
+  return {
+    local: '',
+    setor: '',
+    status: '',
+    previsao: '',
+    descricao: '',
+    observacao: ''
+  };
+}
+
+function nl2brHtml_(value) {
+  return escapeHtml_(value || '').replace(/\r?\n/g, '<br>');
+}
+
+function escapeHtml_(valor) {
+  return String(valor == null ? '' : valor)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function ensureGeneratedFileSharing_(file) {
