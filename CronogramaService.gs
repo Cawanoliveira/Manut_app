@@ -220,6 +220,7 @@ function ensureGeneratedFileSharing_(file) {
 function buildCronogramaDocument_(body, filtros, items) {
   buildCronogramaHeader_(body, filtros, items);
   body.appendParagraph('Emitido em ' + formatarData(now_()) + ' as ' + Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss')).setFontSize(8).setForegroundColor('#666666');
+  body.appendParagraph(buildCronogramaResumoFiltros_(filtros, items.length)).setFontSize(7).setForegroundColor('#666666');
   body.appendParagraph('');
   body.appendParagraph('CRONOGRAMA DE PENDENCIAS').setHeading(DocumentApp.ParagraphHeading.HEADING2).setForegroundColor('#E8720C');
 
@@ -266,8 +267,8 @@ function styleCronogramaHeaderTable_(table) {
     // Mantem o PDF gerando mesmo se o estilo da tabela variar por ambiente.
   }
   try {
-    table.getRow(0).getCell(0).setPaddingTop(3).setPaddingBottom(3).setPaddingLeft(8).setPaddingRight(6);
-    table.getRow(0).getCell(1).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(4).setPaddingRight(12);
+    table.getRow(0).getCell(0).setPaddingTop(2).setPaddingBottom(2).setPaddingLeft(2).setPaddingRight(4);
+    table.getRow(0).getCell(1).setPaddingTop(4).setPaddingBottom(4).setPaddingLeft(2).setPaddingRight(8);
   } catch (errorPadding) {}
 }
 
@@ -275,10 +276,10 @@ function appendCronogramaLogo_(cell) {
   try {
     var blob = Utilities.newBlob(Utilities.base64Decode(CRONOGRAMA_PDF_LOGO_BASE64), 'image/png', 'cronograma-logo.png');
     var paragraph = cell.appendParagraph('');
-    paragraph.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    paragraph.setAlignment(DocumentApp.HorizontalAlignment.LEFT);
     var image = paragraph.appendInlineImage(blob);
-    image.setWidth(44);
-    image.setHeight(44);
+    image.setWidth(40);
+    image.setHeight(40);
   } catch (error) {
     registrarLog('ALERTA', 'Falha ao montar logo do cronograma PDF.', getErrorStack_(error), getCurrentUserIdentifier_());
   }
@@ -307,8 +308,8 @@ function styleCronogramaMetaTable_(table) {
     headerCell.setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFAF5');
     valueCell.setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFFFF');
     try {
-      headerCell.setPaddingTop(8).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
-      valueCell.setPaddingTop(4).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+      headerCell.setPaddingTop(6).setPaddingBottom(3).setPaddingLeft(8).setPaddingRight(8);
+      valueCell.setPaddingTop(3).setPaddingBottom(6).setPaddingLeft(8).setPaddingRight(8);
       headerCell.setBorderColor('#E0E0E0');
       valueCell.setBorderColor('#E0E0E0');
       headerCell.setBorderWidth(1);
@@ -358,7 +359,7 @@ function styleCronogramaHeaderRow_(row) {
     text.setForegroundColor('#FFFFFF');
     cell.setBackgroundColor(i === 0 ? '#E8720C' : '#1A1A1A');
     try {
-      cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
+      cell.setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(6).setPaddingRight(6);
     } catch (error) {}
   }
 }
@@ -386,10 +387,10 @@ function appendCronogramaTableRow_(table, filtros, item) {
       cell.setBackgroundColor(bgColor);
       cell.setBorderColor('#E8D0C0');
       cell.setBorderWidth(0.5);
-      cell.setPaddingTop(6);
-      cell.setPaddingBottom(6);
-      cell.setPaddingLeft(8);
-      cell.setPaddingRight(8);
+      cell.setPaddingTop(4);
+      cell.setPaddingBottom(4);
+      cell.setPaddingLeft(6);
+      cell.setPaddingRight(6);
     }
   } catch (errorBg) {}
 }
@@ -454,10 +455,10 @@ function applyCronogramaDocumentStyle_(documentId) {
       requests: [{
         updateDocumentStyle: {
           documentStyle: {
-            marginTop: { magnitude: 16, unit: 'PT' },
-            marginBottom: { magnitude: 16, unit: 'PT' },
-            marginLeft: { magnitude: 14, unit: 'PT' },
-            marginRight: { magnitude: 14, unit: 'PT' }
+            marginTop: { magnitude: 10, unit: 'PT' },
+            marginBottom: { magnitude: 10, unit: 'PT' },
+            marginLeft: { magnitude: 10, unit: 'PT' },
+            marginRight: { magnitude: 10, unit: 'PT' }
           },
           fields: 'marginTop,marginBottom,marginLeft,marginRight'
         }
