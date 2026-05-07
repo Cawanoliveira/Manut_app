@@ -20,6 +20,7 @@ function gerarCronogramaPdf(filtros) {
     body.clear();
     buildCronogramaDocument_(body, cleanFilters, items);
     document.saveAndClose();
+    applyCronogramaDocumentStyle_(tempFile.getId());
     Utilities.sleep(1500);
 
     var pdfBlob = DriveApp.getFileById(tempFile.getId()).getAs(MimeType.PDF).setName(buildCronogramaFileName_(cleanFilters, false));
@@ -249,7 +250,6 @@ function buildCronogramaHeader_(body, filtros, items) {
   appendCronogramaHeaderDivider_(body);
 
   body.appendParagraph('Emitido em ' + formatarData(now_()) + ' as ' + Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss')).setFontSize(8).setForegroundColor('#666666');
-  body.appendParagraph('');
 
   var metaTable = body.appendTable([
     ['PRESTADOR', 'TOTAL DE PENDENCIAS', 'DATA DE EMISSAO'],
@@ -276,8 +276,10 @@ function appendCronogramaLogo_(cell) {
   try {
     var blob = Utilities.newBlob(Utilities.base64Decode(CRONOGRAMA_PDF_LOGO_BASE64), 'image/png', 'cronograma-logo.png');
     var paragraph = cell.appendParagraph('');
+    paragraph.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
     var image = paragraph.appendInlineImage(blob);
-    image.setWidth(32);
+    image.setWidth(54);
+    image.setHeight(54);
   } catch (error) {
     registrarLog('ALERTA', 'Falha ao montar logo do cronograma PDF.', getErrorStack_(error), getCurrentUserIdentifier_());
   }
@@ -432,6 +434,36 @@ function appendCronogramaSummaryBar_(body, items) {
     summaryTable.getRow(0).getCell(0).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
     summaryTable.getRow(0).getCell(1).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
   } catch (errorSummary) {}
+}
+
+function applyCronogramaDocumentStyle_(documentId) {
+  try {
+    var url = 'https://docs.googleapis.com/v1/documents/' + encodeURIComponent(documentId) + ':batchUpdate';
+    var payload = {
+      requests: [{
+        updateDocumentStyle: {
+          documentStyle: {
+            marginTop: { magnitude: 24, unit: 'PT' },
+            marginBottom: { magnitude: 24, unit: 'PT' },
+            marginLeft: { magnitude: 22, unit: 'PT' },
+            marginRight: { magnitude: 22, unit: 'PT' }
+          },
+          fields: 'marginTop,marginBottom,marginLeft,marginRight'
+        }
+      }]
+    };
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        Authorization: 'Bearer ' + ScriptApp.getOAuthToken()
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  } catch (error) {
+    registrarLog('ALERTA', 'Falha ao aplicar estilo do documento do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
+  }
 }
 
 function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
