@@ -368,16 +368,17 @@ function styleCronogramaMainTable_(table) {
 
 function appendCronogramaPendenciaCard_(body, filtros, item) {
   var table = body.appendTable([
-    ['PRESTADOR', 'LOCAL', 'SETOR', 'STATUS', 'PREVISAO'],
+    ['LOCAL', 'SETOR', 'STATUS', 'PREVISAO'],
     [
-      item.executor || filtros.executor || '-',
       item.loja || '-',
       item.setor || '-',
       buildCronogramaStatusLabel_(item.status_cronograma || '-'),
       item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-'
     ],
-    ['DESCRICAO / OBSERVACAO', '', '', '', ''],
-    [buildCronogramaDescricaoObservacao_(item) || '-', '', '', '', '']
+    ['Descricao:', '', '', ''],
+    [sanitizeText_(item.descricao) || '-', '', '', ''],
+    ['Observacao:', '', '', ''],
+    [sanitizeText_(item.observacao) || '-', '', '', '']
   ]);
 
   styleCronogramaMainTable_(table);
@@ -394,32 +395,51 @@ function appendCronogramaPendenciaCard_(body, filtros, item) {
       cell.setPaddingBottom(4);
       cell.setPaddingLeft(6);
       cell.setPaddingRight(6);
-      cell.editAsText().setFontSize(8).setForegroundColor(i === 3 ? '#E8720C' : '#2C2C2C').setBold(i === 0 || i === 3);
+      cell.editAsText().setFontSize(8).setForegroundColor(i === 2 ? '#E8720C' : '#2C2C2C').setBold(i === 2);
     }
 
-    var textHeaderRow = table.getRow(2);
-    textHeaderRow.getCell(0).setBackgroundColor('#1A1A1A');
-    textHeaderRow.getCell(0).editAsText().setBold(true).setFontSize(8).setForegroundColor('#FFFFFF');
-    textHeaderRow.getCell(0).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(6).setPaddingRight(6);
-    for (var clearIdx = 1; clearIdx < textHeaderRow.getNumCells(); clearIdx += 1) {
-      textHeaderRow.getCell(clearIdx).setBackgroundColor('#1A1A1A');
-      textHeaderRow.getCell(clearIdx).editAsText().setText('');
-    }
-
-    var textValueRow = table.getRow(3);
-    textValueRow.getCell(0).setBackgroundColor('#FFFFFF');
-    textValueRow.getCell(0).setBorderColor('#E8D0C0');
-    textValueRow.getCell(0).setBorderWidth(0.5);
-    textValueRow.getCell(0).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(6).setPaddingRight(6);
-    textValueRow.getCell(0).editAsText().setFontSize(8).setForegroundColor('#2C2C2C');
-    for (var blankIdx = 1; blankIdx < textValueRow.getNumCells(); blankIdx += 1) {
-      textValueRow.getCell(blankIdx).editAsText().setText('');
-      textValueRow.getCell(blankIdx).setBackgroundColor('#FFFFFF');
-      textValueRow.getCell(blankIdx).setBorderWidth(0);
-    }
+    styleCronogramaTextSectionRow_(table.getRow(2), true);
+    styleCronogramaTextValueRow_(table.getRow(3));
+    styleCronogramaTextSectionRow_(table.getRow(4), false);
+    styleCronogramaTextValueRow_(table.getRow(5));
   } catch (errorCard) {}
 
   body.appendParagraph('');
+}
+
+function styleCronogramaTextSectionRow_(row, firstSection) {
+  for (var i = 0; i < row.getNumCells(); i += 1) {
+    var cell = row.getCell(i);
+    cell.setBackgroundColor('#FFF3E8');
+    cell.setBorderColor('#E8720C');
+    cell.setBorderWidth(0.8);
+    cell.setPaddingTop(firstSection ? 8 : 6);
+    cell.setPaddingBottom(4);
+    cell.setPaddingLeft(6);
+    cell.setPaddingRight(6);
+    if (i === 0) {
+      cell.editAsText().setBold(true).setItalic(true).setFontSize(9).setForegroundColor('#111111');
+    } else {
+      cell.editAsText().setText('');
+    }
+  }
+}
+
+function styleCronogramaTextValueRow_(row) {
+  for (var i = 0; i < row.getNumCells(); i += 1) {
+    var cell = row.getCell(i);
+    cell.setBackgroundColor('#FFF3E8');
+    cell.setBorderColor('#E8720C');
+    cell.setBorderWidth(0.8);
+    cell.setPaddingTop(4);
+    cell.setPaddingBottom(18);
+    cell.setPaddingLeft(6);
+    cell.setPaddingRight(6);
+    cell.editAsText().setFontSize(8).setForegroundColor('#2C2C2C');
+    if (i > 0) {
+      cell.editAsText().setText('');
+    }
+  }
 }
 
 function appendCronogramaTableRow_(table, filtros, item) {
