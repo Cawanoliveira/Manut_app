@@ -218,10 +218,11 @@ function ensureGeneratedFileSharing_(file) {
 
 function buildCronogramaDocument_(body, filtros, items) {
   buildCronogramaHeader_(body, filtros, items);
-  body.appendParagraph('▌  CRONOGRAMA DE PENDENCIAS').setHeading(DocumentApp.ParagraphHeading.HEADING2).setForegroundColor('#f26400');
+  body.appendParagraph('CRONOGRAMA DE PENDENCIAS').setHeading(DocumentApp.ParagraphHeading.HEADING2).setForegroundColor('#E8720C');
 
   var headerRow = ['Prestador', 'Local', 'Setor', 'Status', 'Previsao', 'Descricao / Observacao'];
   var table = body.appendTable([headerRow]);
+  styleCronogramaMainTable_(table);
   styleCronogramaHeaderRow_(table.getRow(0));
 
   items.forEach(function(item) {
@@ -241,9 +242,11 @@ function buildCronogramaHeader_(body, filtros, items) {
   styleCronogramaHeaderTable_(table);
   textCell.setBackgroundColor('#E8720C');
   logoCell.setBackgroundColor('#E8720C');
+  textCell.appendParagraph('SUPERMERCADOS BIG COMPRA').setFontSize(8).setBold(true).setForegroundColor('#FFE0C0');
   textCell.appendParagraph('Cronograma do Prestador').setHeading(DocumentApp.ParagraphHeading.HEADING1).setForegroundColor('#FFFFFF');
   textCell.appendParagraph('Relatorio de pendencias por prestador de servico').setFontSize(9).setForegroundColor('#FFE0C0');
   appendCronogramaLogo_(logoCell);
+  appendCronogramaHeaderDivider_(body);
 
   body.appendParagraph('Emitido em ' + formatarData(now_()) + ' as ' + Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss')).setFontSize(8).setForegroundColor('#666666');
   body.appendParagraph('');
@@ -264,8 +267,8 @@ function styleCronogramaHeaderTable_(table) {
     // Mantem o PDF gerando mesmo se o estilo da tabela variar por ambiente.
   }
   try {
-    table.getRow(0).getCell(0).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(12).setPaddingRight(12);
-    table.getRow(0).getCell(1).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(12).setPaddingRight(12);
+    table.getRow(0).getCell(0).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(12).setPaddingRight(12);
+    table.getRow(0).getCell(1).setPaddingTop(6).setPaddingBottom(6).setPaddingLeft(12).setPaddingRight(12);
   } catch (errorPadding) {}
 }
 
@@ -274,18 +277,42 @@ function appendCronogramaLogo_(cell) {
     var blob = Utilities.newBlob(Utilities.base64Decode(CRONOGRAMA_PDF_LOGO_BASE64), 'image/png', 'cronograma-logo.png');
     var paragraph = cell.appendParagraph('');
     var image = paragraph.appendInlineImage(blob);
-    image.setWidth(28);
+    image.setWidth(32);
   } catch (error) {
     registrarLog('ALERTA', 'Falha ao montar logo do cronograma PDF.', getErrorStack_(error), getCurrentUserIdentifier_());
   }
 }
 
+function appendCronogramaHeaderDivider_(body) {
+  var divider = body.appendTable([['']]);
+  try {
+    divider.setBorderWidth(0);
+    var cell = divider.getRow(0).getCell(0);
+    cell.setBackgroundColor('#1A1A1A');
+    cell.editAsText().setText('').setFontSize(1);
+    cell.setPaddingTop(0);
+    cell.setPaddingBottom(0);
+    cell.setPaddingLeft(0);
+    cell.setPaddingRight(0);
+  } catch (error) {}
+}
+
 function styleCronogramaMetaTable_(table) {
   for (var col = 0; col < table.getRow(0).getNumCells(); col += 1) {
-    table.getRow(0).getCell(col).editAsText().setBold(true).setFontSize(8).setForegroundColor('#f26400');
-    table.getRow(1).getCell(col).editAsText().setBold(true).setFontSize(10).setForegroundColor('#111111');
-    table.getRow(0).getCell(col).setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFAF5');
-    table.getRow(1).getCell(col).setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFFFF');
+    var headerCell = table.getRow(0).getCell(col);
+    var valueCell = table.getRow(1).getCell(col);
+    headerCell.editAsText().setBold(true).setFontSize(8).setForegroundColor('#666666');
+    valueCell.editAsText().setBold(true).setFontSize(10).setForegroundColor('#111111');
+    headerCell.setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFAF5');
+    valueCell.setBackgroundColor(col === 0 ? '#FFF3E8' : '#FFFFFF');
+    try {
+      headerCell.setPaddingTop(8).setPaddingBottom(4).setPaddingLeft(10).setPaddingRight(10);
+      valueCell.setPaddingTop(4).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+      headerCell.setBorderColor('#E0E0E0');
+      valueCell.setBorderColor('#E0E0E0');
+      headerCell.setBorderWidth(1);
+      valueCell.setBorderWidth(1);
+    } catch (error) {}
   }
 }
 
@@ -317,7 +344,17 @@ function styleCronogramaHeaderRow_(row) {
     text.setFontSize(8);
     text.setForegroundColor('#FFFFFF');
     cell.setBackgroundColor(i === 0 ? '#E8720C' : '#1A1A1A');
+    try {
+      cell.setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(8).setPaddingRight(8);
+    } catch (error) {}
   }
+}
+
+function styleCronogramaMainTable_(table) {
+  try {
+    table.setBorderColor('#E8720C');
+    table.setBorderWidth(1.5);
+  } catch (error) {}
 }
 
 function appendCronogramaTableRow_(table, filtros, item) {
@@ -326,13 +363,20 @@ function appendCronogramaTableRow_(table, filtros, item) {
   setCronogramaCellText_(row.appendTableCell(), item.loja || '-');
   setCronogramaCellText_(row.appendTableCell(), item.setor || '-');
   setCronogramaCellText_(row.appendTableCell(), buildCronogramaStatusLabel_(item.status_cronograma || '-'));
-  setCronogramaCellText_(row.appendTableCell(), item.previsao_entrega_label || formatarData(item.previsao_entrega) || '—');
-  setCronogramaCellText_(row.appendTableCell(), sanitizeText_(item.descricao) || '—');
+  setCronogramaCellText_(row.appendTableCell(), item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-');
+  setCronogramaCellText_(row.appendTableCell(), buildCronogramaDescricaoObservacao_(item) || '-');
   try {
     var rowIndex = table.getNumRows() - 1;
     var bgColor = rowIndex % 2 === 0 ? '#FFF3E8' : '#FFFFFF';
     for (var i = 0; i < row.getNumCells(); i += 1) {
-      row.getCell(i).setBackgroundColor(bgColor);
+      var cell = row.getCell(i);
+      cell.setBackgroundColor(bgColor);
+      cell.setBorderColor('#E8D0C0');
+      cell.setBorderWidth(0.5);
+      cell.setPaddingTop(6);
+      cell.setPaddingBottom(6);
+      cell.setPaddingLeft(8);
+      cell.setPaddingRight(8);
     }
   } catch (errorBg) {}
 }
@@ -351,7 +395,7 @@ function buildCronogramaDescricaoObservacao_(item) {
   if (safeString_(item.observacao)) {
     parts.push('Observacao: ' + sanitizeText_(item.observacao));
   }
-  return parts.join('\n') || 'Sem detalhes adicionais.';
+  return parts.join('\n') || '-';
 }
 
 function buildCronogramaStatusLabel_(status) {
@@ -385,6 +429,8 @@ function appendCronogramaSummaryBar_(body, items) {
     summaryTable.getRow(0).getCell(1).setBackgroundColor('#2C2C2C');
     summaryTable.getRow(0).getCell(0).editAsText().setBold(true).setFontSize(8).setForegroundColor('#FFFFFF');
     summaryTable.getRow(0).getCell(1).editAsText().setFontSize(8).setForegroundColor('#FFFFFF');
+    summaryTable.getRow(0).getCell(0).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
+    summaryTable.getRow(0).getCell(1).setPaddingTop(8).setPaddingBottom(8).setPaddingLeft(10).setPaddingRight(10);
   } catch (errorSummary) {}
 }
 

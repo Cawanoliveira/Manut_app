@@ -51,6 +51,25 @@ function pingBridge() {
   });
 }
 
+function autorizarEscoposCronograma() {
+  var tempDoc = null;
+  try {
+    tempDoc = DocumentApp.create('Autorizacao Cronograma');
+    tempDoc.getBody().appendParagraph('Autorizacao de escopos do cronograma.');
+    tempDoc.saveAndClose();
+    UrlFetchApp.fetch('https://www.google.com/generate_204', {
+      muteHttpExceptions: true
+    });
+    return createSuccessResponse_('Escopos do cronograma autorizados com sucesso.');
+  } finally {
+    if (tempDoc) {
+      try {
+        DriveApp.getFileById(tempDoc.getId()).setTrashed(true);
+      } catch (error) {}
+    }
+  }
+}
+
 function getAppInitData() {
   try {
     setupSistema();
