@@ -1460,15 +1460,18 @@
     touch-action: none;
   }
 
-  .spen-open .page-shell,
-  .spen-open .bottom-nav,
-  .spen-open .filter-fab {
-    pointer-events: none;
+  .spen-open > * {
+    pointer-events: none !important;
   }
 
   .spen-open #spenModal,
   .spen-open #spenModal * {
-    pointer-events: auto;
+    pointer-events: auto !important;
+  }
+
+  .spen-hard-locked #spenModal .modal-backdrop {
+    pointer-events: auto !important;
+    touch-action: none !important;
   }
 
   .spen-modal-card {
@@ -1507,6 +1510,13 @@
   #spenCloseButton.disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  .spen-hard-locked,
+  .spen-hard-locked body {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 
   .hidden {

@@ -238,21 +238,78 @@
   }
 
   function bindPenInputMode_() {
-    document.addEventListener('pointerdown', function(event) {
-      if (event.pointerType !== 'pen') {
-        return;
-      }
-      if (document.getElementById('spenModal') && !document.getElementById('spenModal').classList.contains('hidden')) {
-        return;
+      document.addEventListener('pointerdown', function(event) {
+        if (shouldBlockSpenInteraction_(event.target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          focusSpenInput_();
+          return;
+        }
+        if (event.pointerType !== 'pen') {
+          return;
+        }
+        if (document.getElementById('spenModal') && !document.getElementById('spenModal').classList.contains('hidden')) {
+          return;
       }
       var target = event.target;
       if (!isTextLikeField_(target)) {
         return;
       }
-      event.preventDefault();
-      abrirSpenPopup(target.id, getSpenFieldTitle_(target));
-    });
-  }
+        event.preventDefault();
+        abrirSpenPopup(target.id, getSpenFieldTitle_(target));
+      }, true);
+
+      ['click', 'touchstart'].forEach(function(eventName) {
+        document.addEventListener(eventName, function(event) {
+          if (!shouldBlockSpenInteraction_(event.target)) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          focusSpenInput_();
+        }, true);
+      });
+
+      document.addEventListener('focusin', function(event) {
+        if (!shouldBlockSpenInteraction_(event.target)) {
+          return;
+        }
+        event.preventDefault();
+        focusSpenInput_();
+      }, true);
+    }
+
+    function isSpenModalOpen_() {
+      var modal = document.getElementById('spenModal');
+      return !!(modal && !modal.classList.contains('hidden'));
+    }
+
+    function shouldBlockSpenInteraction_(target) {
+      if (!appState.spenLocked || !isSpenModalOpen_()) {
+        return false;
+      }
+      var modal = document.getElementById('spenModal');
+      var card = modal ? modal.querySelector('.spen-modal-card') : null;
+      if (!card) {
+        return false;
+      }
+      return !card.contains(target);
+    }
+
+    function focusSpenInput_() {
+      var input = document.getElementById('spenInputArea');
+      if (input) {
+        setTimeout(function() {
+          input.focus();
+        }, 0);
+      }
+    }
+
+    function syncSpenLockClasses_() {
+      var method = appState.spenLocked ? 'add' : 'remove';
+      document.body.classList[method]('spen-hard-locked');
+      document.documentElement.classList[method]('spen-hard-locked');
+    }
 
   function isTextLikeField_(target) {
     if (!target || !target.tagName || !target.id) {
@@ -2660,7 +2717,9 @@
     document.getElementById('spenInputArea').spellcheck = true;
     appState.spenLocked = true;
     renderSpenLockState_();
+    syncSpenLockClasses_();
     document.body.classList.add('spen-open');
+    document.documentElement.classList.add('spen-open');
     document.getElementById('spenModal').classList.remove('hidden');
     setTimeout(function() {
       document.getElementById('spenInputArea').focus();
@@ -2714,6 +2773,9 @@
       return;
     }
     document.body.classList.remove('spen-open');
+    document.body.classList.remove('spen-hard-locked');
+    document.documentElement.classList.remove('spen-open');
+    document.documentElement.classList.remove('spen-hard-locked');
     document.getElementById('spenModal').classList.add('hidden');
   }
 
@@ -2733,6 +2795,7 @@
     closeButton.disabled = !!appState.spenLocked;
     closeButton.classList.toggle('disabled', !!appState.spenLocked);
     modal.classList.toggle('spen-unlocked', !appState.spenLocked);
+    syncSpenLockClasses_();
   }
 
   function captureFormContext_() {
