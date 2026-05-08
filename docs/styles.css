@@ -1438,6 +1438,11 @@
     pointer-events: none !important;
   }
 
+  .spen-open .filter-fab {
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
   .spen-open #spenModal,
   .spen-open #spenModal * {
     pointer-events: auto !important;
@@ -1484,6 +1489,13 @@
   #spenCloseButton.disabled {
     opacity: 0.45;
     cursor: not-allowed;
+  }
+
+  #spenClearButton.disabled,
+  #spenApplyButton.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 
   .spen-hard-locked,

@@ -2727,6 +2727,10 @@
   }
 
   function aplicarSpenTexto() {
+    if (appState.spenLocked) {
+      mostrarMensagemErro('Destrave o cadeado para aplicar o texto ao campo.');
+      return;
+    }
     var targetId = document.getElementById('spenTargetField').value;
     var target = document.getElementById(targetId);
     if (!target) {
@@ -2764,6 +2768,10 @@
   }
 
   function limparSpenPopup() {
+    if (appState.spenLocked) {
+      mostrarMensagemErro('Destrave o cadeado para limpar a area de escrita.');
+      return;
+    }
     document.getElementById('spenInputArea').value = '';
   }
 
@@ -2787,6 +2795,8 @@
   function renderSpenLockState_() {
     var lockButton = document.getElementById('spenLockButton');
     var closeButton = document.getElementById('spenCloseButton');
+    var clearButton = document.getElementById('spenClearButton');
+    var applyButton = document.getElementById('spenApplyButton');
     var modal = document.getElementById('spenModal');
     if (!lockButton || !closeButton || !modal) {
       return;
@@ -2794,6 +2804,14 @@
     lockButton.innerHTML = appState.spenLocked ? '&#128274;' : '&#128275;';
     closeButton.disabled = !!appState.spenLocked;
     closeButton.classList.toggle('disabled', !!appState.spenLocked);
+    if (clearButton) {
+      clearButton.disabled = !!appState.spenLocked;
+      clearButton.classList.toggle('disabled', !!appState.spenLocked);
+    }
+    if (applyButton) {
+      applyButton.disabled = !!appState.spenLocked;
+      applyButton.classList.toggle('disabled', !!appState.spenLocked);
+    }
     modal.classList.toggle('spen-unlocked', !appState.spenLocked);
     syncSpenLockClasses_();
   }
