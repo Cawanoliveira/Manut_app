@@ -2933,16 +2933,15 @@
       mostrarMensagemErro('Ditado por voz nao suportado neste navegador.');
       return;
     }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('Ditado por voz offline nao esta disponivel neste navegador. Use a S Pen ou reconecte a internet.');
+      return;
+    }
     if (appState.speechState.activeRecognition) {
       pararDitadoAtivo_();
     }
     var recognition = new Recognition();
     recognition.lang = 'pt-BR';
-    if ('processLocally' in recognition) {
-      try {
-        recognition.processLocally = true;
-      } catch (error) {}
-    }
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
@@ -3002,6 +3001,10 @@
       }
       if (errorCode === 'audio-capture') {
         mostrarMensagemErro('Nenhum microfone disponivel para o ditado por voz.');
+        return;
+      }
+      if (errorCode) {
+        mostrarMensagemErro('Falha no ditado por voz: ' + errorCode + '.');
         return;
       }
       mostrarMensagemErro('Nao foi possivel iniciar o ditado por voz.');
