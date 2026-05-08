@@ -162,7 +162,7 @@
             <div class="field-with-action">
               <textarea id="novaDescricao" rows="5" placeholder="Descreva o problema encontrado." required></textarea>
               <div class="field-actions-stack">
-                <button type="button" class="mic-button" onclick="iniciarDitado('novaDescricao')">Voz</button>
+                <button type="button" class="mic-button" onclick="toggleDitado('novaDescricao', this)">Voz</button>
               </div>
             </div>
             <details class="voice-help-box">
@@ -178,7 +178,7 @@
             <div class="field-with-action">
               <textarea id="novaObservacao" rows="4" placeholder="Detalhes adicionais, local exato, contexto."></textarea>
               <div class="field-actions-stack">
-                <button type="button" class="mic-button" onclick="iniciarDitado('novaObservacao')">Voz</button>
+                <button type="button" class="mic-button" onclick="toggleDitado('novaObservacao', this)">Voz</button>
               </div>
             </div>
           </label>
@@ -301,7 +301,7 @@
             <div class="field-with-action">
               <textarea id="editObservacao" rows="4"></textarea>
               <div class="field-actions-stack">
-                <button type="button" class="mic-button" onclick="iniciarDitado('editObservacao')">Voz</button>
+                <button type="button" class="mic-button" onclick="toggleDitado('editObservacao', this)">Voz</button>
               </div>
             </div>
           </label>

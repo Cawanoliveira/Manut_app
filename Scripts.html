@@ -38,6 +38,7 @@
       speechState: {
         activeTargetId: '',
         activeRecognition: null,
+        activeButtonTargetId: '',
         lastTranscript: '',
         lastAt: 0,
         listening: false
@@ -2937,6 +2938,43 @@
     mostrarMensagemSucesso('Contexto rapido limpo.');
   }
 
+  function renderSpeechButtons_() {
+    Array.from(document.querySelectorAll('.mic-button')).forEach(function(button) {
+      var handler = button.getAttribute('onclick') || '';
+      var match = handler.match(/toggleDitado\('([^']+)'/);
+      var targetId = match ? match[1] : '';
+      var isActive = appState.speechState.listening && appState.speechState.activeTargetId === targetId;
+      button.classList.toggle('listening', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+      button.textContent = isActive ? 'Parar' : 'Voz';
+    });
+  }
+
+  function pararDitadoAtivo_() {
+    if (appState.speechState.activeRecognition) {
+      try {
+        appState.speechState.activeRecognition.stop();
+      } catch (error) {
+        try {
+          appState.speechState.activeRecognition.abort();
+        } catch (innerError) {}
+      }
+    }
+    appState.speechState.activeRecognition = null;
+    appState.speechState.activeTargetId = '';
+    appState.speechState.activeButtonTargetId = '';
+    appState.speechState.listening = false;
+    renderSpeechButtons_();
+  }
+
+  function toggleDitado(targetId) {
+    if (appState.speechState.listening && appState.speechState.activeTargetId === targetId) {
+      pararDitadoAtivo_();
+      return;
+    }
+    iniciarDitado(targetId);
+  }
+
   function iniciarDitado(targetId) {
     var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
@@ -2944,11 +2982,7 @@
       return;
     }
     if (appState.speechState.activeRecognition) {
-      try {
-        appState.speechState.activeRecognition.abort();
-      } catch (error) {}
-      appState.speechState.activeRecognition = null;
-      appState.speechState.listening = false;
+      pararDitadoAtivo_();
     }
     var recognition = new Recognition();
     recognition.lang = 'pt-BR';
@@ -2962,7 +2996,9 @@
     recognition.maxAlternatives = 1;
     appState.speechState.activeRecognition = recognition;
     appState.speechState.activeTargetId = targetId;
+    appState.speechState.activeButtonTargetId = targetId;
     appState.speechState.listening = true;
+    renderSpeechButtons_();
     recognition.onresult = function(event) {
       var transcript = normalizeVoiceTranscript_((event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
       var field = document.getElementById(targetId);
@@ -2986,13 +3022,19 @@
     recognition.onend = function() {
       if (appState.speechState.activeRecognition === recognition) {
         appState.speechState.activeRecognition = null;
+        appState.speechState.activeTargetId = '';
+        appState.speechState.activeButtonTargetId = '';
         appState.speechState.listening = false;
+        renderSpeechButtons_();
       }
     };
     recognition.onerror = function(event) {
       if (appState.speechState.activeRecognition === recognition) {
         appState.speechState.activeRecognition = null;
+        appState.speechState.activeTargetId = '';
+        appState.speechState.activeButtonTargetId = '';
         appState.speechState.listening = false;
+        renderSpeechButtons_();
       }
       var errorCode = event && event.error ? String(event.error) : '';
       if (errorCode === 'aborted' || errorCode === 'no-speech') {
