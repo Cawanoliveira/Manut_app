@@ -290,14 +290,14 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.values{height:74px;background:#fff;border-bottom:1.5px solid var(--line);}' +
     '.values div{color:#000;font-size:18px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);padding:8px 6px;}' +
     '.values div:last-child{border-right:none;}' +
-    '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1px solid var(--line);}' +
+    '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1.5px solid var(--line);}' +
     '.text-box{background:#fff;color:#000;font-size:16px;line-height:1.3;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1.5px solid var(--line);}' +
-    '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1px solid var(--line);}' +
+    '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1.5px solid var(--line);}' +
     '.summary{position:absolute;left:38px;right:38px;bottom:24px;height:86px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;border:1.5px solid var(--line);background:#fff;overflow:hidden;}' +
     '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);}' +
-    '.summary-label{height:34px;background:#000;color:#fff;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-label{height:34px;background:#000;color:#fff;border-right:1.5px solid var(--line);border-bottom:1.5px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-label:last-of-type{border-right:none;}' +
-    '.summary-value{height:50px;background:#fff;color:#000;border-right:1px solid var(--line);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-value{height:50px;background:#fff;color:#000;border-right:1.5px solid var(--line);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-value:last-child{border-right:none;}' +
     '</style></head><body>' + pages + '</body></html>';
 }
