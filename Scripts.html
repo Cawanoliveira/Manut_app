@@ -2952,6 +2952,11 @@
     }
     var recognition = new Recognition();
     recognition.lang = 'pt-BR';
+    if ('processLocally' in recognition) {
+      try {
+        recognition.processLocally = true;
+      } catch (error) {}
+    }
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
@@ -2989,10 +2994,23 @@
         appState.speechState.activeRecognition = null;
         appState.speechState.listening = false;
       }
-      if (event && event.error === 'aborted') {
+      var errorCode = event && event.error ? String(event.error) : '';
+      if (errorCode === 'aborted' || errorCode === 'no-speech') {
         return;
       }
-      mostrarMensagemErro('Nao foi possivel usar o ditado por voz agora.');
+      if (errorCode === 'network') {
+        mostrarMensagemErro('Ditado por voz offline nao esta disponivel neste navegador.');
+        return;
+      }
+      if (errorCode === 'not-allowed' || errorCode === 'service-not-allowed') {
+        mostrarMensagemErro('Permita o uso do microfone para ditado por voz.');
+        return;
+      }
+      if (errorCode === 'audio-capture') {
+        mostrarMensagemErro('Nenhum microfone disponivel para o ditado por voz.');
+        return;
+      }
+      mostrarMensagemErro('Nao foi possivel iniciar o ditado por voz.');
     };
     recognition.start();
   }
