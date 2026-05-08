@@ -5,7 +5,7 @@
   "description": "Aplicativo de manutencao com funcionamento online e offline para registro, programacao e conclusao de pendencias.",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#050505",
   "theme_color": "#ff7a00",
