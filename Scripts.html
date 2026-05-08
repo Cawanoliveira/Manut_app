@@ -2443,22 +2443,16 @@
       var isDias = item.chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO';
       var inputType = isDias ? 'number' : 'text';
       var inputValue = isDias ? String(item.valor || '10') : String(item.valor || '');
-      if (isDias) {
-        return '<div class="config-item">' +
-          '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
-          '<div><span class="config-fixed-value">10 dias</span><input type="hidden" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="10"></div>' +
-        '</div>';
-      }
       return '<div class="config-item">' +
         '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
-        '<div><input type="' + inputType + '" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(inputValue) + '"></div>' +
+        '<div><input type="' + inputType + '" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(inputValue) + '"' + (isDias ? ' min="0" step="1"' : '') + '></div>' +
       '</div>';
     }).join('');
   }
 
   function formatarNomeConfiguracao_(chave) {
     var mapa = {
-      DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO: 'Dias para excluir fotos apos conclusao',
+      DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO: 'Dias para excluir fotos do Drive apos conclusao',
       STATUS_PADRAO_NOVO_REGISTRO: 'Status padrao do novo registro',
       PERMITIR_EXCLUSAO_FOTO_AUTOMATICA: 'Permitir exclusao automatica de fotos',
       VERSAO_SISTEMA: 'Versao do sistema'
