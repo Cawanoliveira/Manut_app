@@ -343,7 +343,7 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
 
 function montarBlocoCronogramaPrestador_(item, extraClass) {
   return '<div class="block ' + (extraClass || '') + '">' +
-    '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>DATA DE INICIO</div><div>PREVISAO DE TERMINO</div></div>' +
+    '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>INICIO</div><div>TERMINO</div></div>' +
     '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
     '<div class="text-label">Descricao:</div>' +
     '<div class="text-box desc">' + nl2brHtml_(item.descricao) + '</div>' +
