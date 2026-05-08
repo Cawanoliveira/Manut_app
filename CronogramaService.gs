@@ -107,7 +107,9 @@ function getCronogramaItems_(filtros) {
       item.solicitante = getCurrentUserIdentifier_();
     }
     item.data_abertura_label = formatarData(item.data_abertura);
+    item.data_inicio_label = formatCronogramaDateOnly_(item.data_inicio);
     item.previsao_entrega_label = formatarData(item.previsao_entrega);
+    item.previsao_termino_label = formatCronogramaDateOnly_(item.previsao_entrega);
     item.data_conclusao_label = formatarData(item.data_conclusao);
     item.esta_vencida = isPendenciaVencida_(item);
     item.status_cronograma = getCronogramaStatusServer_(item);
@@ -200,7 +202,6 @@ function buildCronogramaPdfData_(filtros, items) {
     dataEmissao: formatarData(now_()),
     horaEmissao: Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss'),
     emAndamento: String(summary.emAndamento),
-    concluidos: String(summary.concluidos),
     vencidos: String(summary.vencidos),
     totalRegistros: String(summary.total),
     logoUrl: buildCronogramaLogoDataUrl_(),
@@ -209,12 +210,21 @@ function buildCronogramaPdfData_(filtros, items) {
         local: safeString_(item.loja) || '-',
         setor: safeString_(item.setor) || '-',
         status: safeString_(item.status_cronograma) || '-',
-        previsao: safeString_(item.previsao_entrega_label || formatarData(item.previsao_entrega)) || '-',
+        dataInicio: safeString_(item.data_inicio_label || formatCronogramaDateOnly_(item.data_inicio)) || '-',
+        previsaoTermino: safeString_(item.previsao_termino_label || formatCronogramaDateOnly_(item.previsao_entrega)) || '-',
         descricao: sanitizeText_(item.descricao) || '-',
         observacao: sanitizeText_(item.observacao) || '-'
       };
     })
   };
+}
+
+function formatCronogramaDateOnly_(dateValue) {
+  var parsed = parseDateInput_(dateValue);
+  if (!parsed) {
+    return '';
+  }
+  return Utilities.formatDate(parsed, getTimezone_(), 'dd/MM/yyyy');
 }
 
 function buildCronogramaLogoDataUrl_() {
@@ -226,14 +236,11 @@ function buildCronogramaLogoDataUrl_() {
 function buildCronogramaStatusSummaryMap_(items) {
   var total = (items || []).length;
   var emAndamento = 0;
-  var concluidos = 0;
   var vencidos = 0;
   (items || []).forEach(function(item) {
     var status = normalizeCompare_(item.status_cronograma || '');
     if (status === 'em andamento') {
       emAndamento += 1;
-    } else if (status === 'concluido') {
-      concluidos += 1;
     } else if (status === 'vencido') {
       vencidos += 1;
     }
@@ -241,7 +248,6 @@ function buildCronogramaStatusSummaryMap_(items) {
   return {
     total: total,
     emAndamento: emAndamento,
-    concluidos: concluidos,
     vencidos: vencidos
   };
 }
@@ -268,7 +274,7 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
     '.content{position:absolute;left:38px;right:38px;top:0;bottom:0;}' +
-    ':root{--orange:#ef7200;--line:#f4b27a;--cream:#f8e6d8;--dark:#1d1d1d;}' +
+    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;--dark:#1d1d1d;}' +
     '.top-orange{position:absolute;left:0;top:0;width:100%;height:58px;background:var(--orange);}' +
     '.main-title{position:absolute;left:126px;top:10px;font-size:28px;line-height:34px;color:#fff;font-weight:700;}' +
     '.logo{position:absolute;left:26px;top:18px;width:72px;height:72px;object-fit:contain;z-index:5;}' +
@@ -281,19 +287,19 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.meta-value{height:46px;background:#fff;color:#000;font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.section-title{position:absolute;left:38px;top:222px;color:#000;font-size:28px;font-weight:700;line-height:34px;}' +
     '.blocks{position:absolute;left:38px;right:38px;top:274px;bottom:118px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}' +
-    '.block{border:1.5px solid var(--line);background:#fff;display:grid;grid-template-rows:40px 74px 28px 1fr 28px 1fr;min-height:0;}' +
+    '.block{border:1.5px solid var(--line);background:#fff;display:grid;grid-template-rows:40px 68px 28px 1fr 28px 1fr;min-height:0;}' +
     '.block.empty{border-style:dashed;opacity:.35;}' +
-    '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}' +
+    '.grid{display:grid;grid-template-columns:1.1fr 1.1fr 1fr 0.9fr 1.1fr;}' +
     '.head{height:40px;background:var(--dark);border-bottom:1.5px solid var(--line);}' +
     '.head div{color:#fff;font-size:15px;font-weight:700;text-align:center;line-height:40px;border-right:1.5px solid var(--line);}' +
     '.head div:last-child{border-right:none;}' +
-    '.values{height:74px;background:#fff;border-bottom:1.5px solid var(--line);}' +
-    '.values div{color:#000;font-size:18px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);padding:8px 6px;}' +
+    '.values{height:68px;background:#fff;border-bottom:1.5px solid var(--line);}' +
+    '.values div{color:#000;font-size:16px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);padding:6px 5px;}' +
     '.values div:last-child{border-right:none;}' +
     '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1.5px solid var(--line);}' +
-    '.text-box{background:#fff;color:#000;font-size:16px;line-height:1.3;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1.5px solid var(--line);}' +
+    '.text-box{background:#fff;color:#000;font-size:15px;line-height:1.25;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1.5px solid var(--line);}' +
     '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1.5px solid var(--line);}' +
-    '.summary{position:absolute;left:38px;right:38px;bottom:24px;height:86px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;border:1.5px solid var(--line);background:#fff;overflow:hidden;}' +
+    '.summary{position:absolute;left:38px;right:38px;bottom:24px;height:86px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;border:1.5px solid var(--line);background:#fff;overflow:hidden;}' +
     '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);}' +
     '.summary-label{height:34px;background:#000;color:#fff;border-right:1.5px solid var(--line);border-bottom:1.5px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-label:last-of-type{border-right:none;}' +
@@ -312,11 +318,9 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
     '<div class="summary">' +
       '<div class="summary-title">RESUMO</div>' +
       '<div class="summary-label">Em andamento</div>' +
-      '<div class="summary-label">Concluidos</div>' +
       '<div class="summary-label">Vencidos</div>' +
       '<div class="summary-label">Total Registros</div>' +
       '<div class="summary-value">' + escapeHtml_(dados.emAndamento) + '</div>' +
-      '<div class="summary-value">' + escapeHtml_(dados.concluidos) + '</div>' +
       '<div class="summary-value">' + escapeHtml_(dados.vencidos) + '</div>' +
       '<div class="summary-value">' + escapeHtml_(dados.totalRegistros) + '</div>' +
     '</div>'
@@ -339,8 +343,8 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
 
 function montarBlocoCronogramaPrestador_(item, extraClass) {
   return '<div class="block ' + (extraClass || '') + '">' +
-    '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>PREVISAO</div></div>' +
-    '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.previsao) + '</div></div>' +
+    '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>DATA DE INICIO</div><div>PREVISAO DE TERMINO</div></div>' +
+    '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
     '<div class="text-label">Descricao:</div>' +
     '<div class="text-box desc">' + nl2brHtml_(item.descricao) + '</div>' +
     '<div class="text-label">Observacao:</div>' +
