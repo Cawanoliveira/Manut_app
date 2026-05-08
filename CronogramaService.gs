@@ -271,7 +271,7 @@ function montarHtmlCronogramaPrestador_(dados) {
     '@page{size:A4 landscape;margin:0;}' +
     'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Calibri,Arial,Helvetica,sans-serif;}' +
     '*{box-sizing:border-box;}' +
-    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;--blockline:#b8b8b8;--overdue:#e7b2b2;}' +
+    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;--blockline:#2b2b2b;--overdue:#a63a3a;}' +
     '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
     '.page-inner{position:absolute;inset:0;}' +
@@ -298,6 +298,7 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.values{height:48px;background:#fff;border-bottom:1px solid var(--line);}' +
     '.values div{color:#000;font-size:12px;font-weight:400;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);padding:4px 5px;word-break:break-word;}' +
     '.values div:last-child{border-right:none;}' +
+    '.status-text.overdue{color:#991b1b;font-weight:700;}' +
     '.text-label{height:22px;background:#fff;color:#000;font-size:12px;font-weight:700;padding:4px 8px;border-bottom:1px solid var(--line);}' +
     '.text-box{background:#fff;color:#000;font-size:11px;line-height:1.2;padding:6px 8px;white-space:pre-wrap;overflow:hidden;border-bottom:1px solid var(--line);}' +
     '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1px solid var(--line);}' +
@@ -352,15 +353,17 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
 
 function montarBlocoCronogramaPrestador_(item, extraClass) {
   var classes = ['block'];
+  var statusHtml = escapeHtml_(item.status);
   if (extraClass) {
     classes.push(extraClass);
   }
   if (normalizeCompare_(item.status) === 'vencido') {
     classes.push('overdue');
+    statusHtml = '<span class="status-text overdue">' + escapeHtml_(item.status) + '</span>';
   }
   return '<div class="' + classes.join(' ') + '">' +
     '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>INICIO</div><div>TERMINO</div></div>' +
-    '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
+    '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + statusHtml + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
     '<div class="text-label">Descricao:</div>' +
     '<div class="text-box desc">' + nl2brHtml_(item.descricao) + '</div>' +
     '<div class="text-label">Observacao:</div>' +
