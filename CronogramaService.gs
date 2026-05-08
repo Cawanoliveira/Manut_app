@@ -262,43 +262,42 @@ function montarHtmlCronogramaPrestador_(dados) {
   }).join('');
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
-    '@page{size:1024px 1200px;margin:0;}' +
-    'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Arial,Helvetica,sans-serif;}' +
+    '@page{size:A4 landscape;margin:0;}' +
+    'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Calibri,Arial,Helvetica,sans-serif;}' +
     '*{box-sizing:border-box;}' +
-    '.page{position:relative;width:1024px;height:1200px;overflow:hidden;background:#fff;page-break-after:always;}' +
+    '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
-    '.top-orange{position:absolute;left:0;top:0;width:100%;height:67px;background:#ef7200;}' +
-    '.main-title{position:absolute;left:130px;top:14px;font-size:30px;line-height:36px;color:#fff;font-weight:700;}' +
-    '.logo{position:absolute;left:27px;top:28px;width:77px;height:77px;object-fit:contain;z-index:5;}' +
+    '.content{position:absolute;left:38px;right:38px;top:0;bottom:0;}' +
+    '.top-orange{position:absolute;left:0;top:0;width:100%;height:58px;background:#ef7200;}' +
+    '.main-title{position:absolute;left:126px;top:10px;font-size:28px;line-height:34px;color:#fff;font-weight:700;}' +
+    '.logo{position:absolute;left:26px;top:18px;width:72px;height:72px;object-fit:contain;z-index:5;}' +
     '.logo-fallback{background:#000;color:#fff;border-radius:50%;font-family:Arial Black,Arial,sans-serif;font-size:58px;line-height:72px;text-align:center;}' +
-    '.subtitle-bar{position:absolute;left:0;top:67px;width:100%;height:60px;background:#000;}' +
-    '.subtitle{position:absolute;left:130px;top:82px;color:#fff;font-family:"Times New Roman",serif;font-size:30px;line-height:36px;font-weight:400;}' +
-    '.white-strip{position:absolute;left:0;top:127px;width:100%;height:26px;background:#fff;}' +
-    '.info-labels{position:absolute;left:0;top:153px;width:100%;height:28px;display:grid;grid-template-columns:500px 524px;background:#f8e6d8;}' +
-    '.info-label{color:#000;font-size:16px;font-weight:800;text-align:center;line-height:28px;letter-spacing:.3px;}' +
-    '.info-values{position:absolute;left:0;top:181px;width:100%;height:52px;display:grid;grid-template-columns:500px 524px;}' +
-    '.prestador-value{background:#000;color:#fff;font-size:25px;padding-left:20px;line-height:52px;}' +
-    '.date-value{background:#fff;color:#000;font-family:"Times New Roman",serif;font-size:34px;line-height:52px;text-align:center;}' +
-    '.blank-white{position:absolute;left:0;top:233px;width:100%;height:105px;background:#fff;}' +
-    '.section-title{position:absolute;left:7px;top:283px;color:#ef7200;font-size:30px;font-style:italic;font-weight:400;letter-spacing:2px;line-height:40px;}' +
-    '.block{position:absolute;left:0;width:1000px;border:2px solid #ff7900;background:#fff;}' +
-    '.block.one{top:338px;}.block.two{top:714px;}' +
+    '.subtitle-bar{position:absolute;left:0;top:58px;width:100%;height:44px;background:#000;}' +
+    '.subtitle{position:absolute;left:126px;top:66px;color:#fff;font-size:20px;line-height:28px;font-weight:400;}' +
+    '.meta-wrap{position:absolute;left:38px;right:38px;top:122px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}' +
+    '.meta-card{border:1.5px solid #ef7200;background:#fff;}' +
+    '.meta-label{height:28px;background:#f8e6d8;color:#000;font-size:14px;font-weight:700;text-align:center;line-height:28px;letter-spacing:.3px;}' +
+    '.meta-value{height:46px;background:#fff;color:#000;font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.section-title{position:absolute;left:38px;top:222px;color:#000;font-size:28px;font-weight:700;line-height:34px;}' +
+    '.blocks{position:absolute;left:38px;right:38px;top:274px;bottom:118px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}' +
+    '.block{border:1.5px solid #ef7200;background:#fff;display:grid;grid-template-rows:40px 74px 28px 1fr 28px 1fr;min-height:0;}' +
+    '.block.empty{border-style:dashed;opacity:.35;}' +
     '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;}' +
-    '.head{height:43px;background:#1d1d1d;border-bottom:2px solid #ff7900;}' +
-    '.head div{color:#fff;font-size:16px;font-weight:800;text-align:center;line-height:43px;border-right:2px solid #ff7900;}' +
+    '.head{height:40px;background:#1d1d1d;border-bottom:1.5px solid #ef7200;}' +
+    '.head div{color:#fff;font-size:15px;font-weight:700;text-align:center;line-height:40px;border-right:1.5px solid #ef7200;}' +
     '.head div:last-child{border-right:none;}' +
-    '.values{height:112px;background:#fff;border-bottom:2px solid #ff7900;}' +
-    '.values div{color:#000;font-size:23px;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;border-right:2px solid #ff7900;padding:8px;}' +
+    '.values{height:74px;background:#fff;border-bottom:1.5px solid #ef7200;}' +
+    '.values div{color:#000;font-size:18px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1.5px solid #ef7200;padding:8px 6px;}' +
     '.values div:last-child{border-right:none;}' +
-    '.text-label{height:34px;background:#fff;color:#000;font-size:16px;font-style:italic;font-weight:700;padding:8px 10px;border-bottom:2px solid #ff7900;}' +
-    '.text-box{background:#fff;color:#000;font-size:22px;line-height:1.35;padding:10px 12px;border-bottom:2px solid #ff7900;white-space:pre-wrap;overflow:hidden;}' +
-    '.text-box.obs{height:85px;border-bottom:none;}.text-box.desc{height:109px;}' +
-    '.divider-bar{position:absolute;left:0;width:1000px;height:27px;background:repeating-linear-gradient(90deg,#fff 0px,#fff 123px,#ff7900 123px,#ff7900 126px,#fff 126px,#fff 250px);border-top:2px solid #ff7900;border-bottom:2px solid #ff7900;}' +
-    '.divider-one{top:688px;}.divider-two{top:1065px;}' +
-    '.summary{position:absolute;left:0;top:1092px;width:1000px;height:108px;display:grid;grid-template-columns:500px 125px 125px 125px 125px;border-top:2px solid #ff7900;border-right:2px solid #ff7900;}' +
-    '.summary-title{grid-row:span 2;background:#ef7200;color:#000;border-right:2px solid #000;font-size:27px;font-weight:900;letter-spacing:1px;display:flex;align-items:center;justify-content:center;}' +
-    '.summary-label{height:43px;background:#ef7200;color:#000;border-right:2px solid #000;border-bottom:2px solid #000;font-size:14px;font-weight:800;display:flex;align-items:center;padding-left:5px;letter-spacing:.5px;}' +
-    '.summary-value{height:65px;background:#fff;color:#000;border-right:2px solid #ff7900;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1px solid #e8d0c0;}' +
+    '.text-box{background:#fff;color:#000;font-size:16px;line-height:1.3;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1.5px solid #ef7200;}' +
+    '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1px solid #e8d0c0;}' +
+    '.summary{position:absolute;left:38px;right:38px;bottom:24px;height:86px;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr 1fr;border:1.5px solid #ef7200;background:#fff;}' +
+    '.summary-title{grid-row:span 2;background:#ef7200;color:#000;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;border-right:1.5px solid #ef7200;}' +
+    '.summary-label{height:34px;background:#000;color:#fff;border-right:1px solid #ef7200;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-label:last-of-type{border-right:none;}' +
+    '.summary-value{height:50px;background:#fff;color:#000;border-right:1px solid #ef7200;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-value:last-child{border-right:none;}' +
     '</style></head><body>' + pages + '</body></html>';
 }
 
@@ -309,7 +308,6 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
   var first = pendencias[0] || createCronogramaBlankItem_();
   var second = pendencias[1] || createCronogramaBlankItem_();
   var summaryHtml = includeSummary ? (
-    '<div class="divider-bar divider-two"></div>' +
     '<div class="summary">' +
       '<div class="summary-title">RESUMO</div>' +
       '<div class="summary-label">Em andamento</div>' +
@@ -328,20 +326,18 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
     logoHtml +
     '<div class="subtitle-bar"></div>' +
     '<div class="subtitle">Relatorio de pendencias por prestador de servico</div>' +
-    '<div class="white-strip"></div>' +
-    '<div class="info-labels"><div class="info-label">PRESTADOR</div><div class="info-label">DATA DE EMISSAO</div></div>' +
-    '<div class="info-values"><div class="prestador-value">' + escapeHtml_(dados.prestador) + '</div><div class="date-value">' + escapeHtml_(dados.dataEmissao) + '</div></div>' +
-    '<div class="blank-white"></div>' +
+    '<div class="meta-wrap"><div class="meta-card"><div class="meta-label">PRESTADOR</div><div class="meta-value">' + escapeHtml_(dados.prestador) + '</div></div><div class="meta-card"><div class="meta-label">DATA DE EMISSAO</div><div class="meta-value">' + escapeHtml_(dados.dataEmissao) + '</div></div></div>' +
     '<div class="section-title">CRONOGRAMA DE PENDENCIAS</div>' +
-    montarBlocoCronogramaPrestador_(first, 'one') +
-    '<div class="divider-bar divider-one"></div>' +
-    montarBlocoCronogramaPrestador_(second, 'two') +
+    '<div class="blocks">' +
+      montarBlocoCronogramaPrestador_(first, first.local || first.setor || first.descricao || first.observacao ? '' : 'empty') +
+      montarBlocoCronogramaPrestador_(second, second.local || second.setor || second.descricao || second.observacao ? '' : 'empty') +
+    '</div>' +
     summaryHtml +
   '</div>';
 }
 
-function montarBlocoCronogramaPrestador_(item, cssClass) {
-  return '<div class="block ' + cssClass + '">' +
+function montarBlocoCronogramaPrestador_(item, extraClass) {
+  return '<div class="block ' + (extraClass || '') + '">' +
     '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>PREVISAO</div></div>' +
     '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.previsao) + '</div></div>' +
     '<div class="text-label">Descricao:</div>' +
