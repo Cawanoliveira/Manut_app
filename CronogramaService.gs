@@ -271,39 +271,41 @@ function montarHtmlCronogramaPrestador_(dados) {
     '@page{size:A4 landscape;margin:0;}' +
     'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Calibri,Arial,Helvetica,sans-serif;}' +
     '*{box-sizing:border-box;}' +
+    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;}' +
     '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
-    '.content{position:absolute;left:38px;right:38px;top:0;bottom:0;}' +
-    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;--dark:#1d1d1d;}' +
-    '.top-orange{position:absolute;left:0;top:0;width:100%;height:58px;background:var(--orange);}' +
-    '.main-title{position:absolute;left:126px;top:10px;font-size:28px;line-height:34px;color:#fff;font-weight:700;}' +
-    '.logo{position:absolute;left:26px;top:18px;width:72px;height:72px;object-fit:contain;z-index:5;}' +
+    '.page-inner{position:absolute;inset:0;}' +
+    '.top-orange{position:absolute;left:0;top:0;width:100%;height:67px;background:var(--orange);}' +
+    '.main-title{position:absolute;left:130px;top:15px;font-size:30px;line-height:36px;color:#fff;font-weight:700;}' +
+    '.logo{position:absolute;left:27px;top:28px;width:77px;height:77px;object-fit:contain;z-index:5;}' +
     '.logo-fallback{background:#000;color:#fff;border-radius:50%;font-family:Arial Black,Arial,sans-serif;font-size:58px;line-height:72px;text-align:center;}' +
-    '.subtitle-bar{position:absolute;left:0;top:58px;width:100%;height:44px;background:#000;}' +
-    '.subtitle{position:absolute;left:126px;top:66px;color:#fff;font-size:20px;line-height:28px;font-weight:400;}' +
-    '.meta-wrap{position:absolute;left:38px;right:38px;top:122px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}' +
-    '.meta-card{border:1.5px solid var(--line);background:#fff;}' +
-    '.meta-label{height:28px;background:var(--cream);color:#000;font-size:14px;font-weight:700;text-align:center;line-height:28px;letter-spacing:.3px;border-bottom:1.5px solid var(--line);}' +
-    '.meta-value{height:46px;background:#fff;color:#000;font-size:28px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
-    '.section-title{position:absolute;left:38px;top:222px;color:#000;font-size:28px;font-weight:700;line-height:34px;}' +
-    '.blocks{position:absolute;left:38px;right:38px;top:274px;bottom:118px;display:grid;grid-template-columns:1fr 1fr;gap:18px;}' +
-    '.block{border:1.5px solid var(--line);background:#fff;display:grid;grid-template-rows:40px 68px 28px 1fr 28px 1fr;min-height:0;}' +
-    '.block.empty{border-style:dashed;opacity:.35;}' +
-    '.grid{display:grid;grid-template-columns:1.1fr 1.1fr 1fr 0.9fr 1.1fr;}' +
-    '.head{height:40px;background:var(--dark);border-bottom:1.5px solid var(--line);}' +
-    '.head div{color:#fff;font-size:15px;font-weight:700;text-align:center;line-height:40px;border-right:1.5px solid var(--line);}' +
+    '.subtitle-bar{position:absolute;left:0;top:67px;width:100%;height:60px;background:#000;}' +
+    '.subtitle{position:absolute;left:130px;top:84px;color:#fff;font-size:30px;line-height:36px;font-weight:400;}' +
+    '.white-strip{position:absolute;left:0;top:127px;width:100%;height:26px;background:#fff;}' +
+    '.meta-wrap{position:absolute;left:0;top:153px;width:100%;display:grid;grid-template-columns:500px 523px;grid-template-rows:28px 52px;justify-content:start;}' +
+    '.meta-label{background:var(--cream);color:#000;font-size:16px;font-weight:700;text-align:center;line-height:28px;border:1px solid var(--line);border-bottom:none;}' +
+    '.meta-card:first-child .meta-label{border-right:none;}' +
+    '.meta-value{height:52px;background:#fff;color:#000;font-size:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}' +
+    '.meta-card:first-child .meta-value{border-right:none;font-size:26px;font-weight:700;text-align:center;padding:0 12px;}' +
+    '.section-title{position:absolute;left:7px;top:283px;color:#000;font-size:30px;font-weight:400;letter-spacing:1px;line-height:40px;}' +
+    '.blocks{position:absolute;left:1cm;right:1cm;top:338px;bottom:104px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}' +
+    '.block{border:1px solid var(--line);background:#fff;display:grid;grid-template-rows:43px 86px 28px 1fr 28px 1fr;min-height:0;}' +
+    '.block.empty{opacity:.28;}' +
+    '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 0.9fr 0.95fr;}' +
+    '.head{height:43px;background:#000;border-bottom:1px solid var(--line);}' +
+    '.head div{color:#fff;font-size:16px;font-weight:700;text-align:center;line-height:43px;border-right:1px solid var(--line);}' +
     '.head div:last-child{border-right:none;}' +
-    '.values{height:68px;background:#fff;border-bottom:1.5px solid var(--line);}' +
-    '.values div{color:#000;font-size:16px;font-weight:700;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);padding:6px 5px;}' +
+    '.values{height:86px;background:#fff;border-bottom:1px solid var(--line);}' +
+    '.values div{color:#000;font-size:15px;font-weight:400;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);padding:8px 6px;word-break:break-word;}' +
     '.values div:last-child{border-right:none;}' +
-    '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1.5px solid var(--line);}' +
-    '.text-box{background:#fff;color:#000;font-size:15px;line-height:1.25;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1.5px solid var(--line);}' +
-    '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1.5px solid var(--line);}' +
-    '.summary{position:absolute;left:38px;right:38px;bottom:24px;height:86px;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;border:1.5px solid var(--line);background:#fff;overflow:hidden;}' +
-    '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;border-right:1.5px solid var(--line);}' +
-    '.summary-label{height:34px;background:#000;color:#fff;border-right:1.5px solid var(--line);border-bottom:1.5px solid var(--line);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1px solid var(--line);}' +
+    '.text-box{background:#fff;color:#000;font-size:14px;line-height:1.25;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1px solid var(--line);}' +
+    '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1px solid var(--line);}' +
+    '.summary{position:absolute;left:1cm;right:1cm;bottom:18px;height:88px;display:grid;grid-template-columns:1.45fr 1fr 1fr 1fr;border:1px solid var(--line);background:#fff;overflow:hidden;}' +
+    '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);}' +
+    '.summary-label{height:34px;background:var(--orange);color:#000;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-label:last-of-type{border-right:none;}' +
-    '.summary-value{height:50px;background:#fff;color:#000;border-right:1.5px solid var(--line);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-value{height:54px;background:#fff;color:#000;border-right:1px solid var(--line);font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-value:last-child{border-right:none;}' +
     '</style></head><body>' + pages + '</body></html>';
 }
@@ -326,19 +328,23 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
     '</div>'
   ) : '';
 
-  return '<div class="page' + (includeSummary ? ' last' : '') + '">' +
+  return '<div class="page' + (includeSummary ? ' last' : '') + '"><div class="page-inner">' +
     '<div class="top-orange"><div class="main-title">Cronograma do Prestador</div></div>' +
     logoHtml +
     '<div class="subtitle-bar"></div>' +
     '<div class="subtitle">Relatorio de pendencias por prestador de servico</div>' +
-    '<div class="meta-wrap"><div class="meta-card"><div class="meta-label">PRESTADOR</div><div class="meta-value">' + escapeHtml_(dados.prestador) + '</div></div><div class="meta-card"><div class="meta-label">DATA DE EMISSAO</div><div class="meta-value">' + escapeHtml_(dados.dataEmissao) + '</div></div></div>' +
+    '<div class="white-strip"></div>' +
+    '<div class="meta-wrap">' +
+      '<div class="meta-card"><div class="meta-label">PRESTADOR</div><div class="meta-value">' + escapeHtml_(dados.prestador) + '</div></div>' +
+      '<div class="meta-card"><div class="meta-label">DATA DE EMISSAO</div><div class="meta-value">' + escapeHtml_(dados.dataEmissao) + '</div></div>' +
+    '</div>' +
     '<div class="section-title">CRONOGRAMA DE PENDENCIAS</div>' +
     '<div class="blocks">' +
       montarBlocoCronogramaPrestador_(first, first.local || first.setor || first.descricao || first.observacao ? '' : 'empty') +
       montarBlocoCronogramaPrestador_(second, second.local || second.setor || second.descricao || second.observacao ? '' : 'empty') +
     '</div>' +
     summaryHtml +
-  '</div>';
+  '</div></div>';
 }
 
 function montarBlocoCronogramaPrestador_(item, extraClass) {
@@ -357,7 +363,8 @@ function createCronogramaBlankItem_() {
     local: '',
     setor: '',
     status: '',
-    previsao: '',
+    dataInicio: '',
+    previsaoTermino: '',
     descricao: '',
     observacao: ''
   };
@@ -723,12 +730,8 @@ function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
   var sheet = spreadsheet.getSheets()[0];
   sheet.setName('Cronograma');
   sheet.clear();
-  sheet.getRange(1, 1).setValue('Cronograma do Prestador').setFontWeight('bold').setFontSize(16).setFontColor('#f26400');
-  sheet.getRange(2, 1).setValue('Prestador: ' + (filtros.executor || '-')).setFontWeight('bold');
-  sheet.getRange(3, 1).setValue(buildCronogramaResumoFiltros_(filtros, items.length)).setFontSize(9).setFontColor('#6b7280');
-
-  var headers = [['Prestador', 'Local', 'Setor', 'Status', 'Previsao de conclusao', 'Descricao', 'Observacao', 'Anexo']];
-  sheet.getRange(5, 1, 1, headers[0].length).setValues(headers).setFontWeight('bold').setBackground('#fff1e3').setFontColor('#f26400');
+  var headers = [['Prestador', 'Local', 'Setor', 'Status', 'Inicio', 'Termino', 'Descricao', 'Observacao', 'Anexo']];
+  sheet.getRange(1, 1, 1, headers[0].length).setValues(headers).setFontWeight('bold');
 
   var data = items.map(function(item) {
     return [
@@ -736,41 +739,27 @@ function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
       item.loja || '-',
       item.setor || '-',
       item.status_cronograma || '-',
-      item.previsao_entrega_label || formatarData(item.previsao_entrega) || '-',
+      item.data_inicio_label || formatCronogramaDateOnly_(item.data_inicio) || '-',
+      item.previsao_termino_label || formatCronogramaDateOnly_(item.previsao_entrega) || '-',
       sanitizeText_(item.descricao) || '-',
       sanitizeText_(item.observacao) || '',
       item.link_foto || ''
     ];
   });
   if (data.length) {
-    sheet.getRange(6, 1, data.length, data[0].length).setValues(data).setVerticalAlignment('middle').setWrap(true);
+    sheet.getRange(2, 1, data.length, data[0].length).setValues(data).setVerticalAlignment('top').setWrap(true);
   }
 
-  sheet.setFrozenRows(5);
-  sheet.setColumnWidths(1, 1, 150);
-  sheet.setColumnWidths(2, 1, 120);
-  sheet.setColumnWidths(3, 1, 120);
+  sheet.setFrozenRows(1);
+  sheet.setColumnWidths(1, 1, 140);
+  sheet.setColumnWidths(2, 1, 110);
+  sheet.setColumnWidths(3, 1, 110);
   sheet.setColumnWidths(4, 1, 120);
-  sheet.setColumnWidths(5, 1, 110);
-  sheet.setColumnWidths(6, 1, 260);
-  sheet.setColumnWidths(7, 1, 220);
-  sheet.setColumnWidths(8, 1, 180);
-  if (data.length) {
-    sheet.getRange(6, 8, data.length, 1).setNumberFormat('@');
-    items.forEach(function(item, index) {
-      if (!item.id_arquivo_drive) {
-        return;
-      }
-      try {
-        var blob = DriveApp.getFileById(item.id_arquivo_drive).getBlob();
-        sheet.setRowHeight(6 + index, 90);
-        sheet.insertImage(blob, 8, 6 + index, 4, 4).setWidth(120).setHeight(80);
-      } catch (error) {
-        sheet.getRange(6 + index, 8).setValue('Anexo indisponivel');
-        registrarLog('ALERTA', 'Falha ao anexar imagem no cronograma Excel.', safeString_(item.id_pendencia) + ' | ' + getErrorStack_(error), getCurrentUserIdentifier_());
-      }
-    });
-  }
+  sheet.setColumnWidths(5, 1, 95);
+  sheet.setColumnWidths(6, 1, 95);
+  sheet.setColumnWidths(7, 1, 280);
+  sheet.setColumnWidths(8, 1, 220);
+  sheet.setColumnWidths(9, 1, 180);
 }
 
 function exportSpreadsheetAsXlsx_(spreadsheetId, fileName) {

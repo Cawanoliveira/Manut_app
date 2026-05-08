@@ -226,6 +226,16 @@ function parseDateInput_(dateValue) {
     var parts = text.split('-');
     return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   }
+  var brDateTimeMatch = text.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (brDateTimeMatch) {
+    var day = Number(brDateTimeMatch[1]);
+    var month = Number(brDateTimeMatch[2]) - 1;
+    var year = Number(brDateTimeMatch[3]);
+    var hours = Number(brDateTimeMatch[4] || 0);
+    var minutes = Number(brDateTimeMatch[5] || 0);
+    var seconds = Number(brDateTimeMatch[6] || 0);
+    return new Date(year, month, day, hours, minutes, seconds);
+  }
   var parsed = new Date(text);
   return isNaN(parsed.getTime()) ? null : parsed;
 }
