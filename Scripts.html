@@ -36,7 +36,11 @@
         executor: ''
       },
       speechState: {
-        activeTargetId: ''
+        activeTargetId: '',
+        activeRecognition: null,
+        lastTranscript: '',
+        lastAt: 0,
+        listening: false
       },
       zoomContext: {
         title: '',
@@ -2439,9 +2443,15 @@
       var isDias = item.chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO';
       var inputType = isDias ? 'number' : 'text';
       var inputValue = isDias ? String(item.valor || '10') : String(item.valor || '');
+      if (isDias) {
+        return '<div class="config-item">' +
+          '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
+          '<div><span class="config-fixed-value">10 dias</span><input type="hidden" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="10"></div>' +
+        '</div>';
+      }
       return '<div class="config-item">' +
         '<div><strong>' + escapeHtml(formatarNomeConfiguracao_(item.chave)) + ':</strong></div>' +
-        '<div><input type="' + inputType + '" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(inputValue) + '"' + (isDias ? ' min="0" step="1"' : '') + '></div>' +
+        '<div><input type="' + inputType + '" class="config-input" data-chave="' + escapeHtml(item.chave) + '" value="' + escapeHtml(inputValue) + '"></div>' +
       '</div>';
     }).join('');
   }
@@ -2939,22 +2949,55 @@
       mostrarMensagemErro('Ditado por voz nao suportado neste navegador.');
       return;
     }
+    if (appState.speechState.activeRecognition) {
+      try {
+        appState.speechState.activeRecognition.abort();
+      } catch (error) {}
+      appState.speechState.activeRecognition = null;
+      appState.speechState.listening = false;
+    }
     var recognition = new Recognition();
     recognition.lang = 'pt-BR';
+    recognition.continuous = false;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
+    appState.speechState.activeRecognition = recognition;
     appState.speechState.activeTargetId = targetId;
+    appState.speechState.listening = true;
     recognition.onresult = function(event) {
       var transcript = normalizeVoiceTranscript_((event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
       var field = document.getElementById(targetId);
       if (!field) {
         return;
       }
+      var now = Date.now();
+      if (transcript && appState.speechState.lastTranscript === transcript && (now - Number(appState.speechState.lastAt || 0)) < 2500) {
+        return;
+      }
+      appState.speechState.lastTranscript = transcript;
+      appState.speechState.lastAt = now;
       var currentValue = field.value || '';
       var prefix = currentValue && transcript && transcript.charAt(0) !== '\n' ? ' ' : '';
-      field.value = (currentValue + prefix + transcript).replace(/[ \t]+\n/g, '\n').trim();
+      var nextValue = (currentValue + prefix + transcript).replace(/[ \t]+\n/g, '\n').trim();
+      if (currentValue && transcript && normalizeText_(currentValue).slice(-normalizeText_(transcript).length) === normalizeText_(transcript)) {
+        return;
+      }
+      field.value = nextValue;
     };
-    recognition.onerror = function() {
+    recognition.onend = function() {
+      if (appState.speechState.activeRecognition === recognition) {
+        appState.speechState.activeRecognition = null;
+        appState.speechState.listening = false;
+      }
+    };
+    recognition.onerror = function(event) {
+      if (appState.speechState.activeRecognition === recognition) {
+        appState.speechState.activeRecognition = null;
+        appState.speechState.listening = false;
+      }
+      if (event && event.error === 'aborted') {
+        return;
+      }
       mostrarMensagemErro('Nao foi possivel usar o ditado por voz agora.');
     };
     recognition.start();

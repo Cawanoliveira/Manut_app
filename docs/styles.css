@@ -1499,12 +1499,24 @@
   cursor: not-allowed;
 }
 
-  .spen-hard-locked,
-  .spen-hard-locked body {
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-  }
+.spen-hard-locked,
+.spen-hard-locked body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.config-fixed-value {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: #f6f6f6;
+  color: #333333;
+  font-weight: 700;
+}
 
   .hidden {
     display: none !important;
