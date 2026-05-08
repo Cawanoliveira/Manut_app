@@ -610,6 +610,7 @@
 
     preencherSelect('editExecutor', combos.prestadores, 'Selecione um executor', true);
     preencherSelect('editStatus', combos.status, 'Selecione um status');
+    preencherSelect('editSetor', combos.setores, 'Selecione um setor');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
     preencherSelect('cronogramaExecutor', combos.prestadores, 'Selecione um executor');
@@ -667,6 +668,7 @@
       novaPrioridade: { group: 'prioridade', title: 'Prioridades' },
       editExecutor: { group: 'executor', title: 'Executor / prestador' },
       editStatus: { group: 'status', title: 'Status' },
+      editSetor: { group: 'setor', title: 'Setores' },
       editTipo: { group: 'tipo', title: 'Tipos' },
       editPrioridade: { group: 'prioridade', title: 'Prioridades' }
     };
@@ -1275,6 +1277,7 @@
     document.getElementById('editIdPendencia').value = item.id_pendencia;
     document.getElementById('editExecutor').value = item.executor || '';
     document.getElementById('editStatus').value = item.status || '';
+    document.getElementById('editSetor').value = item.setor || '';
     document.getElementById('editDataInicio').value = normalizeDateForInputValue_(item.data_inicio);
     document.getElementById('editPrevisaoEntrega').value = normalizeDateForInputValue_(item.previsao_entrega || item.previsao_entrega_label);
     document.getElementById('editTipo').value = item.tipo || '';
@@ -1335,6 +1338,7 @@
     var dados = {
       executor: document.getElementById('editExecutor').value,
       status: document.getElementById('editStatus').value,
+      setor: document.getElementById('editSetor').value,
       data_inicio: document.getElementById('editDataInicio').value,
       previsao_entrega: document.getElementById('editPrevisaoEntrega').value,
       tipo: document.getElementById('editTipo').value,
