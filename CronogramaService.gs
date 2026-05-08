@@ -271,7 +271,7 @@ function montarHtmlCronogramaPrestador_(dados) {
     '@page{size:A4 landscape;margin:0;}' +
     'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Calibri,Arial,Helvetica,sans-serif;}' +
     '*{box-sizing:border-box;}' +
-    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;}' +
+    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;--blockline:#b8b8b8;--overdue:#e7b2b2;}' +
     '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
     '.page-inner{position:absolute;inset:0;}' +
@@ -288,8 +288,9 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.meta-value{height:46px;background:#fff;color:#000;font-size:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}' +
     '.meta-card:first-child .meta-value{border-right:none;font-size:24px;font-weight:700;text-align:center;padding:0 12px;}' +
     '.blocks{position:absolute;left:1cm;right:1cm;top:214px;bottom:92px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;}' +
-    '.block{border:1px solid var(--line);background:#fff;display:grid;grid-template-rows:30px 48px 22px 1fr 22px 1fr;min-height:0;}' +
+    '.block{border:1px solid var(--blockline);background:#fff;display:grid;grid-template-rows:30px 48px 22px 1fr 22px 1fr;min-height:0;}' +
     '.block.empty{opacity:.28;}' +
+    '.block.overdue{border-color:var(--overdue);}' +
     '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 0.9fr 0.95fr;}' +
     '.head{height:30px;background:#000;border-bottom:1px solid var(--line);}' +
     '.head div{color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:30px;border-right:1px solid var(--line);}' +
@@ -350,7 +351,14 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
 }
 
 function montarBlocoCronogramaPrestador_(item, extraClass) {
-  return '<div class="block ' + (extraClass || '') + '">' +
+  var classes = ['block'];
+  if (extraClass) {
+    classes.push(extraClass);
+  }
+  if (normalizeCompare_(item.status) === 'vencido') {
+    classes.push('overdue');
+  }
+  return '<div class="' + classes.join(' ') + '">' +
     '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>INICIO</div><div>TERMINO</div></div>' +
     '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + escapeHtml_(item.status) + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
     '<div class="text-label">Descricao:</div>' +

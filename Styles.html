@@ -907,13 +907,15 @@
     align-items: end;
   }
 
-  .cronograma-table th:nth-child(1) { width: 14%; }
-  .cronograma-table th:nth-child(2) { width: 13%; }
-  .cronograma-table th:nth-child(3) { width: 13%; }
-  .cronograma-table th:nth-child(4) { width: 12%; }
-  .cronograma-table th:nth-child(5) { width: 12%; }
-  .cronograma-table th:nth-child(6) { width: 28%; }
-  .cronograma-table th:nth-child(7) { width: 8%; }
+  .cronograma-table th:nth-child(1) { width: 13%; }
+  .cronograma-table th:nth-child(2) { width: 11%; }
+  .cronograma-table th:nth-child(3) { width: 11%; }
+  .cronograma-table th:nth-child(4) { width: 10%; }
+  .cronograma-table th:nth-child(5) { width: 10%; }
+  .cronograma-table th:nth-child(6) { width: 10%; }
+  .cronograma-table th:nth-child(7) { width: 21%; }
+  .cronograma-table th:nth-child(8) { width: 9%; }
+  .cronograma-table th:nth-child(9) { width: 5%; }
 
   .cronograma-table td {
     vertical-align: top;
@@ -927,8 +929,30 @@
   .cronograma-table td:nth-child(2),
   .cronograma-table td:nth-child(3),
   .cronograma-table td:nth-child(4),
-  .cronograma-table td:nth-child(5) {
+  .cronograma-table td:nth-child(5),
+  .cronograma-table td:nth-child(6) {
     font-weight: 700;
+  }
+
+  .cronograma-date-cell {
+    min-width: 92px;
+  }
+
+  .cronograma-date-input {
+    width: 100%;
+    min-width: 88px;
+    border: 1px solid #d9d9d9;
+    border-radius: 10px;
+    padding: 8px 10px;
+    font: inherit;
+    background: #fff;
+    color: #111;
+  }
+
+  .cronograma-actions {
+    display: grid;
+    gap: 8px;
+    justify-items: center;
   }
 
   .cronograma-text-cell {
