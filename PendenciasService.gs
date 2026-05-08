@@ -388,7 +388,7 @@ function excluirPendencia(id, observacao) {
 function applyStatusSideEffects_(currentRecord, updatedData, novoStatus) {
   if (normalizeCompare_(novoStatus) === 'concluido') {
     var now = now_();
-    var dias = Number(getConfig('DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO') || '30');
+    var dias = Number(getConfig('DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO') || '10');
     var dataExclusao = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dias);
     updatedData.data_conclusao = parseDateInput_(formatDateForInput_(now));
     updatedData.hora_conclusao = Utilities.formatDate(now, getTimezone_(), 'HH:mm:ss');

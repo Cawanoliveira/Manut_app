@@ -1,9 +1,18 @@
 function getConfig(chave) {
   var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.CONFIG, 'chave', chave);
   if (rowIndex === -1) {
+    if (chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO') {
+      setConfig(chave, '10');
+      return '10';
+    }
     return '';
   }
-  return safeString_(getSheet_(APP_CONFIG.SHEETS.CONFIG).getRange(rowIndex, 2).getValue());
+  var valor = safeString_(getSheet_(APP_CONFIG.SHEETS.CONFIG).getRange(rowIndex, 2).getValue());
+  if (chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO' && (!valor || valor === '30')) {
+    setConfig(chave, '10');
+    return '10';
+  }
+  return valor;
 }
 
 function setConfig(chave, valor) {
@@ -28,7 +37,13 @@ function setConfig(chave, valor) {
 
 function listarConfiguracoes() {
   try {
-    return createSuccessResponse_('Configuracoes carregadas.', getAllSheetData_(APP_CONFIG.SHEETS.CONFIG));
+    var items = getAllSheetData_(APP_CONFIG.SHEETS.CONFIG).map(function(item) {
+      if (item.chave === 'DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO' && (!item.valor || item.valor === '30')) {
+        item.valor = '10';
+      }
+      return item;
+    });
+    return createSuccessResponse_('Configuracoes carregadas.', items);
   } catch (error) {
     registrarLog('ERRO', 'Falha ao listar configuracoes.', getErrorStack_(error));
     return createErrorResponse_('Nao foi possivel listar as configuracoes.', error);

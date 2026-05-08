@@ -315,6 +315,15 @@
       } catch (error) {}
     }
 
+    function requestAppFullscreen_() {
+      try {
+        var root = document.documentElement;
+        if (!document.fullscreenElement && root && typeof root.requestFullscreen === 'function') {
+          root.requestFullscreen().catch(function() {});
+        }
+      } catch (error) {}
+    }
+
     function syncSpenLockClasses_() {
       var method = appState.spenLocked ? 'add' : 'remove';
       document.body.classList[method]('spen-hard-locked');
@@ -2734,6 +2743,7 @@
     document.body.classList.add('spen-open');
     document.documentElement.classList.add('spen-open');
     document.getElementById('spenModal').classList.remove('hidden');
+    requestAppFullscreen_();
     setTimeout(function() {
       tryHideVirtualKeyboard_();
       spenInput.focus();
@@ -2788,6 +2798,7 @@
       return;
     }
     document.getElementById('spenInputArea').value = '';
+    focusSpenInput_();
   }
 
   function fecharSpenPopup(forceClose) {
@@ -2805,6 +2816,10 @@
   function toggleSpenLock() {
     appState.spenLocked = !appState.spenLocked;
     renderSpenLockState_();
+    if (appState.spenLocked) {
+      requestAppFullscreen_();
+      focusSpenInput_();
+    }
   }
 
   function renderSpenLockState_() {
@@ -2820,12 +2835,12 @@
     closeButton.disabled = !!appState.spenLocked;
     closeButton.classList.toggle('disabled', !!appState.spenLocked);
     if (clearButton) {
-      clearButton.disabled = !!appState.spenLocked;
-      clearButton.classList.toggle('disabled', !!appState.spenLocked);
+      clearButton.disabled = false;
+      clearButton.classList.toggle('blocked', !!appState.spenLocked);
     }
     if (applyButton) {
-      applyButton.disabled = !!appState.spenLocked;
-      applyButton.classList.toggle('disabled', !!appState.spenLocked);
+      applyButton.disabled = false;
+      applyButton.classList.toggle('blocked', !!appState.spenLocked);
     }
     modal.classList.toggle('spen-unlocked', !appState.spenLocked);
     syncSpenLockClasses_();

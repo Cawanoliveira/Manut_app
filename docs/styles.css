@@ -1491,12 +1491,13 @@
     cursor: not-allowed;
   }
 
-  #spenClearButton.disabled,
-  #spenApplyButton.disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
+#spenClearButton.disabled,
+#spenApplyButton.disabled,
+#spenClearButton.blocked,
+#spenApplyButton.blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
   .spen-hard-locked,
   .spen-hard-locked body {
