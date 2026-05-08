@@ -255,7 +255,7 @@ function buildCronogramaStatusSummaryMap_(items) {
 function chunkCronogramaItems_(items, size) {
   var result = [];
   var list = items || [];
-  var chunkSize = size || 2;
+  var chunkSize = size || 4;
   for (var i = 0; i < list.length; i += chunkSize) {
     result.push(list.slice(i, i + chunkSize));
   }
@@ -263,7 +263,7 @@ function chunkCronogramaItems_(items, size) {
 }
 
 function montarHtmlCronogramaPrestador_(dados) {
-  var pages = chunkCronogramaItems_(dados.pendencias || [], 2).map(function(group, index, allPages) {
+  var pages = chunkCronogramaItems_(dados.pendencias || [], 4).map(function(group, index, allPages) {
     return montarPaginaCronogramaPrestador_(dados, group, index === allPages.length - 1);
   }).join('');
 
@@ -275,37 +275,36 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
     '.page-inner{position:absolute;inset:0;}' +
-    '.top-orange{position:absolute;left:0;top:0;width:100%;height:67px;background:var(--orange);}' +
-    '.main-title{position:absolute;left:130px;top:15px;font-size:30px;line-height:36px;color:#fff;font-weight:700;}' +
+    '.top-orange{position:absolute;left:0;top:0;width:100%;height:60px;background:var(--orange);}' +
+    '.main-title{position:absolute;left:126px;top:12px;font-size:28px;line-height:34px;color:#fff;font-weight:700;}' +
     '.logo{position:absolute;left:27px;top:28px;width:77px;height:77px;object-fit:contain;z-index:5;}' +
     '.logo-fallback{background:#000;color:#fff;border-radius:50%;font-family:Arial Black,Arial,sans-serif;font-size:58px;line-height:72px;text-align:center;}' +
-    '.subtitle-bar{position:absolute;left:0;top:67px;width:100%;height:60px;background:#000;}' +
-    '.subtitle{position:absolute;left:130px;top:84px;color:#fff;font-size:30px;line-height:36px;font-weight:400;}' +
-    '.white-strip{position:absolute;left:0;top:127px;width:100%;height:26px;background:#fff;}' +
-    '.meta-wrap{position:absolute;left:0;top:153px;width:100%;display:grid;grid-template-columns:500px 523px;grid-template-rows:28px 52px;justify-content:start;}' +
-    '.meta-label{background:var(--cream);color:#000;font-size:16px;font-weight:700;text-align:center;line-height:28px;border:1px solid var(--line);border-bottom:none;}' +
+    '.subtitle-bar{position:absolute;left:0;top:60px;width:100%;height:48px;background:#000;}' +
+    '.subtitle{position:absolute;left:126px;top:70px;color:#fff;font-size:24px;line-height:30px;font-weight:400;}' +
+    '.white-strip{position:absolute;left:0;top:108px;width:100%;height:18px;background:#fff;}' +
+    '.meta-wrap{position:absolute;left:1cm;right:1cm;top:126px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:24px 46px;justify-content:center;}' +
+    '.meta-label{background:var(--cream);color:#000;font-size:14px;font-weight:700;text-align:center;line-height:24px;border:1px solid var(--line);border-bottom:none;}' +
     '.meta-card:first-child .meta-label{border-right:none;}' +
-    '.meta-value{height:52px;background:#fff;color:#000;font-size:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}' +
-    '.meta-card:first-child .meta-value{border-right:none;font-size:26px;font-weight:700;text-align:center;padding:0 12px;}' +
-    '.section-title{position:absolute;left:7px;top:283px;color:#000;font-size:30px;font-weight:400;letter-spacing:1px;line-height:40px;}' +
-    '.blocks{position:absolute;left:1cm;right:1cm;top:338px;bottom:104px;display:grid;grid-template-columns:1fr 1fr;gap:12px;}' +
-    '.block{border:1px solid var(--line);background:#fff;display:grid;grid-template-rows:43px 86px 28px 1fr 28px 1fr;min-height:0;}' +
+    '.meta-value{height:46px;background:#fff;color:#000;font-size:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}' +
+    '.meta-card:first-child .meta-value{border-right:none;font-size:24px;font-weight:700;text-align:center;padding:0 12px;}' +
+    '.blocks{position:absolute;left:1cm;right:1cm;top:214px;bottom:92px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;}' +
+    '.block{border:1px solid var(--line);background:#fff;display:grid;grid-template-rows:30px 48px 22px 1fr 22px 1fr;min-height:0;}' +
     '.block.empty{opacity:.28;}' +
     '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 0.9fr 0.95fr;}' +
-    '.head{height:43px;background:#000;border-bottom:1px solid var(--line);}' +
-    '.head div{color:#fff;font-size:16px;font-weight:700;text-align:center;line-height:43px;border-right:1px solid var(--line);}' +
+    '.head{height:30px;background:#000;border-bottom:1px solid var(--line);}' +
+    '.head div{color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:30px;border-right:1px solid var(--line);}' +
     '.head div:last-child{border-right:none;}' +
-    '.values{height:86px;background:#fff;border-bottom:1px solid var(--line);}' +
-    '.values div{color:#000;font-size:15px;font-weight:400;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);padding:8px 6px;word-break:break-word;}' +
+    '.values{height:48px;background:#fff;border-bottom:1px solid var(--line);}' +
+    '.values div{color:#000;font-size:12px;font-weight:400;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);padding:4px 5px;word-break:break-word;}' +
     '.values div:last-child{border-right:none;}' +
-    '.text-label{height:28px;background:#fff;color:#000;font-size:14px;font-weight:700;padding:6px 10px;border-bottom:1px solid var(--line);}' +
-    '.text-box{background:#fff;color:#000;font-size:14px;line-height:1.25;padding:8px 10px;white-space:pre-wrap;overflow:hidden;border-bottom:1px solid var(--line);}' +
+    '.text-label{height:22px;background:#fff;color:#000;font-size:12px;font-weight:700;padding:4px 8px;border-bottom:1px solid var(--line);}' +
+    '.text-box{background:#fff;color:#000;font-size:11px;line-height:1.2;padding:6px 8px;white-space:pre-wrap;overflow:hidden;border-bottom:1px solid var(--line);}' +
     '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1px solid var(--line);}' +
-    '.summary{position:absolute;left:1cm;right:1cm;bottom:18px;height:88px;display:grid;grid-template-columns:1.45fr 1fr 1fr 1fr;border:1px solid var(--line);background:#fff;overflow:hidden;}' +
-    '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);}' +
-    '.summary-label{height:34px;background:var(--orange);color:#000;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary{position:absolute;left:1cm;right:1cm;bottom:12px;height:74px;display:grid;grid-template-columns:1.45fr 1fr 1fr 1fr;border:1px solid var(--line);background:#fff;overflow:hidden;}' +
+    '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);}' +
+    '.summary-label{height:28px;background:var(--orange);color:#000;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-label:last-of-type{border-right:none;}' +
-    '.summary-value{height:54px;background:#fff;color:#000;border-right:1px solid var(--line);font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
+    '.summary-value{height:46px;background:#fff;color:#000;border-right:1px solid var(--line);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
     '.summary-value:last-child{border-right:none;}' +
     '</style></head><body>' + pages + '</body></html>';
 }
@@ -316,6 +315,8 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
     : '<div class="logo logo-fallback">b</div>';
   var first = pendencias[0] || createCronogramaBlankItem_();
   var second = pendencias[1] || createCronogramaBlankItem_();
+  var third = pendencias[2] || createCronogramaBlankItem_();
+  var fourth = pendencias[3] || createCronogramaBlankItem_();
   var summaryHtml = includeSummary ? (
     '<div class="summary">' +
       '<div class="summary-title">RESUMO</div>' +
@@ -338,10 +339,11 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
       '<div class="meta-card"><div class="meta-label">PRESTADOR</div><div class="meta-value">' + escapeHtml_(dados.prestador) + '</div></div>' +
       '<div class="meta-card"><div class="meta-label">DATA DE EMISSAO</div><div class="meta-value">' + escapeHtml_(dados.dataEmissao) + '</div></div>' +
     '</div>' +
-    '<div class="section-title">CRONOGRAMA DE PENDENCIAS</div>' +
     '<div class="blocks">' +
       montarBlocoCronogramaPrestador_(first, first.local || first.setor || first.descricao || first.observacao ? '' : 'empty') +
       montarBlocoCronogramaPrestador_(second, second.local || second.setor || second.descricao || second.observacao ? '' : 'empty') +
+      montarBlocoCronogramaPrestador_(third, third.local || third.setor || third.descricao || third.observacao ? '' : 'empty') +
+      montarBlocoCronogramaPrestador_(fourth, fourth.local || fourth.setor || fourth.descricao || fourth.observacao ? '' : 'empty') +
     '</div>' +
     summaryHtml +
   '</div></div>';
