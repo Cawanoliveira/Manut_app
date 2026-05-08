@@ -301,9 +301,19 @@
       var input = document.getElementById('spenInputArea');
       if (input) {
         setTimeout(function() {
+          tryHideVirtualKeyboard_();
           input.focus();
+          tryHideVirtualKeyboard_();
         }, 0);
       }
+    }
+
+    function tryHideVirtualKeyboard_() {
+      try {
+        if (navigator.virtualKeyboard && typeof navigator.virtualKeyboard.hide === 'function') {
+          navigator.virtualKeyboard.hide();
+        }
+      } catch (error) {}
     }
 
     function syncSpenLockClasses_() {
@@ -2760,9 +2770,12 @@
   function abrirSpenPopup(targetId, title) {
     document.getElementById('spenTargetField').value = targetId;
     document.getElementById('spenModalTitle').textContent = 'Escrita com S Pen - ' + title;
-    document.getElementById('spenInputArea').value = document.getElementById(targetId).value || '';
-    document.getElementById('spenInputArea').lang = 'pt-BR';
-    document.getElementById('spenInputArea').spellcheck = true;
+    var spenInput = document.getElementById('spenInputArea');
+    spenInput.value = document.getElementById(targetId).value || '';
+    spenInput.lang = 'pt-BR';
+    spenInput.spellcheck = true;
+    spenInput.setAttribute('inputmode', 'none');
+    spenInput.setAttribute('virtualkeyboardpolicy', 'manual');
     appState.spenLocked = true;
     renderSpenLockState_();
     syncSpenLockClasses_();
@@ -2770,7 +2783,9 @@
     document.documentElement.classList.add('spen-open');
     document.getElementById('spenModal').classList.remove('hidden');
     setTimeout(function() {
-      document.getElementById('spenInputArea').focus();
+      tryHideVirtualKeyboard_();
+      spenInput.focus();
+      tryHideVirtualKeyboard_();
     }, 80);
   }
 
