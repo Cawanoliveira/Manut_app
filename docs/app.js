@@ -3039,9 +3039,9 @@
       if (!field) {
         return;
       }
-      var finalTranscript = appState.speechState.finalTranscript || '';
+      var finalTranscript = '';
       var interimTranscript = '';
-      for (var i = event.resultIndex; i < event.results.length; i += 1) {
+      for (var i = 0; i < event.results.length; i += 1) {
         var result = event.results[i];
         var transcript = normalizeVoiceTranscript_((result && result[0] && result[0].transcript) || '');
         if (!transcript) {
@@ -3049,28 +3049,19 @@
         }
         if (result.isFinal) {
           finalTranscript = appendVoiceChunk_(finalTranscript, transcript);
-          appState.speechState.lastTranscript = transcript;
-          appState.speechState.lastAt = Date.now();
         } else {
           interimTranscript = appendVoiceChunk_(interimTranscript, transcript);
         }
       }
       appState.speechState.finalTranscript = finalTranscript;
+      appState.speechState.lastTranscript = finalTranscript || interimTranscript;
+      appState.speechState.lastAt = Date.now();
       field.value = composeVoiceFieldValue_(appState.speechState.baseValue, finalTranscript, interimTranscript);
       field.dispatchEvent(new Event('input', { bubbles: true }));
     };
     recognition.onend = function() {
       if (appState.speechState.activeRecognition === recognition) {
         appState.speechState.activeRecognition = null;
-        if (appState.speechState.listening && !appState.speechState.manualStop && appState.connection.online) {
-          setTimeout(function() {
-            if (!appState.speechState.listening || appState.speechState.manualStop || appState.speechState.activeTargetId !== targetId) {
-              return;
-            }
-            iniciarDitado(targetId, true);
-          }, 120);
-          return;
-        }
         appState.speechState.activeTargetId = '';
         appState.speechState.activeButtonTargetId = '';
         appState.speechState.listening = false;
@@ -3084,6 +3075,14 @@
     recognition.onerror = function(event) {
       var errorCode = event && event.error ? String(event.error) : '';
       if ((errorCode === 'aborted' && appState.speechState.manualStop) || errorCode === 'no-speech') {
+        setSpeechPreviewState_(targetId, false);
+        stopSpeechTimer_();
+        appState.speechState.activeTargetId = '';
+        appState.speechState.activeButtonTargetId = '';
+        appState.speechState.listening = false;
+        appState.speechState.baseValue = '';
+        appState.speechState.finalTranscript = '';
+        renderSpeechButtons_();
         return;
       }
       if (appState.speechState.activeRecognition === recognition) {
