@@ -1188,6 +1188,11 @@
     font-size: 18px;
     line-height: 1.5;
     touch-action: auto;
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+    -webkit-user-modify: read-write-plaintext-only;
+    caret-color: #111111;
   }
 
   .empty-state {
@@ -1483,6 +1488,16 @@
   .spen-hard-locked #spenModal .modal-backdrop {
     pointer-events: auto !important;
     touch-action: none !important;
+  }
+
+  .spen-open #spenModal .spen-modal-card,
+  .spen-open #spenModal .spen-textarea,
+  .spen-open #spenModal input,
+  .spen-open #spenModal textarea {
+    touch-action: auto !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -webkit-touch-callout: default !important;
   }
 
   .spen-modal-card {
