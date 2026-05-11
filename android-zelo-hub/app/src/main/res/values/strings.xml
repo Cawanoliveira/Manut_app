@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Zelo Hub</string>
+    <string name="spen_title">Escrita com S Pen</string>
+    <string name="spen_placeholder">Escreva aqui com a S Pen.</string>
+    <string name="spen_locked_hint">Travado: use a S Pen para escrever.</string>
+    <string name="clear">Limpar</string>
+    <string name="apply">Aplicar</string>
+</resources>

@@ -46,7 +46,8 @@
         baseValue: '',
         finalTranscript: '',
         startedAt: 0,
-        timerId: null
+        timerId: null,
+        nativeMode: false
       },
       zoomContext: {
         title: '',
@@ -75,6 +76,7 @@
   }
 
   function inicializarApp() {
+      registerNativeBridgeCallbacks_();
       bindConnectivityHandlers_();
       bindFilterFab_();
       bindPenInputMode_();
@@ -84,6 +86,38 @@
       atualizarNomeArquivo('editFoto', 'editFotoNome');
       detectarConectividadeInicial_();
     }
+
+  function registerNativeBridgeCallbacks_() {
+    window.handleNativeVoiceEvent = function(payload) {
+      handleNativeVoiceEventPayload_(payload);
+    };
+    window.handleNativeSpenResult = function(payload) {
+      handleNativeSpenResultPayload_(payload);
+    };
+  }
+
+  function getNativeBridge_() {
+    return window.ZeloHubAndroid || window.AndroidBridge || null;
+  }
+
+  function hasNativeBridgeMethod_(methodName) {
+    var bridge = getNativeBridge_();
+    return !!(bridge && typeof bridge[methodName] === 'function');
+  }
+
+  function parseNativePayload_(payload) {
+    if (!payload) {
+      return {};
+    }
+    if (typeof payload === 'string') {
+      try {
+        return JSON.parse(payload);
+      } catch (error) {
+        return { raw: payload };
+      }
+    }
+    return payload;
+  }
 
   function bindConnectivityHandlers_() {
     window.addEventListener('online', function() {
@@ -2798,6 +2832,14 @@
   }
 
   function abrirSpenPopup(targetId, title) {
+    if (hasNativeBridgeMethod_('openSpenEditor')) {
+      try {
+        getNativeBridge_().openSpenEditor(targetId, title || getSpenFieldTitle_(targetId), document.getElementById(targetId).value || '');
+        return;
+      } catch (error) {
+        mostrarMensagemErro('Nao foi possivel abrir a escrita nativa da S Pen.');
+      }
+    }
     document.getElementById('spenTargetField').value = targetId;
     document.getElementById('spenModalTitle').textContent = 'Escrita com S Pen - ' + title;
     var spenInput = resetSpenInputElement_(document.getElementById(targetId).value || '');
@@ -3014,9 +3056,14 @@
     field.classList.toggle('voice-preview-active', !!active);
   }
 
-  function pararDitadoAtivo_() {
+  function pararDitadoAtivo_(skipNativeStop) {
     var activeTargetId = appState.speechState.activeTargetId;
     appState.speechState.manualStop = true;
+    if (appState.speechState.nativeMode && !skipNativeStop && hasNativeBridgeMethod_('stopVoiceSession')) {
+      try {
+        getNativeBridge_().stopVoiceSession();
+      } catch (error) {}
+    }
     if (appState.speechState.activeRecognition) {
       try {
         appState.speechState.activeRecognition.stop();
@@ -3032,6 +3079,7 @@
     appState.speechState.listening = false;
     appState.speechState.baseValue = '';
     appState.speechState.finalTranscript = '';
+    appState.speechState.nativeMode = false;
     setSpeechPreviewState_(activeTargetId, false);
     stopSpeechTimer_();
     renderSpeechButtons_();
@@ -3066,6 +3114,10 @@
   }
 
   function iniciarDitado(targetId) {
+    if (hasNativeBridgeMethod_('startVoiceSession')) {
+      iniciarDitadoNativo_(targetId);
+      return;
+    }
     var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
       if (focarCampoComTecladoNativo_(targetId)) {
@@ -3100,6 +3152,7 @@
     appState.speechState.manualStop = false;
     appState.speechState.baseValue = baseValue;
     appState.speechState.finalTranscript = '';
+    appState.speechState.nativeMode = false;
     setSpeechPreviewState_(targetId, true);
     startSpeechTimer_();
     renderSpeechButtons_();
@@ -3184,6 +3237,88 @@
       mostrarMensagemErro('Nao foi possivel iniciar o ditado por voz.');
     };
     recognition.start();
+  }
+
+  function iniciarDitadoNativo_(targetId) {
+    var field = document.getElementById(targetId);
+    if (!field) {
+      return;
+    }
+    if (appState.speechState.activeRecognition || appState.speechState.nativeMode) {
+      pararDitadoAtivo_(true);
+    }
+    appState.speechState.activeTargetId = targetId;
+    appState.speechState.activeButtonTargetId = targetId;
+    appState.speechState.listening = true;
+    appState.speechState.manualStop = false;
+    appState.speechState.baseValue = String(field.value || '');
+    appState.speechState.finalTranscript = '';
+    appState.speechState.nativeMode = true;
+    setSpeechPreviewState_(targetId, true);
+    startSpeechTimer_();
+    renderSpeechButtons_();
+    try {
+      getNativeBridge_().startVoiceSession(targetId, appState.speechState.baseValue);
+    } catch (error) {
+      pararDitadoAtivo_(true);
+      mostrarMensagemErro('Nao foi possivel iniciar o ditado nativo.');
+    }
+  }
+
+  function handleNativeVoiceEventPayload_(payload) {
+    var data = parseNativePayload_(payload);
+    var targetId = data.targetId || appState.speechState.activeTargetId;
+    if (!targetId) {
+      return;
+    }
+    if (data.type === 'started') {
+      return;
+    }
+    if (data.type === 'partial' || data.type === 'final') {
+      if (!appState.speechState.listening) {
+        appState.speechState.listening = true;
+        appState.speechState.nativeMode = true;
+        appState.speechState.activeTargetId = targetId;
+        appState.speechState.activeButtonTargetId = targetId;
+        setSpeechPreviewState_(targetId, true);
+        startSpeechTimer_();
+      }
+      var field = document.getElementById(targetId);
+      if (!field) {
+        return;
+      }
+      var finalTranscript = data.finalTranscript || '';
+      var interimTranscript = data.interimTranscript || '';
+      appState.speechState.finalTranscript = finalTranscript;
+      field.value = composeVoiceFieldValue_(appState.speechState.baseValue, finalTranscript, interimTranscript);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    if (data.type === 'stopped') {
+      pararDitadoAtivo_(true);
+      return;
+    }
+    if (data.type === 'error') {
+      pararDitadoAtivo_(true);
+      if (data.message) {
+        mostrarMensagemErro(data.message);
+      }
+    }
+  }
+
+  function handleNativeSpenResultPayload_(payload) {
+    var data = parseNativePayload_(payload);
+    var targetId = data.targetId;
+    var target = targetId ? document.getElementById(targetId) : null;
+    if (!target) {
+      return;
+    }
+    if (data.applied === false) {
+      return;
+    }
+    target.value = normalizePtBrText_(String(data.value || ''));
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   function appendVoiceChunk_(currentValue, transcript) {
