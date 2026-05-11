@@ -1161,7 +1161,7 @@
     min-height: calc(100dvh - 190px);
     font-size: 18px;
     line-height: 1.5;
-    touch-action: auto;
+    caret-color: #111111;
   }
 
   .empty-state {

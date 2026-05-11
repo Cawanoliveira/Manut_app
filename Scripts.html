@@ -2772,10 +2772,6 @@
     var spenInput = document.getElementById('spenInputArea');
     spenInput.value = document.getElementById(targetId).value || '';
     spenInput.lang = 'pt-BR';
-    spenInput.spellcheck = true;
-    spenInput.setAttribute('autocapitalize', 'sentences');
-    spenInput.removeAttribute('inputmode');
-    spenInput.removeAttribute('virtualkeyboardpolicy');
     appState.spenLocked = true;
     renderSpenLockState_();
     syncSpenLockClasses_();

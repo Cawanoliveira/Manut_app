@@ -305,19 +305,13 @@
       var input = document.getElementById('spenInputArea');
       if (input) {
         setTimeout(function() {
-          tryHideVirtualKeyboard_();
           input.focus();
-          tryHideVirtualKeyboard_();
+          try {
+            var end = (input.value || '').length;
+            input.setSelectionRange(end, end);
+          } catch (error) {}
         }, 0);
       }
-    }
-
-    function tryHideVirtualKeyboard_() {
-      try {
-        if (navigator.virtualKeyboard && typeof navigator.virtualKeyboard.hide === 'function') {
-          navigator.virtualKeyboard.hide();
-        }
-      } catch (error) {}
     }
 
     function requestAppFullscreen_() {
@@ -2737,9 +2731,6 @@
     var spenInput = document.getElementById('spenInputArea');
     spenInput.value = document.getElementById(targetId).value || '';
     spenInput.lang = 'pt-BR';
-    spenInput.spellcheck = true;
-    spenInput.setAttribute('inputmode', 'none');
-    spenInput.setAttribute('virtualkeyboardpolicy', 'manual');
     appState.spenLocked = true;
     renderSpenLockState_();
     syncSpenLockClasses_();
@@ -2748,9 +2739,11 @@
     document.getElementById('spenModal').classList.remove('hidden');
     requestAppFullscreen_();
     setTimeout(function() {
-      tryHideVirtualKeyboard_();
       spenInput.focus();
-      tryHideVirtualKeyboard_();
+      try {
+        var end = (spenInput.value || '').length;
+        spenInput.setSelectionRange(end, end);
+      } catch (error) {}
     }, 80);
   }
 
