@@ -40,7 +40,10 @@
         activeButtonTargetId: '',
         lastTranscript: '',
         lastAt: 0,
-        listening: false
+        listening: false,
+        manualStop: false,
+        baseValue: '',
+        finalTranscript: ''
       },
       zoomContext: {
         title: '',
@@ -2934,6 +2937,7 @@
   }
 
   function pararDitadoAtivo_() {
+    appState.speechState.manualStop = true;
     if (appState.speechState.activeRecognition) {
       try {
         appState.speechState.activeRecognition.stop();
@@ -2947,6 +2951,8 @@
     appState.speechState.activeTargetId = '';
     appState.speechState.activeButtonTargetId = '';
     appState.speechState.listening = false;
+    appState.speechState.baseValue = '';
+    appState.speechState.finalTranscript = '';
     renderSpeechButtons_();
   }
 
@@ -2973,54 +2979,80 @@
     }
     var recognition = new Recognition();
     recognition.lang = 'pt-BR';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+    var field = document.getElementById(targetId);
+    var baseValue = field ? String(field.value || '') : '';
     appState.speechState.activeRecognition = recognition;
     appState.speechState.activeTargetId = targetId;
     appState.speechState.activeButtonTargetId = targetId;
     appState.speechState.listening = true;
+    appState.speechState.manualStop = false;
+    appState.speechState.baseValue = baseValue;
+    appState.speechState.finalTranscript = '';
     renderSpeechButtons_();
     recognition.onresult = function(event) {
-      var transcript = normalizeVoiceTranscript_((event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
       var field = document.getElementById(targetId);
       if (!field) {
         return;
       }
-      var now = Date.now();
-      if (transcript && appState.speechState.lastTranscript === transcript && (now - Number(appState.speechState.lastAt || 0)) < 2500) {
-        return;
+      var finalTranscript = appState.speechState.finalTranscript || '';
+      var interimTranscript = '';
+      for (var i = event.resultIndex; i < event.results.length; i += 1) {
+        var result = event.results[i];
+        var transcript = normalizeVoiceTranscript_((result && result[0] && result[0].transcript) || '');
+        if (!transcript) {
+          continue;
+        }
+        if (result.isFinal) {
+          finalTranscript = appendVoiceChunk_(finalTranscript, transcript);
+          appState.speechState.lastTranscript = transcript;
+          appState.speechState.lastAt = Date.now();
+        } else {
+          interimTranscript = appendVoiceChunk_(interimTranscript, transcript);
+        }
       }
-      appState.speechState.lastTranscript = transcript;
-      appState.speechState.lastAt = now;
-      var currentValue = field.value || '';
-      var prefix = currentValue && transcript && transcript.charAt(0) !== '\n' ? ' ' : '';
-      var nextValue = (currentValue + prefix + transcript).replace(/[ \t]+\n/g, '\n').trim();
-      if (currentValue && transcript && normalizeText_(currentValue).slice(-normalizeText_(transcript).length) === normalizeText_(transcript)) {
-        return;
-      }
-      field.value = nextValue;
+      appState.speechState.finalTranscript = finalTranscript;
+      field.value = composeVoiceFieldValue_(appState.speechState.baseValue, finalTranscript, interimTranscript);
+      field.dispatchEvent(new Event('input', { bubbles: true }));
     };
     recognition.onend = function() {
       if (appState.speechState.activeRecognition === recognition) {
         appState.speechState.activeRecognition = null;
+        if (appState.speechState.listening && !appState.speechState.manualStop && appState.connection.online) {
+          setTimeout(function() {
+            if (!appState.speechState.listening || appState.speechState.manualStop || appState.speechState.activeTargetId !== targetId) {
+              return;
+            }
+            iniciarDitado(targetId, true);
+          }, 120);
+          return;
+        }
         appState.speechState.activeTargetId = '';
         appState.speechState.activeButtonTargetId = '';
         appState.speechState.listening = false;
+        appState.speechState.baseValue = '';
+        appState.speechState.finalTranscript = '';
         renderSpeechButtons_();
       }
     };
     recognition.onerror = function(event) {
+      var errorCode = event && event.error ? String(event.error) : '';
+      if ((errorCode === 'aborted' && appState.speechState.manualStop) || errorCode === 'no-speech') {
+        if (appState.speechState.activeRecognition === recognition) {
+          appState.speechState.activeRecognition = null;
+        }
+        return;
+      }
       if (appState.speechState.activeRecognition === recognition) {
         appState.speechState.activeRecognition = null;
         appState.speechState.activeTargetId = '';
         appState.speechState.activeButtonTargetId = '';
         appState.speechState.listening = false;
+        appState.speechState.baseValue = '';
+        appState.speechState.finalTranscript = '';
         renderSpeechButtons_();
-      }
-      var errorCode = event && event.error ? String(event.error) : '';
-      if (errorCode === 'aborted' || errorCode === 'no-speech') {
-        return;
       }
       if (errorCode === 'network') {
         mostrarMensagemErro('Ditado por voz offline nao esta disponivel neste navegador.');
@@ -3041,6 +3073,33 @@
       mostrarMensagemErro('Nao foi possivel iniciar o ditado por voz.');
     };
     recognition.start();
+  }
+
+  function appendVoiceChunk_(currentValue, transcript) {
+    var current = String(currentValue || '');
+    var next = String(transcript || '');
+    if (!next) {
+      return current;
+    }
+    if (!current) {
+      return next;
+    }
+    if (normalizeText_(current).slice(-normalizeText_(next).length) === normalizeText_(next)) {
+      return current;
+    }
+    var prefix = next.charAt(0) !== '\n' ? ' ' : '';
+    return (current + prefix + next).replace(/[ \t]+\n/g, '\n').trim();
+  }
+
+  function composeVoiceFieldValue_(baseValue, finalTranscript, interimTranscript) {
+    var value = String(baseValue || '');
+    if (finalTranscript) {
+      value = appendVoiceChunk_(value, finalTranscript);
+    }
+    if (interimTranscript) {
+      value = appendVoiceChunk_(value, interimTranscript);
+    }
+    return value;
   }
 
   function atualizarNomeArquivo(inputId, targetId) {
