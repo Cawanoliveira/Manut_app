@@ -244,6 +244,11 @@
 
   function bindPenInputMode_() {
       document.addEventListener('pointerdown', function(event) {
+        if (shouldIgnoreLockedSpenTouch_(event.target, event.pointerType)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         if (shouldBlockSpenInteraction_(event.target)) {
           event.preventDefault();
           event.stopPropagation();
@@ -266,6 +271,11 @@
 
       ['click', 'touchstart'].forEach(function(eventName) {
         document.addEventListener(eventName, function(event) {
+          if (shouldIgnoreLockedSpenTouch_(event.target, 'touch')) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+          }
           if (!shouldBlockSpenInteraction_(event.target)) {
             return;
           }
@@ -299,6 +309,22 @@
         return false;
       }
       return !card.contains(target);
+    }
+
+    function shouldIgnoreLockedSpenTouch_(target, pointerType) {
+      if (!appState.spenLocked || !isSpenModalOpen_() || pointerType === 'pen') {
+        return false;
+      }
+      var modal = document.getElementById('spenModal');
+      var card = modal ? modal.querySelector('.spen-modal-card') : null;
+      if (!card || !card.contains(target)) {
+        return false;
+      }
+      return !isSpenLockControl_(target);
+    }
+
+    function isSpenLockControl_(target) {
+      return !!(target && typeof target.closest === 'function' && target.closest('#spenLockButton'));
     }
 
     function focusSpenInput_() {
