@@ -2769,8 +2769,7 @@
   function abrirSpenPopup(targetId, title) {
     document.getElementById('spenTargetField').value = targetId;
     document.getElementById('spenModalTitle').textContent = 'Escrita com S Pen - ' + title;
-    var spenInput = document.getElementById('spenInputArea');
-    spenInput.value = document.getElementById(targetId).value || '';
+    var spenInput = resetSpenInputElement_(document.getElementById(targetId).value || '');
     spenInput.lang = 'pt-BR';
     appState.spenLocked = true;
     renderSpenLockState_();
@@ -2843,11 +2842,18 @@
       mostrarMensagemErro('Destrave o cadeado para fechar a tela de escrita.');
       return;
     }
+    try {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    } catch (error) {}
     document.body.classList.remove('spen-open');
     document.body.classList.remove('spen-hard-locked');
     document.documentElement.classList.remove('spen-open');
     document.documentElement.classList.remove('spen-hard-locked');
     document.getElementById('spenModal').classList.add('hidden');
+    resetSpenInputElement_('');
+    document.getElementById('spenTargetField').value = '';
   }
 
   function toggleSpenLock() {
@@ -2881,6 +2887,18 @@
     }
     modal.classList.toggle('spen-unlocked', !appState.spenLocked);
     syncSpenLockClasses_();
+  }
+
+  function resetSpenInputElement_(value) {
+    var current = document.getElementById('spenInputArea');
+    if (!current || !current.parentNode) {
+      return current;
+    }
+    var replacement = current.cloneNode(false);
+    replacement.value = value || '';
+    replacement.lang = 'pt-BR';
+    current.parentNode.replaceChild(replacement, current);
+    return replacement;
   }
 
   function captureFormContext_() {
