@@ -617,7 +617,7 @@
     preencherSelect('editSetor', combos.setores, 'Selecione um setor');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
-    preencherSelect('cronogramaExecutor', combos.prestadores, 'Selecione um executor');
+    preencherSelect('cronogramaExecutor', combos.prestadores, 'Sem prestador definido', true);
     preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('cronogramaStatus', ['Em andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
@@ -893,14 +893,7 @@
   }
 
   function validarFiltrosCronograma_(showFeedback) {
-    var filtros = obterFiltrosCronograma_();
-    if (!filtros.executor) {
-      if (showFeedback) {
-        mostrarMensagemErro('Selecione um executor/prestador para montar o cronograma.');
-      }
-      return null;
-    }
-    return filtros;
+    return obterFiltrosCronograma_();
   }
 
   function aplicarFiltrosCronograma(event) {
@@ -927,15 +920,16 @@
 
   function getCronogramaItemsLocal_() {
     var filtros = validarFiltrosCronograma_(false);
-    if (!filtros) {
-      return [];
-    }
     return appState.allPendencias.filter(function(item) {
       var status = getCronogramaStatusLocal_(item);
       if (normalizeText_(item.status) === 'cancelado') {
         return false;
       }
-      if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+      if (filtros.executor) {
+        if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+          return false;
+        }
+      } else if (safeTrim_(item.executor)) {
         return false;
       }
       if (filtros.loja && normalizeText_(item.loja) !== normalizeText_(filtros.loja)) {
@@ -1012,16 +1006,16 @@
     }
     var filtros = validarFiltrosCronograma_(false);
     if (!filtros) {
-      resumoEl.textContent = 'Selecione um prestador para visualizar a programacao.';
-      cardsEl.innerHTML = '<div class="panel empty-state">Selecione um prestador para montar o cronograma.</div>';
-      tableEl.innerHTML = '<tr><td colspan="7" class="empty-state">Selecione um prestador para montar o cronograma.</td></tr>';
+      resumoEl.textContent = 'Visualizando pendencias sem prestador definido.';
+      cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia sem prestador definido encontrada para os filtros informados.</div>';
+      tableEl.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma pendencia sem prestador definido encontrada para os filtros informados.</td></tr>';
       return;
     }
 
     var items = getCronogramaItemsLocal_();
     resumoEl.textContent = items.length
-      ? ('Programacao de ' + filtros.executor + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
-      : ('Nenhuma pendencia ativa encontrada para ' + filtros.executor + '.');
+      ? ('Programacao de ' + (filtros.executor || 'pendencias sem prestador definido') + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
+      : ('Nenhuma pendencia ativa encontrada para ' + (filtros.executor || 'sem prestador definido') + '.');
 
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</div>';

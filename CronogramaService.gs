@@ -4,10 +4,6 @@ function gerarCronogramaPdf(filtros) {
   var pdfFile = null;
   try {
     var cleanFilters = normalizeCronogramaFilters_(filtros || {});
-    if (!cleanFilters.executor) {
-      return createErrorResponse_('Selecione um executor/prestador para gerar o cronograma.');
-    }
-
     var items = getCronogramaItems_(cleanFilters);
     if (!items.length) {
       return createErrorResponse_('Nenhuma pendencia ativa encontrada para os filtros informados.');
@@ -40,10 +36,6 @@ function gerarCronogramaExcel(filtros) {
   var xlsxFile = null;
   try {
     var cleanFilters = normalizeCronogramaFilters_(filtros || {});
-    if (!cleanFilters.executor) {
-      return createErrorResponse_('Selecione um executor/prestador para gerar o cronograma.');
-    }
-
     var items = getCronogramaItems_(cleanFilters);
     if (!items.length) {
       return createErrorResponse_('Nenhuma pendencia ativa encontrada para os filtros informados.');
@@ -131,6 +123,13 @@ function getCronogramaItems_(filtros) {
     if (normalizeCompare_(item.status) === 'cancelado') {
       return false;
     }
+    if (filtros.executor) {
+      if (normalizeCompare_(item.executor) !== normalizeCompare_(filtros.executor)) {
+        return false;
+      }
+    } else if (safeString_(item.executor)) {
+      return false;
+    }
     if (filtros.status && normalizeCompare_(item.status_cronograma) !== normalizeCompare_(filtros.status)) {
       return false;
     }
@@ -181,24 +180,24 @@ function compareCronogramaItems_(a, b) {
 function buildCronogramaFileName_(filtros, docName) {
   var base = [
     docName ? 'Cronograma Temporario' : 'Cronograma',
-    filtros.executor || 'Executor',
+    filtros.executor || 'Sem prestador',
     Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')
   ].join(' - ');
   return sanitizeFileName_(base) + (docName ? '' : '.pdf');
 }
 
 function buildCronogramaSpreadsheetName_(filtros) {
-  return sanitizeFileName_(['Cronograma Planilha', filtros.executor || 'Executor', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - '));
+  return sanitizeFileName_(['Cronograma Planilha', filtros.executor || 'Sem prestador', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - '));
 }
 
 function buildCronogramaExcelFileName_(filtros) {
-  return sanitizeFileName_(['Cronograma', filtros.executor || 'Executor', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
+  return sanitizeFileName_(['Cronograma', filtros.executor || 'Sem prestador', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
 }
 
 function buildCronogramaPdfData_(filtros, items) {
   var summary = buildCronogramaStatusSummaryMap_(items);
   return {
-    prestador: filtros.executor || '-',
+    prestador: filtros.executor || 'Sem prestador definido',
     dataEmissao: formatarData(now_()),
     horaEmissao: Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss'),
     emAndamento: String(summary.emAndamento),
@@ -517,6 +516,9 @@ function styleCronogramaMetaTable_(table) {
 
 function buildCronogramaResumoFiltros_(filtros, total) {
   var parts = ['Total de pendencias: ' + total];
+  if (!filtros.executor) {
+    parts.push('Executor: sem prestador definido');
+  }
   if (filtros.loja) {
     parts.push('Loja: ' + filtros.loja);
   }

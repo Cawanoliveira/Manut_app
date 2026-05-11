@@ -306,19 +306,13 @@
       var input = document.getElementById('spenInputArea');
       if (input) {
         setTimeout(function() {
-          tryHideVirtualKeyboard_();
           input.focus();
-          tryHideVirtualKeyboard_();
+          try {
+            var end = (input.value || '').length;
+            input.setSelectionRange(end, end);
+          } catch (error) {}
         }, 0);
       }
-    }
-
-    function tryHideVirtualKeyboard_() {
-      try {
-        if (navigator.virtualKeyboard && typeof navigator.virtualKeyboard.hide === 'function') {
-          navigator.virtualKeyboard.hide();
-        }
-      } catch (error) {}
     }
 
     function requestAppFullscreen_() {
@@ -618,7 +612,7 @@
     preencherSelect('editSetor', combos.setores, 'Selecione um setor');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
-    preencherSelect('cronogramaExecutor', combos.prestadores, 'Selecione um executor');
+    preencherSelect('cronogramaExecutor', combos.prestadores, 'Sem prestador definido', true);
     preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('cronogramaStatus', ['Em andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
@@ -894,14 +888,7 @@
   }
 
   function validarFiltrosCronograma_(showFeedback) {
-    var filtros = obterFiltrosCronograma_();
-    if (!filtros.executor) {
-      if (showFeedback) {
-        mostrarMensagemErro('Selecione um executor/prestador para montar o cronograma.');
-      }
-      return null;
-    }
-    return filtros;
+    return obterFiltrosCronograma_();
   }
 
   function aplicarFiltrosCronograma(event) {
@@ -928,15 +915,16 @@
 
   function getCronogramaItemsLocal_() {
     var filtros = validarFiltrosCronograma_(false);
-    if (!filtros) {
-      return [];
-    }
     return appState.allPendencias.filter(function(item) {
       var status = getCronogramaStatusLocal_(item);
       if (normalizeText_(item.status) === 'cancelado') {
         return false;
       }
-      if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+      if (filtros.executor) {
+        if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+          return false;
+        }
+      } else if (safeTrim_(item.executor)) {
         return false;
       }
       if (filtros.loja && normalizeText_(item.loja) !== normalizeText_(filtros.loja)) {
@@ -1055,17 +1043,10 @@
       return;
     }
     var filtros = validarFiltrosCronograma_(false);
-    if (!filtros) {
-      resumoEl.textContent = 'Selecione um prestador para visualizar a programacao.';
-      cardsEl.innerHTML = '<div class="panel empty-state">Selecione um prestador para montar o cronograma.</div>';
-      tableEl.innerHTML = '<tr><td colspan="9" class="empty-state">Selecione um prestador para montar o cronograma.</td></tr>';
-      return;
-    }
-
     var items = getCronogramaItemsLocal_();
     resumoEl.textContent = items.length
-      ? ('Programacao de ' + filtros.executor + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
-      : ('Nenhuma pendencia ativa encontrada para ' + filtros.executor + '.');
+      ? ('Programacao de ' + (filtros.executor || 'pendencias sem prestador definido') + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
+      : ('Nenhuma pendencia ativa encontrada para ' + (filtros.executor || 'sem prestador definido') + '.');
 
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</div>';
@@ -2792,8 +2773,9 @@
     spenInput.value = document.getElementById(targetId).value || '';
     spenInput.lang = 'pt-BR';
     spenInput.spellcheck = true;
-    spenInput.setAttribute('inputmode', 'none');
-    spenInput.setAttribute('virtualkeyboardpolicy', 'manual');
+    spenInput.setAttribute('autocapitalize', 'sentences');
+    spenInput.removeAttribute('inputmode');
+    spenInput.removeAttribute('virtualkeyboardpolicy');
     appState.spenLocked = true;
     renderSpenLockState_();
     syncSpenLockClasses_();
@@ -2802,9 +2784,11 @@
     document.getElementById('spenModal').classList.remove('hidden');
     requestAppFullscreen_();
     setTimeout(function() {
-      tryHideVirtualKeyboard_();
       spenInput.focus();
-      tryHideVirtualKeyboard_();
+      try {
+        var end = (spenInput.value || '').length;
+        spenInput.setSelectionRange(end, end);
+      } catch (error) {}
     }, 80);
   }
 
@@ -2975,13 +2959,41 @@
     iniciarDitado(targetId);
   }
 
+  function focarCampoComTecladoNativo_(targetId) {
+    var field = document.getElementById(targetId);
+    if (!field) {
+      return false;
+    }
+    try {
+      field.focus();
+      var end = (field.value || '').length;
+      if (typeof field.setSelectionRange === 'function') {
+        field.setSelectionRange(end, end);
+      }
+      if (typeof field.click === 'function') {
+        field.click();
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function iniciarDitado(targetId) {
     var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
+      if (focarCampoComTecladoNativo_(targetId)) {
+        mostrarMensagemSucesso('Use o microfone do teclado nativo do dispositivo.');
+        return;
+      }
       mostrarMensagemErro('Ditado por voz nao suportado neste navegador.');
       return;
     }
     if (!appState.connection.online) {
+      if (focarCampoComTecladoNativo_(targetId)) {
+        mostrarMensagemSucesso('Offline: use o microfone do teclado nativo do dispositivo.');
+        return;
+      }
       mostrarMensagemErro('Ditado por voz offline nao esta disponivel neste navegador. Use a S Pen ou reconecte a internet.');
       return;
     }
