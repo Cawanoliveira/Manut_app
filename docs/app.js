@@ -43,7 +43,9 @@
         listening: false,
         manualStop: false,
         baseValue: '',
-        finalTranscript: ''
+        finalTranscript: '',
+        startedAt: 0,
+        timerId: null
       },
       zoomContext: {
         title: '',
@@ -2932,11 +2934,47 @@
       var isActive = appState.speechState.listening && appState.speechState.activeTargetId === targetId;
       button.classList.toggle('listening', isActive);
       button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-      button.textContent = isActive ? 'Parar' : 'Voz';
+      button.textContent = isActive ? ('Parar ' + formatSpeechElapsed_()) : 'Voz';
     });
   }
 
+  function formatSpeechElapsed_() {
+    var seconds = Math.max(0, Math.floor((Date.now() - Number(appState.speechState.startedAt || 0)) / 1000));
+    var minutes = Math.floor(seconds / 60);
+    var remainder = seconds % 60;
+    return String(minutes).padStart(2, '0') + ':' + String(remainder).padStart(2, '0');
+  }
+
+  function startSpeechTimer_() {
+    stopSpeechTimer_();
+    appState.speechState.startedAt = Date.now();
+    appState.speechState.timerId = setInterval(function() {
+      if (!appState.speechState.listening) {
+        stopSpeechTimer_();
+        return;
+      }
+      renderSpeechButtons_();
+    }, 1000);
+  }
+
+  function stopSpeechTimer_() {
+    if (appState.speechState.timerId) {
+      clearInterval(appState.speechState.timerId);
+      appState.speechState.timerId = null;
+    }
+    appState.speechState.startedAt = 0;
+  }
+
+  function setSpeechPreviewState_(targetId, active) {
+    var field = document.getElementById(targetId);
+    if (!field) {
+      return;
+    }
+    field.classList.toggle('voice-preview-active', !!active);
+  }
+
   function pararDitadoAtivo_() {
+    var activeTargetId = appState.speechState.activeTargetId;
     appState.speechState.manualStop = true;
     if (appState.speechState.activeRecognition) {
       try {
@@ -2953,6 +2991,8 @@
     appState.speechState.listening = false;
     appState.speechState.baseValue = '';
     appState.speechState.finalTranscript = '';
+    setSpeechPreviewState_(activeTargetId, false);
+    stopSpeechTimer_();
     renderSpeechButtons_();
   }
 
@@ -2991,6 +3031,8 @@
     appState.speechState.manualStop = false;
     appState.speechState.baseValue = baseValue;
     appState.speechState.finalTranscript = '';
+    setSpeechPreviewState_(targetId, true);
+    startSpeechTimer_();
     renderSpeechButtons_();
     recognition.onresult = function(event) {
       var field = document.getElementById(targetId);
@@ -3034,15 +3076,14 @@
         appState.speechState.listening = false;
         appState.speechState.baseValue = '';
         appState.speechState.finalTranscript = '';
+        setSpeechPreviewState_(targetId, false);
+        stopSpeechTimer_();
         renderSpeechButtons_();
       }
     };
     recognition.onerror = function(event) {
       var errorCode = event && event.error ? String(event.error) : '';
       if ((errorCode === 'aborted' && appState.speechState.manualStop) || errorCode === 'no-speech') {
-        if (appState.speechState.activeRecognition === recognition) {
-          appState.speechState.activeRecognition = null;
-        }
         return;
       }
       if (appState.speechState.activeRecognition === recognition) {
@@ -3052,6 +3093,8 @@
         appState.speechState.listening = false;
         appState.speechState.baseValue = '';
         appState.speechState.finalTranscript = '';
+        setSpeechPreviewState_(targetId, false);
+        stopSpeechTimer_();
         renderSpeechButtons_();
       }
       if (errorCode === 'network') {

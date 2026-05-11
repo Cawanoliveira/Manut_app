@@ -755,11 +755,16 @@
   color: #fff;
 }
 
-.mic-button.listening {
-  background: #b91c1c;
-  color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
-}
+  .mic-button.listening {
+    background: #b91c1c;
+    color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
+  }
+
+  textarea.voice-preview-active {
+    color: rgba(17, 24, 39, 0.46);
+    background: linear-gradient(0deg, rgba(255,255,255,0.96), rgba(255,255,255,0.96)), #fff;
+  }
 
   .spen-button {
     background: #fff1e3;
