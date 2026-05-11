@@ -376,8 +376,8 @@
         <div class="panel section-stack cronograma-stack">
           <form id="formCronograma" class="form-grid cronograma-form" onsubmit="aplicarFiltrosCronograma(event)">
             <label>
-              <span>Prestador *</span>
-              <select id="cronogramaExecutor" required></select>
+              <span>Prestador</span>
+              <select id="cronogramaExecutor"></select>
             </label>
             <label>
               <span>Loja</span>
@@ -414,7 +414,7 @@
               <button type="button" class="ghost-button" onclick="limparFiltrosCronograma()">Limpar</button>
             </div>
           </form>
-          <div id="cronogramaResumo" class="muted-text">Selecione um prestador para visualizar a programacao.</div>
+          <div id="cronogramaResumo" class="muted-text">Visualizando pendencias sem prestador definido.</div>
         </div>
 
         <div id="cronogramaCards" class="list-cards"></div>
@@ -582,7 +582,7 @@
           </div>
         </div>
           <input id="spenTargetField" type="hidden">
-        <textarea id="spenInputArea" class="spen-textarea" rows="8" placeholder="Escreva aqui com a S Pen." inputmode="none" virtualkeyboardpolicy="manual"></textarea>
+        <textarea id="spenInputArea" class="spen-textarea" rows="8" placeholder="Escreva aqui com a S Pen." autocapitalize="sentences" spellcheck="true"></textarea>
           <div class="actions-row">
             <button id="spenClearButton" class="secondary-button" type="button" onclick="limparSpenPopup()">Limpar</button>
             <button id="spenApplyButton" class="primary-button" type="button" onclick="aplicarSpenTexto()">Aplicar ao campo</button>
