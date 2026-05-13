@@ -77,7 +77,8 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             onStartVoice = { targetId, baseValue -> startVoiceSession(targetId, baseValue) },
             onStopVoice = { voiceManager.stop() },
-            onOpenSpen = { targetId, title, value -> openNativeSpenEditor(targetId, title, value) }
+            onOpenSpen = { targetId, title, value -> openNativeSpenEditor(targetId, title, value) },
+            onOpenExternalDocument = { url, mimeType, fileName -> openExternalDocument(url, mimeType, fileName) }
         )
 
         setupWebView(binding.webView)
@@ -179,6 +180,23 @@ class MainActivity : AppCompatActivity() {
             putExtra(NativeSpenActivity.EXTRA_VALUE, value)
         }
         spenEditorLauncher.launch(intent)
+    }
+
+    private fun openExternalDocument(url: String, mimeType: String, fileName: String) {
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType.ifBlank { null } ?: "*/*")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(Intent.createChooser(intent, fileName.ifBlank { "Abrir arquivo" }))
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+            } catch (inner: Exception) {
+                showToast("Nao foi possivel abrir o arquivo no dispositivo.")
+            }
+        }
     }
 
     private fun handleVoiceEvent(event: VoiceRecognitionManager.VoiceEvent) {

@@ -6,7 +6,8 @@ class WebAppBridge(
     private val activity: MainActivity,
     private val onStartVoice: (targetId: String, baseValue: String) -> Unit,
     private val onStopVoice: () -> Unit,
-    private val onOpenSpen: (targetId: String, title: String, value: String) -> Unit
+    private val onOpenSpen: (targetId: String, title: String, value: String) -> Unit,
+    private val onOpenExternalDocument: (url: String, mimeType: String, fileName: String) -> Unit
 ) {
 
     @JavascriptInterface
@@ -27,6 +28,13 @@ class WebAppBridge(
     fun openSpenEditor(targetId: String, title: String, value: String) {
         activity.runOnUiThread {
             onOpenSpen(targetId, title, value)
+        }
+    }
+
+    @JavascriptInterface
+    fun openExternalDocument(url: String, mimeType: String, fileName: String) {
+        activity.runOnUiThread {
+            onOpenExternalDocument(url, mimeType, fileName)
         }
     }
 

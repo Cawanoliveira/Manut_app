@@ -1215,7 +1215,11 @@
     if (!payload || !(payload.openUrl || payload.url)) {
       throw new Error('Arquivo PDF invalido.');
     }
-    var url = payload.openUrl || payload.url;
+    var url = payload.downloadUrl || payload.openUrl || payload.url;
+    if (hasNativeBridgeMethod_('openExternalDocument')) {
+      getNativeBridge_().openExternalDocument(url, 'application/pdf', payload.fileName || 'cronograma.pdf');
+      return;
+    }
     var anchor = document.createElement('a');
     anchor.href = url;
     anchor.download = payload.fileName || 'cronograma.pdf';
