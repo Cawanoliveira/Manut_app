@@ -2002,13 +2002,17 @@
       { key: 'abertas', label: 'Abertas', value: data.abertas || 0, className: '' },
       { key: 'emAndamento', label: 'Em andamento', value: data.emAndamento || 0, className: 'warning' },
       { key: 'concluidas', label: 'Concluidas', value: data.concluidas || 0, className: 'success' },
-      { key: 'vencidas', label: 'Vencidas', value: data.vencidas || 0, className: 'danger' },
-      { key: 'total', label: 'Total geral', value: data.total || 0, className: '' }
+      { key: 'vencidas', label: 'Vencidas', value: data.vencidas || 0, className: 'danger' }
     ];
+    getDashboardResponsavelCards_(data.porResponsavel).forEach(function(card) {
+      cards.push(card);
+    });
+    cards.push({ key: 'total', label: 'Total geral', value: data.total || 0, className: '' });
 
     document.getElementById('dashboardCards').innerHTML = cards.map(function(card) {
-      var selectedClass = appState.dashboardSelection.type === 'metric' && appState.dashboardSelection.key === card.key ? ' selected' : '';
-      return '<button class="metric-card ' + card.className + selectedClass + '" onclick="abrirZoomCard(\'' + card.key + '\', this)">' +
+      var isResponsavelCard = String(card.key || '').indexOf('responsavel:') === 0;
+      var selectedClass = ((appState.dashboardSelection.type === 'metric' && appState.dashboardSelection.key === card.key) || (isResponsavelCard && appState.dashboardSelection.type === 'responsavel' && appState.dashboardSelection.key === card.responsavel)) ? ' selected' : '';
+      return '<button class="metric-card ' + card.className + selectedClass + '" onclick="' + (isResponsavelCard ? ('abrirZoomResponsavel(\'' + escapeJs(card.responsavel) + '\', this)') : ('abrirZoomCard(\'' + card.key + '\', this)')) + '">' +
         '<span class="label">' + escapeHtml(card.label) + '</span>' +
         '<span class="value">' + escapeHtml(String(card.value)) + '</span>' +
       '</button>';
@@ -2016,7 +2020,24 @@
 
     document.getElementById('resumoPorLoja').innerHTML = renderSummaryList(data.porLoja, 'loja');
     document.getElementById('resumoPorSetor').innerHTML = renderSummaryList(data.porSetor, 'setor');
-    document.getElementById('resumoPorResponsavel').innerHTML = renderSummaryList(data.porResponsavel, 'responsavel');
+  }
+
+  function getDashboardResponsavelCards_(collection) {
+    return Object.keys(collection || {}).sort(function(a, b) {
+      var diff = Number(collection[b] || 0) - Number(collection[a] || 0);
+      if (diff !== 0) {
+        return diff;
+      }
+      return String(a || '').localeCompare(String(b || ''), 'pt-BR');
+    }).map(function(nome) {
+      return {
+        key: 'responsavel:' + nome,
+        responsavel: nome,
+        label: nome,
+        value: Number(collection[nome] || 0),
+        className: 'secondary'
+      };
+    });
   }
 
   function abrirZoomCard(metricKey, buttonEl) {
@@ -2058,6 +2079,26 @@
     }
 
     openMetricZoom_(title, description, items, 'metric');
+  }
+
+  function abrirZoomResponsavel(nome, buttonEl) {
+    var ativos = getFilteredPendencias_(false);
+    var items = ativos.filter(function(item) {
+      return normalizeText_(item.responsavel || 'Nao definido') === normalizeText_(nome);
+    });
+    appState.dashboardSelection = {
+      type: 'responsavel',
+      key: nome
+    };
+    saveCache_();
+    highlightDashboardSelection_(buttonEl, '.metric-card');
+    openMetricZoom_(
+      'Responsavel: ' + nome,
+      'Pendencias ativas deste responsavel.',
+      items,
+      'responsavel',
+      nome
+    );
   }
 
   function fecharZoomCard() {
@@ -2303,7 +2344,8 @@
       anchorKey: anchorKey || '',
       filterLoja: '',
       filterSetor: '',
-      filterStatus: ''
+      filterStatus: '',
+      filterResponsavel: ''
     };
     document.getElementById('metricZoomTitle').textContent = appState.zoomContext.title;
     document.getElementById('metricZoomDescription').textContent = appState.zoomContext.description;
@@ -2316,18 +2358,22 @@
     var items = appState.zoomContext.items || [];
     var lojas = uniqueSorted_(items.map(function(item) { return item.loja || ''; }).filter(Boolean));
     var setores = uniqueSorted_(items.map(function(item) { return item.setor || ''; }).filter(Boolean));
+    var responsaveis = uniqueSorted_(items.map(function(item) { return item.responsavel || 'Nao definido'; }).filter(Boolean));
     var statusList = uniqueSorted_(items.map(function(item) {
       return getDashboardDisplayStatus_(item);
     }).filter(Boolean));
     preencherSelect('metricZoomFiltroLoja', lojas, 'Todas as lojas', true);
     preencherSelect('metricZoomFiltroSetor', setores, 'Todos os setores', true);
     preencherSelect('metricZoomFiltroStatus', statusList, 'Todos os status', true);
+    preencherSelect('metricZoomFiltroResponsavel', responsaveis, 'Todos os responsaveis', true);
     document.getElementById('metricZoomLojaWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'loja');
     document.getElementById('metricZoomSetorWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'setor');
     document.getElementById('metricZoomStatusWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'metric');
+    document.getElementById('metricZoomResponsavelWrap').classList.toggle('hidden', appState.zoomContext.anchorType === 'responsavel');
     document.getElementById('metricZoomFiltroLoja').value = appState.zoomContext.filterLoja || '';
     document.getElementById('metricZoomFiltroSetor').value = appState.zoomContext.filterSetor || '';
     document.getElementById('metricZoomFiltroStatus').value = appState.zoomContext.filterStatus || '';
+    document.getElementById('metricZoomFiltroResponsavel').value = appState.zoomContext.filterResponsavel || '';
   }
 
   function aplicarFiltrosZoom() {
@@ -2337,11 +2383,15 @@
     appState.zoomContext.filterLoja = getElementValue_('metricZoomFiltroLoja');
     appState.zoomContext.filterSetor = getElementValue_('metricZoomFiltroSetor');
     appState.zoomContext.filterStatus = getElementValue_('metricZoomFiltroStatus');
+    appState.zoomContext.filterResponsavel = getElementValue_('metricZoomFiltroResponsavel');
     var items = (appState.zoomContext.items || []).filter(function(item) {
       if (appState.zoomContext.filterLoja && normalizeText_(item.loja) !== normalizeText_(appState.zoomContext.filterLoja)) {
         return false;
       }
       if (appState.zoomContext.filterSetor && normalizeText_(item.setor) !== normalizeText_(appState.zoomContext.filterSetor)) {
+        return false;
+      }
+      if (appState.zoomContext.filterResponsavel && normalizeText_(item.responsavel || 'Nao definido') !== normalizeText_(appState.zoomContext.filterResponsavel)) {
         return false;
       }
       if (appState.zoomContext.filterStatus && normalizeText_(getDashboardDisplayStatus_(item)) !== normalizeText_(appState.zoomContext.filterStatus)) {
@@ -3538,9 +3588,11 @@
     var historico = getFilteredPendencias_(true);
     ativos.forEach(function(item) {
       var displayStatus = getDashboardDisplayStatus_(item);
+      var responsavel = item.responsavel || 'Nao definido';
       dashboard.total += 1;
       dashboard.porLoja[item.loja || 'Sem loja'] = (dashboard.porLoja[item.loja || 'Sem loja'] || 0) + 1;
       dashboard.porSetor[item.setor || 'Sem setor'] = (dashboard.porSetor[item.setor || 'Sem setor'] || 0) + 1;
+      dashboard.porResponsavel[responsavel] = (dashboard.porResponsavel[responsavel] || 0) + 1;
       if (displayStatus === 'Vencida') {
         dashboard.vencidas += 1;
       } else if (displayStatus === 'Aberta') {

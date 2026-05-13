@@ -122,13 +122,6 @@
               </div>
               <div id="resumoPorSetor" class="summary-list empty-state">Nenhum dado carregado.</div>
             </article>
-            <article class="panel">
-              <div class="panel-title-row">
-                <h3>Por responsavel</h3>
-                <button type="button" class="chart-toggle-button" onclick="alternarGraficoResumo('responsavel')" title="Alternar grafico por responsavel">&#128202;</button>
-              </div>
-              <div id="resumoPorResponsavel" class="summary-list empty-state">Nenhum dado carregado.</div>
-            </article>
           </div>
         </section>
 
@@ -514,6 +507,10 @@
           <label id="metricZoomStatusWrap">
             <span>Status</span>
             <select id="metricZoomFiltroStatus" onchange="aplicarFiltrosZoom()"></select>
+          </label>
+          <label id="metricZoomResponsavelWrap">
+            <span>Responsavel</span>
+            <select id="metricZoomFiltroResponsavel" onchange="aplicarFiltrosZoom()"></select>
           </label>
         </div>
         <div id="metricZoomList" class="summary-list"></div>
