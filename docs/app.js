@@ -685,6 +685,7 @@
     preencherSelect('cronogramaExecutor', combos.prestadores, 'Sem prestador definido', true);
     preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
+    preencherSelect('cronogramaResponsavel', combos.responsaveis, 'Todos os responsaveis', true);
     preencherSelect('cronogramaStatus', ['Em andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
     bindManagedSelects_();
   }
@@ -954,6 +955,7 @@
       executor: getElementValue_('cronogramaExecutor'),
       loja: getElementValue_('cronogramaLoja'),
       setor: getElementValue_('cronogramaSetor'),
+      responsavel: getElementValue_('cronogramaResponsavel'),
       status: getElementValue_('cronogramaStatus'),
       dataAberturaDe: getElementValue_('cronogramaDataAberturaDe'),
       dataAberturaAte: getElementValue_('cronogramaDataAberturaAte'),
@@ -978,7 +980,7 @@
   }
 
   function limparFiltrosCronograma() {
-    ['cronogramaExecutor', 'cronogramaLoja', 'cronogramaSetor', 'cronogramaStatus', 'cronogramaDataAberturaDe', 'cronogramaDataAberturaAte', 'cronogramaPrevisaoDe', 'cronogramaPrevisaoAte']
+    ['cronogramaExecutor', 'cronogramaLoja', 'cronogramaSetor', 'cronogramaResponsavel', 'cronogramaStatus', 'cronogramaDataAberturaDe', 'cronogramaDataAberturaAte', 'cronogramaPrevisaoDe', 'cronogramaPrevisaoAte']
       .forEach(function(id) {
         var field = document.getElementById(id);
         if (field) {
@@ -1006,6 +1008,9 @@
         return false;
       }
       if (filtros.setor && normalizeText_(item.setor) !== normalizeText_(filtros.setor)) {
+        return false;
+      }
+      if (filtros.responsavel && normalizeText_(item.responsavel) !== normalizeText_(filtros.responsavel)) {
         return false;
       }
       if ((filtros.dataAberturaDe || filtros.dataAberturaAte) && !dateWithinRangeLocal_(item.data_abertura, filtros.dataAberturaDe, filtros.dataAberturaAte)) {
