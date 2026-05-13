@@ -109,17 +109,29 @@ function aplicarValidacoesBasicas_() {
   var map = getHeaderIndexMap_(APP_CONFIG.SHEETS.PENDENCIAS);
   var startRow = 2;
   var numRows = Math.max(1000, pendenciasSheet.getMaxRows() - 1);
+  var responsavelRange = pendenciasSheet.getRange(startRow, map.responsavel + 1, numRows, 1);
+  var executorRange = pendenciasSheet.getRange(startRow, map.executor + 1, numRows, 1);
   var tipoRange = pendenciasSheet.getRange(startRow, map.tipo + 1, numRows, 1);
   var prioridadeRange = pendenciasSheet.getRange(startRow, map.prioridade + 1, numRows, 1);
   var statusRange = pendenciasSheet.getRange(startRow, map.status + 1, numRows, 1);
   var lojasSheet = getSheet_(APP_CONFIG.SHEETS.LOJAS);
   var setoresSheet = getSheet_(APP_CONFIG.SHEETS.SETORES);
+  var usuariosSheet = getSheet_(APP_CONFIG.SHEETS.USUARIOS);
+  var prestadoresSheet = getSheet_(APP_CONFIG.SHEETS.PRESTADORES);
   var lojaValidation = SpreadsheetApp.newDataValidation()
     .requireValueInRange(lojasSheet.getRange('B2:B'), true)
     .setAllowInvalid(true)
     .build();
   var setorValidation = SpreadsheetApp.newDataValidation()
     .requireValueInRange(setoresSheet.getRange('B2:B'), true)
+    .setAllowInvalid(true)
+    .build();
+  var responsavelValidation = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(usuariosSheet.getRange('B2:B'), true)
+    .setAllowInvalid(true)
+    .build();
+  var executorValidation = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(prestadoresSheet.getRange('B2:B'), true)
     .setAllowInvalid(true)
     .build();
   var tipos = getManagedOptionValues_('tipo');
@@ -131,6 +143,8 @@ function aplicarValidacoesBasicas_() {
 
   pendenciasSheet.getRange(startRow, map.loja + 1, numRows, 1).setDataValidation(lojaValidation);
   pendenciasSheet.getRange(startRow, map.setor + 1, numRows, 1).setDataValidation(setorValidation);
+  responsavelRange.setDataValidation(responsavelValidation);
+  executorRange.setDataValidation(executorValidation);
   tipoRange.setDataValidation(tipoValidation);
   prioridadeRange.setDataValidation(prioridadeValidation);
   statusRange.setDataValidation(statusValidation);

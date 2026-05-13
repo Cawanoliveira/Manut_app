@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -21,6 +22,7 @@ class NativeSpenActivity : AppCompatActivity() {
         binding = ActivityNativeSpenBinding.inflate(layoutInflater)
         setContentView(binding.root)
         enableImmersiveMode()
+        applyInsets()
 
         binding.titleView.text = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         binding.editText.setText(intent.getStringExtra(EXTRA_VALUE).orEmpty())
@@ -97,6 +99,29 @@ class NativeSpenActivity : AppCompatActivity() {
         controller.hide(WindowInsetsCompat.Type.systemBars())
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    }
+
+    private fun applyInsets() {
+        val baseRootPaddingTop = binding.rootContainer.paddingTop
+        val baseRootPaddingLeft = binding.rootContainer.paddingLeft
+        val baseRootPaddingRight = binding.rootContainer.paddingRight
+        val baseActionsPaddingBottom = binding.actionsContainer.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.rootContainer) { _, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            binding.rootContainer.setPadding(
+                baseRootPaddingLeft + systemBars.left,
+                baseRootPaddingTop + systemBars.top,
+                baseRootPaddingRight + systemBars.right,
+                binding.rootContainer.paddingBottom
+            )
+            binding.actionsContainer.setPadding(
+                binding.actionsContainer.paddingLeft,
+                binding.actionsContainer.paddingTop,
+                binding.actionsContainer.paddingRight,
+                baseActionsPaddingBottom + systemBars.bottom + 32
+            )
+            insets
+        }
     }
 
     companion object {

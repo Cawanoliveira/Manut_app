@@ -63,7 +63,11 @@
           </label>
         </div>
         <div class="filter-group">
-          <h4>Executor</h4>
+          <h4>Responsavel e executor</h4>
+          <label>
+            <span>Responsavel</span>
+            <select id="filtroResponsavel"></select>
+          </label>
           <label>
             <span>Executor</span>
             <select id="filtroExecutor"></select>
@@ -163,6 +167,10 @@
               <span>Executor</span>
               <select id="novoExecutor"></select>
             </label>
+            <label>
+              <span>Responsavel</span>
+              <select id="novoResponsavel"></select>
+            </label>
 
           <label class="full-width">
             <span>Descricao *</span>
@@ -232,6 +240,7 @@
                 <th>Classificacao</th>
                 <th>Urgencia</th>
                 <th>Descricao / Observacao</th>
+                <th>Responsavel</th>
                 <th>Executor</th>
                 <th>Acoes</th>
                 <th></th>
@@ -278,6 +287,10 @@
               <label>
                 <span>Executor / prestador</span>
                 <select id="editExecutor"></select>
+              </label>
+              <label>
+                <span>Responsavel</span>
+                <select id="editResponsavel"></select>
               </label>
               <label>
                 <span>Status</span>
@@ -354,6 +367,7 @@
                 <th>Classificacao</th>
                 <th>Urgencia</th>
                 <th>Descricao / Observacao</th>
+                <th>Responsavel</th>
                 <th>Executor</th>
                 <th>Acoes</th>
                 <th></th>
@@ -469,7 +483,7 @@
             <div class="panel-title-row">
               <h3>Cadastro</h3>
             </div>
-            <p class="muted-text">Gerencie executor, loja, setor, tipo, prioridade e status neste agrupador.</p>
+            <p class="muted-text">Gerencie responsavel, executor, loja, setor, tipo, prioridade e status neste agrupador.</p>
             <div id="cadastroList" class="summary-list empty-state">Carregando cadastros...</div>
           </div>
         </section>

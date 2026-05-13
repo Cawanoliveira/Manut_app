@@ -75,6 +75,9 @@ function getFormSupportData() {
     usuarios: (listarUsuarios().data || []).map(function(item) {
       return item.nome || item.email;
     }),
+    responsaveis: (listarUsuarios().data || []).map(function(item) {
+      return item.nome || item.email;
+    }),
     prestadores: (listarPrestadores().data || []).map(function(item) {
       return item.nome_prestador;
     }),
@@ -88,6 +91,7 @@ function listarOpcoesComboGerenciaveis() {
   return {
     loja: listarItensComboSheet_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', false),
     setor: listarItensComboSheet_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', false),
+    responsavel: listarItensComboSheet_(APP_CONFIG.SHEETS.USUARIOS, 'id_usuario', 'nome', true),
     tipo: listarItensComboConfig_('tipo'),
     prioridade: listarItensComboConfig_('prioridade'),
     status: listarItensComboConfig_('status'),
@@ -115,6 +119,15 @@ function salvarOpcaoCombo(grupo, valor) {
       saveSheetComboOption_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', {
         id_setor: gerarId('SET'),
         nome_setor: nome,
+        status: 'Ativo',
+        data_cadastro: parseDateInput_(formatDateForInput_(now_()))
+      });
+    } else if (grupoNormalizado === 'responsavel') {
+      saveSheetComboOption_(APP_CONFIG.SHEETS.USUARIOS, 'id_usuario', 'nome', {
+        id_usuario: gerarId('USR'),
+        nome: nome,
+        email: '',
+        perfil: 'Responsavel',
         status: 'Ativo',
         data_cadastro: parseDateInput_(formatDateForInput_(now_()))
       });
@@ -150,6 +163,8 @@ function excluirOpcaoCombo(grupo, idOuValor) {
       deleteSheetComboItem_(APP_CONFIG.SHEETS.LOJAS, 'id_loja', 'nome_loja', chave);
     } else if (grupoNormalizado === 'setor') {
       deleteSheetComboItem_(APP_CONFIG.SHEETS.SETORES, 'id_setor', 'nome_setor', chave);
+    } else if (grupoNormalizado === 'responsavel') {
+      deleteSheetComboItem_(APP_CONFIG.SHEETS.USUARIOS, 'id_usuario', 'nome', chave);
     } else if (grupoNormalizado === 'executor') {
       deleteSheetComboItem_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', chave);
     } else {
@@ -174,7 +189,9 @@ function alterarStatusOpcaoCombo(grupo, idOuValor, novoStatus) {
       return createErrorResponse_('Dados invalidos para alterar o status.');
     }
 
-    if (grupoNormalizado === 'executor') {
+    if (grupoNormalizado === 'responsavel') {
+      updateSheetComboStatus_(APP_CONFIG.SHEETS.USUARIOS, 'id_usuario', 'nome', chave, status);
+    } else if (grupoNormalizado === 'executor') {
       updateSheetComboStatus_(APP_CONFIG.SHEETS.PRESTADORES, 'id_prestador', 'nome_prestador', chave, status);
     } else {
       return createErrorResponse_('Este grupo nao permite ativar ou desativar itens.');
@@ -418,6 +435,7 @@ function saveSheetComboOption_(sheetName, idField, nameField, data) {
   if (rowIndex > -1) {
     updateSheetRecordByRow_(sheetName, rowIndex, {
       status: 'Ativo',
+      nome: data.nome,
       nome_loja: data.nome_loja,
       nome_setor: data.nome_setor,
       nome_prestador: data.nome_prestador
@@ -469,6 +487,8 @@ function normalizeComboGroup_(grupo) {
     loja: 'loja',
     setores: 'setor',
     setor: 'setor',
+    responsavel: 'responsavel',
+    responsaveis: 'responsavel',
     tipos: 'tipo',
     tipo: 'tipo',
     prioridades: 'prioridade',

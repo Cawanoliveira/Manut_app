@@ -32,6 +32,7 @@
         setor: '',
         tipo: '',
         prioridade: '',
+        responsavel: '',
         executor: ''
       },
       speechState: {
@@ -662,15 +663,18 @@
     preencherSelect('novoSetor', combos.setores, 'Selecione um setor');
     preencherSelect('novoTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('novaPrioridade', combos.prioridades, 'Selecione uma prioridade');
+    preencherSelect('novoResponsavel', combos.responsaveis, 'Selecione um responsavel', true);
     preencherSelect('novoExecutor', combos.prestadores, 'Selecione um executor', true);
 
     preencherSelect('filtroLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('filtroSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('filtroStatus', combos.status, 'Todos os status', true);
+    preencherSelect('filtroResponsavel', combos.responsaveis, 'Todos os responsaveis', true);
     preencherSelect('filtroExecutor', combos.prestadores, 'Todos os executores', true);
     preencherSelect('filtroPrioridade', combos.prioridades, 'Todas as prioridades', true);
     preencherSelect('filtroTipo', combos.tipos, 'Todos os tipos', true);
 
+    preencherSelect('editResponsavel', combos.responsaveis, 'Selecione um responsavel', true);
     preencherSelect('editExecutor', combos.prestadores, 'Selecione um executor', true);
     preencherSelect('editStatus', combos.status, 'Selecione um status');
     preencherSelect('editSetor', combos.setores, 'Selecione um setor');
@@ -729,7 +733,9 @@
       novoSetor: { group: 'setor', title: 'Setores' },
       novoTipo: { group: 'tipo', title: 'Tipos' },
       novaPrioridade: { group: 'prioridade', title: 'Prioridades' },
+      novoResponsavel: { group: 'responsavel', title: 'Responsaveis' },
       editExecutor: { group: 'executor', title: 'Executor / prestador' },
+      editResponsavel: { group: 'responsavel', title: 'Responsaveis' },
       editStatus: { group: 'status', title: 'Status' },
       editSetor: { group: 'setor', title: 'Setores' },
       editTipo: { group: 'tipo', title: 'Tipos' },
@@ -739,6 +745,7 @@
 
   function getManagedGroupCatalog_() {
     return [
+      { group: 'responsavel', title: 'Responsaveis' },
       { group: 'executor', title: 'Executor / prestador' },
       { group: 'loja', title: 'Lojas' },
       { group: 'setor', title: 'Setores' },
@@ -790,6 +797,7 @@
       setor: document.getElementById('novoSetor').value,
       tipo: document.getElementById('novoTipo').value,
       prioridade: document.getElementById('novaPrioridade').value,
+      responsavel: document.getElementById('novoResponsavel').value,
       executor: document.getElementById('novoExecutor').value,
       descricao: document.getElementById('novaDescricao').value,
       observacao: document.getElementById('novaObservacao').value
@@ -850,7 +858,7 @@
       descricao: dados.descricao,
       observacao: dados.observacao || '',
       solicitante: 'offline_local',
-      responsavel: '',
+      responsavel: dados.responsavel || '',
       executor: dados.executor || '',
       data_inicio: '',
       previsao_entrega: '',
@@ -907,6 +915,7 @@
       loja: getElementValue_('filtroLoja'),
       setor: getElementValue_('filtroSetor'),
       status: getElementValue_('filtroStatus'),
+      responsavel: getElementValue_('filtroResponsavel'),
       executor: getElementValue_('filtroExecutor'),
       prioridade: getElementValue_('filtroPrioridade'),
       tipo: getElementValue_('filtroTipo'),
@@ -928,7 +937,7 @@
   }
 
   function limparFiltros() {
-    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroExecutor', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
+    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroExecutor', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
       .forEach(function(id) {
         document.getElementById(id).value = '';
       });
@@ -1219,6 +1228,7 @@
       loja: 'Loja',
       setor: 'Setor',
       status: 'Status',
+      responsavel: 'Responsavel',
       executor: 'Executor',
       prioridade: 'Prioridade',
       tipo: 'Tipo',
@@ -1285,6 +1295,7 @@
       return;
     }
     document.getElementById('editIdPendencia').value = item.id_pendencia;
+    document.getElementById('editResponsavel').value = item.responsavel || '';
     document.getElementById('editExecutor').value = item.executor || '';
     document.getElementById('editStatus').value = item.status || '';
     document.getElementById('editSetor').value = item.setor || '';
@@ -1342,10 +1353,55 @@
       .catch(handleFailure);
   }
 
+  function salvarResponsavelRapido(id, responsavel) {
+    var item = getLocalItemById_(id);
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    if (normalizeText_(item.responsavel) === normalizeText_(responsavel)) {
+      return;
+    }
+    if (!appState.connection.online) {
+      item.responsavel = responsavel || '';
+      item._syncStatus = 'pendente';
+      item.ultima_atualizacao = formatDateTimeLocal_(new Date());
+      item.atualizado_por = 'offline_local';
+      mergeItemIntoState_(item);
+      enqueueOperation_({
+        type: 'update',
+        id: id,
+        payload: { responsavel: responsavel || '' },
+        observacao: ''
+      });
+      renderAll_();
+      mostrarMensagemSucesso('Responsavel atualizado offline. Sera sincronizado ao reconectar.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('atualizarPendencia', [resolveRemoteId_(id), { responsavel: responsavel || '' }])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderAll_();
+        } else {
+          return carregarEstadoServidor_();
+        }
+        mostrarMensagemSucesso('Responsavel atualizado com sucesso.');
+      })
+      .catch(handleFailure);
+  }
+
   async function salvarEdicaoPendencia(event) {
     event.preventDefault();
     var id = document.getElementById('editIdPendencia').value;
     var dados = {
+      responsavel: document.getElementById('editResponsavel').value,
       executor: document.getElementById('editExecutor').value,
       status: document.getElementById('editStatus').value,
       setor: document.getElementById('editSetor').value,
@@ -1846,6 +1902,15 @@
     return '<select class="executor-inline-select" onchange="salvarExecutorRapido(\'' + pendenciaId + '\', this.value)">' + options.join('') + '</select>';
   }
 
+  function renderResponsavelSelect_(item) {
+    var pendenciaId = escapeJs(item.id_pendencia);
+    var options = ['<option value="">Sem responsavel</option>'];
+    ((appState.combos && appState.combos.responsaveis) || []).forEach(function(nome) {
+      options.push('<option value="' + escapeHtml(nome) + '"' + (normalizeText_(nome) === normalizeText_(item.responsavel) ? ' selected' : '') + '>' + escapeHtml(nome) + '</option>');
+    });
+    return '<select class="executor-inline-select" onchange="salvarResponsavelRapido(\'' + pendenciaId + '\', this.value)">' + options.join('') + '</select>';
+  }
+
   function renderHistoryStatusButton_(item) {
     var status = normalizeText_(item.status);
     var className = status === 'cancelado' ? 'ghost-button compact-button' : 'success-button compact-button';
@@ -2256,7 +2321,7 @@
     var tableEl = document.getElementById('listaPendenciasTabela');
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada.</div>';
-      tableEl.innerHTML = '<tr><td colspan="11" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="12" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
       return;
     }
 
@@ -2273,6 +2338,7 @@
           cardKv_('Setor', renderSetorBadge_(item.setor || '-')) +
           cardKv_('Classificacao', escapeHtml(item.tipo || '-')) +
           cardKv_('Urgencia', escapeHtml(item.prioridade || '-')) +
+          cardKv_('Responsavel', renderResponsavelSelect_(item)) +
           cardKv_('Executor', renderExecutorSelect_(item)) +
           cardKv_('Descricao', '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>') +
         '</div>' +
@@ -2300,6 +2366,7 @@
           '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button>' +
           '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>' +
         '</div></td>' +
+        '<td>' + renderResponsavelSelect_(item) + '</td>' +
         '<td>' + renderExecutorSelect_(item) + '</td>' +
         '<td><div class="table-actions">' +
           '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
@@ -2317,7 +2384,7 @@
     if (!items.length) {
       container.innerHTML = '<div class="panel empty-state">Nenhuma pendencia concluida ou cancelada.</div>';
       if (tableEl) {
-        tableEl.innerHTML = '<tr><td colspan="11" class="empty-state">Nenhuma pendencia concluida ou cancelada.</td></tr>';
+        tableEl.innerHTML = '<tr><td colspan="12" class="empty-state">Nenhuma pendencia concluida ou cancelada.</td></tr>';
       }
       return;
     }
@@ -2355,6 +2422,7 @@
             '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button>' +
             '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>' +
           '</div></td>' +
+          '<td>' + escapeHtml(item.responsavel || '-') + '</td>' +
           '<td>' + escapeHtml(item.executor || '-') + '</td>' +
           '<td><div class="table-actions">' +
             '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
@@ -2388,8 +2456,9 @@
             { label: 'Prioridade', value: renderTag('prioridade', item.prioridade || '-') },
             { label: 'Status', value: renderTag('status', item.status || '-') }
           ], true)) +
-          detailsRow_('Solicitante / Executor', groupedDetail_([
+          detailsRow_('Solicitante / Responsavel / Executor', groupedDetail_([
             { label: 'Solicitante', value: displaySolicitante_(item.solicitante) || '-' },
+            { label: 'Responsavel', value: item.responsavel || '-' },
             { label: 'Executor', value: item.executor || '-' }
           ])) +
           detailsRow_('Datas', groupedDetail_([
@@ -2939,6 +3008,7 @@
       setor: getElementValue_('novoSetor'),
       tipo: getElementValue_('novoTipo'),
       prioridade: getElementValue_('novaPrioridade'),
+      responsavel: getElementValue_('novoResponsavel'),
       executor: getElementValue_('novoExecutor')
     };
     saveCache_();
@@ -2952,6 +3022,7 @@
     setElementValueIfExists_('novoSetor', appState.formContext.setor);
     setElementValueIfExists_('novoTipo', appState.formContext.tipo);
     setElementValueIfExists_('novaPrioridade', appState.formContext.prioridade);
+    setElementValueIfExists_('novoResponsavel', appState.formContext.responsavel);
     setElementValueIfExists_('novoExecutor', appState.formContext.executor);
   }
 
@@ -2961,6 +3032,7 @@
       setor: '',
       tipo: '',
       prioridade: '',
+      responsavel: '',
       executor: ''
     };
     saveCache_();
@@ -3297,6 +3369,7 @@
         setor: '',
         tipo: '',
         prioridade: '',
+        responsavel: '',
         executor: ''
       };
       saveCache_();
@@ -3458,6 +3531,9 @@
         return false;
       }
       if (filtros.status && normalizeText_(item.status) !== normalizeText_(filtros.status)) {
+        return false;
+      }
+      if (filtros.responsavel && normalizeText_(item.responsavel) !== normalizeText_(filtros.responsavel)) {
         return false;
       }
       if (filtros.executor && normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
@@ -3846,6 +3922,9 @@
         return false;
       }
       if (filtros.status && normalizeText_(item.status) !== normalizeText_(filtros.status)) {
+        return false;
+      }
+      if (filtros.responsavel && normalizeText_(item.responsavel) !== normalizeText_(filtros.responsavel)) {
         return false;
       }
       if (filtros.executor && normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
