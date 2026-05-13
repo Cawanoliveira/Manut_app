@@ -23,7 +23,8 @@
       },
       dashboardChartMode: {
         loja: 'list',
-        setor: 'list'
+        setor: 'list',
+        responsavel: 'list'
       },
       pendingQueue: [],
       tempIdMap: {},
@@ -515,7 +516,8 @@
   function resetDashboardChartModes_() {
     appState.dashboardChartMode = {
       loja: 'list',
-      setor: 'list'
+      setor: 'list',
+      responsavel: 'list'
     };
   }
 
@@ -1065,6 +1067,48 @@
       return html.join('');
     }
 
+  function renderCronogramaDateEditor_(item, fieldName, currentValue) {
+      return '<input class="cronograma-date-input" type="date" value="' + escapeHtml(normalizeDateForInputValue_(currentValue)) + '" onclick="if(this.showPicker){try{this.showPicker();}catch(e){}}" onfocus="if(this.showPicker){try{this.showPicker();}catch(e){}}" onchange="salvarCronogramaDataRapida(\'' + escapeJs(item.id_pendencia) + '\', \'' + escapeJs(fieldName) + '\', this.value)">';
+    }
+
+  function salvarCronogramaDataRapida(id, fieldName, value) {
+      var item = getLocalItemById_(id);
+      if (!item) {
+        mostrarMensagemErro('Pendencia nao encontrada.');
+        return;
+      }
+      var payload = {};
+      payload[fieldName] = value || '';
+      if (!appState.connection.online) {
+        applyOfflineMutationToItem_(item, payload);
+        mergeItemIntoState_(item);
+        enqueueOperation_({
+          type: 'update',
+          id: id,
+          payload: payload,
+          observacao: ''
+        });
+        renderCronogramaPreview_();
+        mostrarMensagemSucesso((fieldName === 'data_inicio' ? 'Inicio' : 'Termino') + ' atualizado offline.');
+        return;
+      }
+      mostrarLoading();
+      serverCall_('atualizarPendencia', [resolveRemoteId_(id), payload])
+        .then(function(response) {
+          ocultarLoading();
+          if (!response.success) {
+            mostrarMensagemErro(response.message);
+            return;
+          }
+          if (response.data && response.data.pendencia) {
+            mergeItemIntoState_(response.data.pendencia);
+          }
+          renderAll_();
+          mostrarMensagemSucesso((fieldName === 'data_inicio' ? 'Inicio' : 'Termino') + ' atualizado com sucesso.');
+        })
+        .catch(handleFailure);
+    }
+
   function renderCronogramaPreview_() {
     var cardsEl = document.getElementById('cronogramaCards');
     var tableEl = document.getElementById('cronogramaTabela');
@@ -1073,13 +1117,6 @@
       return;
     }
     var filtros = validarFiltrosCronograma_(false);
-    if (!filtros) {
-      resumoEl.textContent = 'Visualizando pendencias sem prestador definido.';
-      cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia sem prestador definido encontrada para os filtros informados.</div>';
-      tableEl.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma pendencia sem prestador definido encontrada para os filtros informados.</td></tr>';
-      return;
-    }
-
     var items = getCronogramaItemsLocal_();
     resumoEl.textContent = items.length
       ? ('Programacao de ' + (filtros.executor || 'pendencias sem prestador definido') + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
@@ -1087,7 +1124,7 @@
 
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</div>';
-      tableEl.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="9" class="empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</td></tr>';
       return;
     }
 
@@ -1100,8 +1137,10 @@
           cardKv_('Local', escapeHtml(item.loja || '-')) +
           cardKv_('Setor', renderSetorBadge_(item.setor || '-')) +
           cardKv_('Status', renderTag('status', item.status_cronograma || getCronogramaStatusLocal_(item))) +
-          cardKv_('Previsao', escapeHtml(item.previsao_entrega_label || '-')) +
+          cardKv_('Inicio', renderCronogramaDateEditor_(item, 'data_inicio', item.data_inicio || item.data_inicio_label)) +
+          cardKv_('Termino', renderCronogramaDateEditor_(item, 'previsao_entrega', item.previsao_entrega || item.previsao_entrega_label)) +
           cardKv_('Descricao / Observacao', renderCronogramaTextoCell_(item)) +
+          cardKv_('Acoes', '<div class="cronograma-actions"><button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button><button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button></div>') +
         '</div>' +
       '</article>';
     }).join('');
@@ -1112,8 +1151,10 @@
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
         '<td>' + renderSetorBadge_(item.setor || '-') + '</td>' +
         '<td>' + renderTag('status', item.status_cronograma || getCronogramaStatusLocal_(item)) + '</td>' +
-        '<td>' + escapeHtml(item.previsao_entrega_label || '-') + '</td>' +
+        '<td class="cronograma-date-cell">' + renderCronogramaDateEditor_(item, 'data_inicio', item.data_inicio || item.data_inicio_label) + '</td>' +
+        '<td class="cronograma-date-cell">' + renderCronogramaDateEditor_(item, 'previsao_entrega', item.previsao_entrega || item.previsao_entrega_label) + '</td>' +
         '<td class="cronograma-text-cell">' + renderCronogramaTextoCell_(item) + '</td>' +
+        '<td><div class="table-actions"><button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Detalhes</button><button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button></div></td>' +
         '<td class="cronograma-anexo-cell">' + ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '<span class="muted-text">Sem anexo</span>') + '</td>' +
       '</tr>';
     }).join('');
@@ -1873,7 +1914,8 @@
   }
 
   function uiLabel_(full, shortLabel) {
-    return document.body.classList.contains('sidebar-open') ? shortLabel : full;
+    var width = (window.visualViewport && window.visualViewport.width) || window.innerWidth || document.documentElement.clientWidth || 0;
+    return (document.body.classList.contains('sidebar-open') || width < 1380) ? shortLabel : full;
   }
 
   function getDashboardDisplayStatus_(item) {
@@ -1914,8 +1956,7 @@
   function renderHistoryStatusButton_(item) {
     var status = normalizeText_(item.status);
     var className = status === 'cancelado' ? 'ghost-button compact-button' : 'success-button compact-button';
-    var label = status === 'cancelado' ? 'Cancelado' : 'Concluido';
-    return '<button class="' + className + '" type="button">' + uiLabel_(label, status === 'cancelado' ? 'Cancel.' : 'Concl.') + '</button>';
+    return '<button class="' + className + '" type="button">' + (status === 'cancelado' ? uiLabel_('Cancelado', 'Cancel.') : 'OK') + '</button>';
   }
 
   function renderDashboardStatusTag_(label) {
@@ -1975,6 +2016,7 @@
 
     document.getElementById('resumoPorLoja').innerHTML = renderSummaryList(data.porLoja, 'loja');
     document.getElementById('resumoPorSetor').innerHTML = renderSummaryList(data.porSetor, 'setor');
+    document.getElementById('resumoPorResponsavel').innerHTML = renderSummaryList(data.porResponsavel, 'responsavel');
   }
 
   function abrirZoomCard(metricKey, buttonEl) {
@@ -2206,9 +2248,13 @@
   function abrirResumoAgrupado(tipo, chave, buttonEl) {
     var ativos = getFilteredPendencias_(false);
     var items = ativos.filter(function(item) {
-      return tipo === 'loja'
-        ? normalizeText_(item.loja) === normalizeText_(chave)
-        : normalizeText_(item.setor) === normalizeText_(chave);
+      if (tipo === 'loja') {
+        return normalizeText_(item.loja) === normalizeText_(chave);
+      }
+      if (tipo === 'setor') {
+        return normalizeText_(item.setor) === normalizeText_(chave);
+      }
+      return normalizeText_(item.responsavel || 'Nao definido') === normalizeText_(chave);
     });
     appState.dashboardSelection = {
       type: tipo,
@@ -2217,8 +2263,8 @@
     saveCache_();
     highlightDashboardSelection_(buttonEl, '.summary-item.clickable, .summary-bar-item');
     openMetricZoom_(
-      (tipo === 'loja' ? 'Loja: ' : 'Setor: ') + chave,
-      tipo === 'loja' ? 'Pendencias ativas desta loja.' : 'Pendencias ativas deste setor por loja.',
+      (tipo === 'loja' ? 'Loja: ' : tipo === 'setor' ? 'Setor: ' : 'Responsavel: ') + chave,
+      tipo === 'loja' ? 'Pendencias ativas desta loja.' : (tipo === 'setor' ? 'Pendencias ativas deste setor por loja.' : 'Pendencias ativas deste responsavel.'),
       items,
       tipo,
       chave
@@ -2237,6 +2283,7 @@
           renderSetorBadge_(item.setor || '-', 'zoom-chip alt setor-badge-compact') +
           renderDashboardStatusTag_(statusAtual) +
         '</div><div class="muted-text">' + escapeHtml(item.tipo || 'Sem classificacao') + ' | ' + escapeHtml(item.prioridade || 'Sem urgencia') + '</div>' +
+        '<div class="muted-text">Responsavel: ' + escapeHtml(item.responsavel || 'Nao definido') + ' | Executor: ' + escapeHtml(item.executor || 'Nao definido') + '</div>' +
         '<div class="muted-text">' + escapeHtml(resumirTexto(item.descricao || item.observacao || '', 96)) + '</div></div>' +
         '<div class="actions-row">' +
           '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
@@ -2347,7 +2394,7 @@
           '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
           '<button class="warning-button compact-button" onclick="abrirDetalhesPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Detalhes', 'Detal.') + '</button>' +
           '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Editar', 'Edit.') + '</button>' +
-          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Concluido', 'Concl.') + '</button>' +
+          '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button>' +
           ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
           '<button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button>' +
         '</div>' +
@@ -2356,7 +2403,7 @@
 
     tableEl.innerHTML = items.map(function(item) {
       return '<tr>' +
-        '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">' + uiLabel_('Concluido', 'Concl.') + '</button></td>' +
+        '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button></td>' +
         '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
         '<td>' + escapeHtml(item.setor || '-') + '</td>' +

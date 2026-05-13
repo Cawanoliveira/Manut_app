@@ -129,6 +129,13 @@
               </div>
               <div id="resumoPorSetor" class="summary-list empty-state">Nenhum dado carregado.</div>
             </article>
+            <article class="panel">
+              <div class="panel-title-row">
+                <h3>Por responsavel</h3>
+                <button type="button" class="chart-toggle-button" onclick="alternarGraficoResumo('responsavel')" title="Alternar grafico por responsavel">&#128202;</button>
+              </div>
+              <div id="resumoPorResponsavel" class="summary-list empty-state">Nenhum dado carregado.</div>
+            </article>
           </div>
         </section>
 
@@ -233,15 +240,15 @@
           <table class="desktop-table listagem-table">
             <thead>
               <tr>
-                <th>Concluir</th>
+                <th>OK</th>
                 <th>ID</th>
                 <th>Local</th>
                 <th>Setor</th>
-                <th>Classificacao</th>
-                <th>Urgencia</th>
-                <th>Descricao / Observacao</th>
-                <th>Responsavel</th>
-                <th>Executor</th>
+                <th>Classif.</th>
+                <th>Urg.</th>
+                <th>Desc. / Obs.</th>
+                <th>Resp.</th>
+                <th>Exec.</th>
                 <th>Acoes</th>
                 <th></th>
                 <th></th>
@@ -360,15 +367,15 @@
           <table class="desktop-table listagem-table historico-table">
             <thead>
               <tr>
-                <th>Status</th>
+                <th>OK</th>
                 <th>ID</th>
                 <th>Local</th>
                 <th>Setor</th>
-                <th>Classificacao</th>
-                <th>Urgencia</th>
-                <th>Descricao / Observacao</th>
-                <th>Responsavel</th>
-                <th>Executor</th>
+                <th>Classif.</th>
+                <th>Urg.</th>
+                <th>Desc. / Obs.</th>
+                <th>Resp.</th>
+                <th>Exec.</th>
                 <th>Acoes</th>
                 <th></th>
                 <th></th>
@@ -441,17 +448,19 @@
         <div id="cronogramaCards" class="list-cards"></div>
         <div class="table-wrapper">
           <table class="desktop-table cronograma-table">
-            <thead>
-              <tr>
-                <th>Prestador</th>
-                <th>Local</th>
-                <th>Setor</th>
-                <th>Status</th>
-                <th>Previsao</th>
-                <th>Descricao / Observacao</th>
-                <th>Anexo</th>
-              </tr>
-            </thead>
+              <thead>
+                <tr>
+                  <th>Prestador</th>
+                  <th>Local</th>
+                  <th>Setor</th>
+                  <th>Status</th>
+                  <th>Inicio</th>
+                  <th>Termino</th>
+                  <th>Descricao / Observacao</th>
+                  <th>Acoes</th>
+                  <th>Anexo</th>
+                </tr>
+              </thead>
             <tbody id="cronogramaTabela"></tbody>
           </table>
         </div>
