@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manutencao-pwa-v22';
+const CACHE_NAME = 'manutencao-pwa-v23';
 const APP_SHELL = [
   './',
   './index.html',

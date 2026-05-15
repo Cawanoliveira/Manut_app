@@ -1,4 +1,4 @@
-﻿var CACHE_KEY = 'manutencao_offline_cache_v2';
+  var CACHE_KEY = 'manutencao_offline_cache_v2';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -65,6 +65,7 @@
         targetId: '',
         title: ''
       },
+      selectedOrcamentoIds: [],
       spenLocked: true,
       currentSection: 'secaoDashboard',
       navigationStack: [],
@@ -452,6 +453,7 @@
         appState.pendingQueue = cached.pendingQueue || [];
         appState.tempIdMap = cached.tempIdMap || {};
         appState.formContext = cached.formContext || appState.formContext;
+          appState.selectedOrcamentoIds = cached.selectedOrcamentoIds || [];
           appState.dashboardChartMode = cached.dashboardChartMode || appState.dashboardChartMode;
           appState.currentSection = cached.currentSection || appState.currentSection;
           appState.navigationStack = cached.navigationStack || [];
@@ -477,6 +479,7 @@
           pendingQueue: appState.pendingQueue,
           tempIdMap: appState.tempIdMap,
           formContext: appState.formContext,
+          selectedOrcamentoIds: appState.selectedOrcamentoIds,
           dashboardChartMode: appState.dashboardChartMode,
           currentSection: appState.currentSection,
           navigationStack: appState.navigationStack,
@@ -504,6 +507,7 @@
     renderCadastroList_();
     appState.dashboard = buildDashboardFromLocalState_();
     renderDashboard(buildDashboardFromVisibleState_());
+    sanitizeOrcamentoSelection_();
     renderPendencias(getFilteredPendencias_(false));
     renderHistoricoGeral(getFilteredPendencias_(true));
     renderCronogramaPreview_();
@@ -687,6 +691,7 @@
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('cronogramaResponsavel', combos.responsaveis, 'Todos os responsaveis', true);
     preencherSelect('cronogramaStatus', ['Em andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
+    preencherSelect('orcamentoPrestador', combos.prestadores, 'Selecione um prestador');
     bindManagedSelects_();
   }
 
@@ -1025,6 +1030,7 @@
       item.esta_vencida = isPendenciaVencidaLocal_(item);
       item.status_cronograma = status;
       item.data_abertura_label = formatDateBr(item.data_abertura);
+      item.data_inicio_label = formatDateBr(item.data_inicio);
       item.previsao_entrega_label = formatDateBr(item.previsao_entrega);
       return true;
     }).sort(compareCronogramaItemsLocal_);
@@ -2422,21 +2428,139 @@
     buttonEl.classList.add('selected');
   }
 
+  function sanitizeOrcamentoSelection_() {
+    var validIds = {};
+    appState.allPendencias.forEach(function(item) {
+      if (isPendenciaOrcavel_(item)) {
+        validIds[item.id_pendencia] = true;
+      }
+    });
+    appState.selectedOrcamentoIds = (appState.selectedOrcamentoIds || []).filter(function(id) {
+      return !!validIds[id];
+    });
+  }
+
+  function isPendenciaOrcavel_(item) {
+    return !!(item && item.id_pendencia && !safeTrim_(item.id_orcamento_ativo));
+  }
+
+  function isPendenciaSelecionadaParaOrcamento_(id) {
+    return (appState.selectedOrcamentoIds || []).indexOf(id) > -1;
+  }
+
+  function toggleSelecaoOrcamento(id, checked) {
+    if (!id) {
+      return;
+    }
+    sanitizeOrcamentoSelection_();
+    var selected = appState.selectedOrcamentoIds || [];
+    var index = selected.indexOf(id);
+    if (checked && index === -1) {
+      selected.push(id);
+    } else if (!checked && index > -1) {
+      selected.splice(index, 1);
+    }
+    appState.selectedOrcamentoIds = selected;
+    saveCache_();
+    renderPendencias(getFilteredPendencias_(false));
+  }
+
+  function toggleSelecaoPendenciasVisiveis(checked) {
+    var visiveis = getFilteredPendencias_(false).filter(isPendenciaOrcavel_);
+    var map = {};
+    (appState.selectedOrcamentoIds || []).forEach(function(id) {
+      map[id] = true;
+    });
+    visiveis.forEach(function(item) {
+      if (checked) {
+        map[item.id_pendencia] = true;
+      } else {
+        delete map[item.id_pendencia];
+      }
+    });
+    appState.selectedOrcamentoIds = Object.keys(map);
+    saveCache_();
+    renderPendencias(getFilteredPendencias_(false));
+  }
+
+  function selecionarPendenciasFiltradas() {
+    appState.selectedOrcamentoIds = getFilteredPendencias_(false)
+      .filter(isPendenciaOrcavel_)
+      .map(function(item) { return item.id_pendencia; });
+    saveCache_();
+    renderPendencias(getFilteredPendencias_(false));
+  }
+
+  function limparSelecaoOrcamento() {
+    appState.selectedOrcamentoIds = [];
+    saveCache_();
+    renderPendencias(getFilteredPendencias_(false));
+  }
+
+  function getSelectedPendenciasParaOrcamento_() {
+    sanitizeOrcamentoSelection_();
+    var map = {};
+    appState.allPendencias.forEach(function(item) {
+      map[item.id_pendencia] = item;
+    });
+    return (appState.selectedOrcamentoIds || []).map(function(id) {
+      return map[id];
+    }).filter(Boolean);
+  }
+
+  function updateOrcamentoToolbar_() {
+    var toolbar = document.getElementById('orcamentoToolbar');
+    var text = document.getElementById('orcamentoToolbarText');
+    var master = document.getElementById('listaSelecionarTodos');
+    if (!toolbar || !text) {
+      return;
+    }
+    sanitizeOrcamentoSelection_();
+    var selectedCount = (appState.selectedOrcamentoIds || []).length;
+    toolbar.classList.toggle('hidden', selectedCount === 0 && getFilteredPendencias_(false).filter(isPendenciaOrcavel_).length === 0);
+    if (selectedCount) {
+      text.textContent = selectedCount + ' pendencia' + (selectedCount > 1 ? 's' : '') + ' selecionada' + (selectedCount > 1 ? 's' : '') + ' para o orcamento.';
+    } else {
+      text.textContent = 'Marque uma ou mais pendencias para gerar um orcamento em lote.';
+    }
+    if (master) {
+      var visiveis = getFilteredPendencias_(false).filter(isPendenciaOrcavel_);
+      var visiveisSelecionadas = visiveis.filter(function(item) {
+        return isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
+      }).length;
+      master.checked = !!visiveis.length && visiveisSelecionadas === visiveis.length;
+      master.indeterminate = visiveisSelecionadas > 0 && visiveisSelecionadas < visiveis.length;
+    }
+  }
+
   function renderPendencias(items) {
     var cardsEl = document.getElementById('listaPendenciasCards');
     var tableEl = document.getElementById('listaPendenciasTabela');
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada.</div>';
-      tableEl.innerHTML = '<tr><td colspan="12" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      tableEl.innerHTML = '<tr><td colspan="13" class="empty-state">Nenhuma pendencia ativa encontrada.</td></tr>';
+      updateOrcamentoToolbar_();
       return;
     }
 
     cardsEl.innerHTML = items.map(function(item) {
-      return '<article class="pendencia-card">' +
-        '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
+      var orcavel = isPendenciaOrcavel_(item);
+      var selecionada = isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
+      var orcamentoInfo = safeTrim_(item.id_orcamento_ativo)
+        ? '<div class="muted-text">Orcamento ativo: ' + escapeHtml(item.id_orcamento_ativo) + ' | ' + escapeHtml(formatCurrencyBrClient_(item.valor_orcamento_ativo)) + '</div>'
+        : '';
+      return '<article class="pendencia-card' + (selecionada ? ' pendencia-card-selected' : '') + '">' +
+        '<div class="pendencia-card-head">' +
+          '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
+          '<label class="orcamento-select-wrap' + (orcavel ? '' : ' disabled') + '">' +
+            '<input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + (orcavel ? '' : 'disabled ') + 'onchange="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\', this.checked)">' +
+            '<span>Orcar</span>' +
+          '</label>' +
+        '</div>' +
         '<div class="card-meta">' +
           renderTag('status', item.status) +
           renderTag('prioridade', item.prioridade) +
+          (safeTrim_(item.id_orcamento_ativo) ? '<span class="tag status-aguardando">Orcado</span>' : '') +
           (item.esta_vencida ? '<span class="tag prioridade-critica">Vencida</span>' : '') +
         '</div>' +
         '<div class="card-kv-grid">' +
@@ -2448,6 +2572,7 @@
           cardKv_('Executor', renderExecutorSelect_(item)) +
           cardKv_('Descricao', '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">' + uiLabel_('Descricao', 'Desc.') + '</button><button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">' + uiLabel_('Observacao', 'Obs.') + '</button>') +
         '</div>' +
+        orcamentoInfo +
         (item._syncStatus ? '<div class="muted-text">Sync: pendente</div>' : '') +
         '<div class="actions-row">' +
           '<button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button>' +
@@ -2461,7 +2586,10 @@
     }).join('');
 
     tableEl.innerHTML = items.map(function(item) {
-      return '<tr>' +
+      var orcavel = isPendenciaOrcavel_(item);
+      var selecionada = isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
+      return '<tr class="' + (selecionada ? 'row-selected' : '') + '">' +
+        '<td><input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + (orcavel ? '' : 'disabled ') + 'onchange="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\', this.checked)"></td>' +
         '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button></td>' +
         '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
@@ -2482,6 +2610,7 @@
         '<td><button class="icon-button" onclick="excluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">&#128465;</button></td>' +
       '</tr>';
     }).join('');
+    updateOrcamentoToolbar_();
   }
 
   function renderHistoricoGeral(items) {
@@ -2541,6 +2670,105 @@
     }
   }
 
+  function abrirOrcamentoModal() {
+    var selecionadas = getSelectedPendenciasParaOrcamento_();
+    if (!selecionadas.length) {
+      mostrarMensagemErro('Selecione ao menos uma pendencia para gerar o orcamento.');
+      return;
+    }
+    var prestadores = uniqueSorted_(selecionadas.map(function(item) {
+      return item.executor || '';
+    }).filter(Boolean));
+    var resumo = selecionadas.slice(0, 6).map(function(item) {
+      return escapeHtml(item.id_pendencia + ' - ' + (item.loja || '-') + ' / ' + (item.setor || '-'));
+    }).join('<br>');
+    document.getElementById('orcamentoResumoSelecao').innerHTML =
+      '<strong>' + selecionadas.length + ' pendencia' + (selecionadas.length > 1 ? 's' : '') + ' selecionada' + (selecionadas.length > 1 ? 's' : '') + '</strong><br>' +
+      resumo + (selecionadas.length > 6 ? '<br>...' : '');
+    document.getElementById('orcamentoData').value = toInputDate_(new Date());
+    document.getElementById('orcamentoValor').value = '';
+    document.getElementById('orcamentoObservacao').value = '';
+    document.getElementById('orcamentoPrestador').value = prestadores.length === 1 ? prestadores[0] : '';
+    document.getElementById('orcamentoModal').classList.remove('hidden');
+  }
+
+  function fecharOrcamentoModal() {
+    document.getElementById('orcamentoModal').classList.add('hidden');
+  }
+
+  function confirmarOrcamentoPendencias() {
+    if (!appState.connection.online) {
+      mostrarMensagemErro('A criacao do orcamento precisa de internet.');
+      return;
+    }
+    var selecionadas = getSelectedPendenciasParaOrcamento_();
+    if (!selecionadas.length) {
+      mostrarMensagemErro('Selecione ao menos uma pendencia para gerar o orcamento.');
+      return;
+    }
+    var payload = {
+      pendenciaIds: selecionadas.map(function(item) { return item.id_pendencia; }),
+      prestador: getElementValue_('orcamentoPrestador'),
+      data_orcamento: getElementValue_('orcamentoData'),
+      valor_total: getElementValue_('orcamentoValor'),
+      observacao: getElementValue_('orcamentoObservacao')
+    };
+    if (!payload.prestador) {
+      mostrarMensagemErro('Selecione o prestador do orcamento.');
+      return;
+    }
+    if (!payload.data_orcamento) {
+      mostrarMensagemErro('Informe a data do orcamento.');
+      return;
+    }
+    if (!isFinite(parseCurrencyValueClient_(payload.valor_total)) || parseCurrencyValueClient_(payload.valor_total) <= 0) {
+      mostrarMensagemErro('Informe um valor total valido para o orcamento.');
+      return;
+    }
+
+    mostrarLoading();
+    serverCall_('criarOrcamentoPendencias', [payload])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        fecharOrcamentoModal();
+        limparSelecaoOrcamento();
+        var pdfPayload = response.data && response.data.pdf;
+        var message = response.message || 'Orcamento salvo com sucesso.';
+        carregarEstadoServidor_()
+          .catch(function() {})
+          .then(function() {
+            mostrarMensagemSucesso(message);
+            if (pdfPayload) {
+              abrirPdfOrcamento_(pdfPayload);
+            }
+          });
+      })
+      .catch(handleFailure);
+  }
+
+  function abrirPdfOrcamento_(payload) {
+    if (!payload || !(payload.openUrl || payload.url || payload.downloadUrl)) {
+      throw new Error('Arquivo PDF do orcamento invalido.');
+    }
+    var url = payload.openUrl || payload.url || payload.downloadUrl;
+    if (hasNativeBridgeMethod_('openExternalDocument')) {
+      getNativeBridge_().openExternalDocument(url, 'application/pdf', payload.fileName || 'orcamento.pdf');
+      return;
+    }
+    var anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener';
+    anchor.download = payload.fileName || 'orcamento.pdf';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  }
+
   function renderDetalhesPendencia(item) {
     if (!item) {
       document.getElementById('detalhesPendencia').innerHTML = '<div class="empty-state">Pendencia nao encontrada.</div>';
@@ -2573,6 +2801,7 @@
             { label: 'Previsao', value: formatDateBr(item.previsao_entrega) || '-' },
             { label: 'Conclusao', value: joinDateAndTime_(item.data_conclusao, item.hora_conclusao) }
           ])) +
+          detailsRow_('Orcamento ativo', renderOrcamentoAtivoInfo_(item)) +
           detailsRow_('Textos', groupedDetail_([
             { label: 'Descricao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' },
             { label: 'Observacao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' }
@@ -2587,6 +2816,40 @@
       '</table>' +
     '</div>';
     document.getElementById('detalhesPendencia').innerHTML = html;
+  }
+
+  function renderOrcamentoAtivoInfo_(item) {
+    if (!safeTrim_(item.id_orcamento_ativo)) {
+      return '<span class="muted-text">Sem orcamento vinculado.</span>';
+    }
+    return groupedDetail_([
+      { label: 'ID', value: item.id_orcamento_ativo || '-' },
+      { label: 'Prestador', value: item.prestador_orcamento_ativo || '-' },
+      { label: 'Data', value: formatDateBr(item.data_orcamento_ativo) || '-' },
+      { label: 'Valor', value: formatCurrencyBrClient_(item.valor_orcamento_ativo) }
+    ]) + '<div class="actions-row details-inline-actions"><button class="danger-button compact-button" onclick="abrirPdfOrcamentoExistente(\'' + escapeJs(item.id_orcamento_ativo) + '\')">PDF orcamento</button></div>';
+  }
+
+  function abrirPdfOrcamentoExistente(idOrcamento) {
+    if (!idOrcamento) {
+      mostrarMensagemErro('Orcamento nao encontrado.');
+      return;
+    }
+    if (!appState.connection.online) {
+      mostrarMensagemErro('A abertura do PDF do orcamento precisa de internet.');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('gerarPdfOrcamento', [idOrcamento])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        abrirPdfOrcamento_(response.data);
+      })
+      .catch(handleFailure);
   }
 
   function cardKv_(label, valueHtml) {
@@ -3230,6 +3493,26 @@
     iniciarDitado(targetId);
   }
 
+  function focarCampoComTecladoNativo_(targetId) {
+    var field = document.getElementById(targetId);
+    if (!field) {
+      return false;
+    }
+    try {
+      field.focus();
+      var end = (field.value || '').length;
+      if (typeof field.setSelectionRange === 'function') {
+        field.setSelectionRange(end, end);
+      }
+      if (typeof field.click === 'function') {
+        field.click();
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
   function iniciarDitado(targetId) {
     if (hasNativeBridgeMethod_('startVoiceSession')) {
       iniciarDitadoNativo_(targetId);
@@ -3237,10 +3520,18 @@
     }
     var Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
+      if (focarCampoComTecladoNativo_(targetId)) {
+        mostrarMensagemSucesso('Use o microfone do teclado nativo do dispositivo.');
+        return;
+      }
       mostrarMensagemErro('Ditado por voz nao suportado neste navegador.');
       return;
     }
     if (!appState.connection.online) {
+      if (focarCampoComTecladoNativo_(targetId)) {
+        mostrarMensagemSucesso('Offline: use o microfone do teclado nativo do dispositivo.');
+        return;
+      }
       mostrarMensagemErro('Ditado por voz offline nao esta disponivel neste navegador. Use a S Pen ou reconecte a internet.');
       return;
     }
@@ -4005,6 +4296,40 @@
 
   function safeTrim_(value) {
     return (value || '').toString().trim();
+  }
+
+  function parseCurrencyValueClient_(value) {
+    if (typeof value === 'number') {
+      return value;
+    }
+    var text = safeTrim_(value);
+    if (!text) {
+      return NaN;
+    }
+    text = text.replace(/[R$\s]/g, '');
+    if (text.indexOf(',') > -1 && text.indexOf('.') > -1) {
+      if (text.lastIndexOf(',') > text.lastIndexOf('.')) {
+        text = text.replace(/\./g, '').replace(',', '.');
+      } else {
+        text = text.replace(/,/g, '');
+      }
+    } else if (text.indexOf(',') > -1) {
+      text = text.replace(/\./g, '').replace(',', '.');
+    } else {
+      text = text.replace(/,/g, '');
+    }
+    return Number(text);
+  }
+
+  function formatCurrencyBrClient_(value) {
+    var number = parseCurrencyValueClient_(value);
+    if (!isFinite(number)) {
+      number = 0;
+    }
+    return number.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
   }
 
   function uniqueSorted_(values) {
