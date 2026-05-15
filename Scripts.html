@@ -454,6 +454,7 @@
         appState.pendingQueue = cached.pendingQueue || [];
         appState.tempIdMap = cached.tempIdMap || {};
         appState.formContext = cached.formContext || appState.formContext;
+          appState.selectedOrcamentoIds = cached.selectedOrcamentoIds || [];
           appState.dashboardChartMode = cached.dashboardChartMode || appState.dashboardChartMode;
           appState.currentSection = cached.currentSection || appState.currentSection;
           appState.navigationStack = cached.navigationStack || [];
@@ -479,6 +480,7 @@
           pendingQueue: appState.pendingQueue,
           tempIdMap: appState.tempIdMap,
           formContext: appState.formContext,
+          selectedOrcamentoIds: appState.selectedOrcamentoIds,
           dashboardChartMode: appState.dashboardChartMode,
           currentSection: appState.currentSection,
           navigationStack: appState.navigationStack,
@@ -2460,7 +2462,8 @@
       selected.splice(index, 1);
     }
     appState.selectedOrcamentoIds = selected;
-    updateOrcamentoToolbar_();
+    saveCache_();
+    renderPendencias(getFilteredPendencias_(false));
   }
 
   function toggleSelecaoPendenciasVisiveis(checked) {
@@ -2477,6 +2480,7 @@
       }
     });
     appState.selectedOrcamentoIds = Object.keys(map);
+    saveCache_();
     renderPendencias(getFilteredPendencias_(false));
   }
 
@@ -2484,20 +2488,14 @@
     appState.selectedOrcamentoIds = getFilteredPendencias_(false)
       .filter(isPendenciaOrcavel_)
       .map(function(item) { return item.id_pendencia; });
+    saveCache_();
     renderPendencias(getFilteredPendencias_(false));
   }
 
   function limparSelecaoOrcamento() {
     appState.selectedOrcamentoIds = [];
-    updateOrcamentoToolbar_();
-    var master = document.getElementById('listaSelecionarTodos');
-    if (master) {
-      master.checked = false;
-      master.indeterminate = false;
-    }
-    Array.prototype.forEach.call(document.querySelectorAll('.orcamento-select-input'), function(input) {
-      input.checked = false;
-    });
+    saveCache_();
+    renderPendencias(getFilteredPendencias_(false));
   }
 
   function getSelectedPendenciasParaOrcamento_() {
@@ -2552,7 +2550,7 @@
       var orcamentoInfo = safeTrim_(item.id_orcamento_ativo)
         ? '<div class="muted-text">Orcamento ativo: ' + escapeHtml(item.id_orcamento_ativo) + ' | ' + escapeHtml(formatCurrencyBrClient_(item.valor_orcamento_ativo)) + '</div>'
         : '';
-      return '<article class="pendencia-card">' +
+      return '<article class="pendencia-card' + (selecionada ? ' pendencia-card-selected' : '') + '">' +
         '<div class="pendencia-card-head">' +
           '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
           '<label class="orcamento-select-wrap' + (orcavel ? '' : ' disabled') + '">' +
@@ -2591,7 +2589,7 @@
     tableEl.innerHTML = items.map(function(item) {
       var orcavel = isPendenciaOrcavel_(item);
       var selecionada = isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
-      return '<tr>' +
+      return '<tr class="' + (selecionada ? 'row-selected' : '') + '">' +
         '<td><input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + (orcavel ? '' : 'disabled ') + 'onchange="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\', this.checked)"></td>' +
         '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button></td>' +
         '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +

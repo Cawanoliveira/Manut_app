@@ -827,6 +827,12 @@
     gap: 12px;
   }
 
+  .pendencia-card-selected {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), var(--shadow);
+    background: linear-gradient(180deg, #fffef9 0%, #ffffff 100%);
+  }
+
   .selection-toolbar {
     display: grid;
     gap: 12px;
@@ -837,6 +843,12 @@
   .selection-toolbar h3 {
     color: var(--primary-strong);
     font-size: 17px;
+  }
+
+  .table-select-head {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
   }
 
   .selection-toolbar-actions {
@@ -961,6 +973,10 @@
     text-transform: uppercase;
     font-size: 11px;
     text-align: center;
+  }
+
+  .desktop-table tr.row-selected td {
+    background: #fff8e8;
   }
 
   .listagem-table th:nth-child(1) { width: 5%; }

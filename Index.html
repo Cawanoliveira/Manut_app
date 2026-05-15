@@ -237,7 +237,12 @@
           <table class="desktop-table listagem-table">
             <thead>
               <tr>
-                <th><input id="listaSelecionarTodos" type="checkbox" onclick="toggleSelecaoPendenciasVisiveis(this.checked)"></th>
+                <th>
+                  <div class="table-select-head">
+                    <span>Sel.</span>
+                    <input id="listaSelecionarTodos" type="checkbox" onchange="toggleSelecaoPendenciasVisiveis(this.checked)">
+                  </div>
+                </th>
                 <th>OK</th>
                 <th>ID</th>
                 <th>Local</th>
