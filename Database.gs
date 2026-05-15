@@ -27,26 +27,110 @@ function criarAbasNecessarias() {
 
 function criarCabecalhos() {
   Object.keys(APP_CONFIG.HEADERS).forEach(function(sheetName) {
-    var sheet = getSheet_(sheetName);
-    var headers = APP_CONFIG.HEADERS[sheetName];
-    if (!sheet) {
+    sincronizarEstruturaAba_(sheetName);
+  });
+}
+
+function sincronizarEstruturaAba_(sheetName) {
+  var sheet = getSheet_(sheetName);
+  var headers = APP_CONFIG.HEADERS[sheetName];
+  if (!sheet || !headers || !headers.length) {
+    return;
+  }
+
+  ensureRows_(sheet, 2);
+
+  var currentLastColumn = Math.max(sheet.getLastColumn(), 1);
+  var currentLastRow = Math.max(sheet.getLastRow(), 1);
+  var currentHeaders = sheet.getRange(1, 1, 1, currentLastColumn).getValues()[0].map(function(value) {
+    return safeString_(value);
+  });
+  var hasAnyHeader = currentHeaders.some(function(header) {
+    return !!header;
+  });
+  var needsMigration = !hasAnyHeader || currentHeaders.length !== headers.length || headers.some(function(header, index) {
+    return currentHeaders[index] !== header;
+  });
+
+  if (sheet.getMaxColumns() < headers.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+  }
+
+  if (needsMigration) {
+    var migratedRows = [];
+    if (currentLastRow > 1 && hasAnyHeader) {
+      var currentValues = sheet.getRange(2, 1, currentLastRow - 1, currentLastColumn).getValues();
+      migratedRows = currentValues.map(function(row) {
+        var source = {};
+        currentHeaders.forEach(function(header, index) {
+          if (header) {
+            source[header] = row[index];
+          }
+        });
+        return headers.map(function(header) {
+          return source[header] !== undefined ? source[header] : '';
+        });
+      });
+    }
+
+    sheet.getRange(1, 1, Math.max(currentLastRow, 1), Math.max(currentLastColumn, headers.length)).clearContent();
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    if (migratedRows.length) {
+      sheet.getRange(2, 1, migratedRows.length, headers.length).setValues(migratedRows);
+    }
+  }
+
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#dbeafe');
+  sheet.autoResizeColumns(1, headers.length);
+
+  if (sheetName === APP_CONFIG.SHEETS.PENDENCIAS) {
+    corrigirColunasLegadasOrcamentoPendencias_(sheet);
+  }
+}
+
+function corrigirColunasLegadasOrcamentoPendencias_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) {
+    return;
+  }
+
+  var headers = APP_CONFIG.HEADERS[APP_CONFIG.SHEETS.PENDENCIAS];
+  var indexMap = getHeaderIndexMap_(APP_CONFIG.SHEETS.PENDENCIAS);
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues();
+  var changed = false;
+
+  values.forEach(function(row) {
+    var orcamentoId = row[indexMap.id_orcamento_ativo];
+    var prestadorOrcamento = row[indexMap.prestador_orcamento_ativo];
+    var ultimaAtualizacao = row[indexMap.ultima_atualizacao];
+    var atualizadoPor = row[indexMap.atualizado_por];
+
+    var hasRealBudget = /^ORC-/i.test(safeString_(orcamentoId));
+    if (hasRealBudget) {
       return;
     }
-    ensureRows_(sheet, 2);
-    var currentHeaders = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-    var needsUpdate = headers.some(function(header, index) {
-      return currentHeaders[index] !== header;
-    });
-    if (needsUpdate) {
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.setFrozenRows(1);
-      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#dbeafe');
-      if (sheet.getMaxColumns() < headers.length) {
-        sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
-      }
-      sheet.autoResizeColumns(1, headers.length);
+
+    var looksLegacyDate = orcamentoId instanceof Date || (!!safeString_(orcamentoId) && !!parseDateInput_(orcamentoId));
+    var looksLegacyUser = !!safeString_(prestadorOrcamento);
+    var ultimaVazia = !safeString_(ultimaAtualizacao);
+    var atualizadoVazio = !safeString_(atualizadoPor);
+
+    if (!looksLegacyDate || (!looksLegacyUser && !ultimaVazia)) {
+      return;
     }
+
+    row[indexMap.ultima_atualizacao] = orcamentoId;
+    row[indexMap.atualizado_por] = prestadorOrcamento;
+    row[indexMap.id_orcamento_ativo] = '';
+    row[indexMap.prestador_orcamento_ativo] = '';
+    row[indexMap.valor_orcamento_ativo] = '';
+    row[indexMap.data_orcamento_ativo] = '';
+    changed = true;
   });
+
+  if (changed) {
+    sheet.getRange(2, 1, values.length, headers.length).setValues(values);
+  }
 }
 
 function popularConfiguracoesIniciais_() {

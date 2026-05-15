@@ -1,4 +1,4 @@
-  var CACHE_KEY = 'manutencao_offline_cache_v2';
+  var CACHE_KEY = 'manutencao_offline_cache_v3';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -677,6 +677,7 @@
     preencherSelect('filtroStatus', combos.status, 'Todos os status', true);
     preencherSelect('filtroResponsavel', combos.responsaveis, 'Todos os responsaveis', true);
     preencherSelect('filtroExecutor', combos.prestadores, 'Todos os executores', true);
+    preencherSelect('filtroOrcamento', ['Sem orcamento', 'Com orcamento'], 'Todos', true);
     preencherSelect('filtroPrioridade', combos.prioridades, 'Todas as prioridades', true);
     preencherSelect('filtroTipo', combos.tipos, 'Todos os tipos', true);
 
@@ -925,6 +926,7 @@
       status: getElementValue_('filtroStatus'),
       responsavel: getElementValue_('filtroResponsavel'),
       executor: getElementValue_('filtroExecutor'),
+      orcamento: getElementValue_('filtroOrcamento'),
       prioridade: getElementValue_('filtroPrioridade'),
       tipo: getElementValue_('filtroTipo'),
       dataAberturaDe: getElementValue_('filtroDataAberturaDe'),
@@ -945,7 +947,7 @@
   }
 
   function limparFiltros() {
-    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroExecutor', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
+    ['filtroLoja', 'filtroSetor', 'filtroStatus', 'filtroResponsavel', 'filtroExecutor', 'filtroOrcamento', 'filtroPrioridade', 'filtroTipo', 'filtroDataAberturaDe', 'filtroDataAberturaAte', 'filtroPrevisaoDe', 'filtroPrevisaoAte']
       .forEach(function(id) {
         document.getElementById(id).value = '';
       });
@@ -3944,6 +3946,12 @@
         return false;
       }
       if (filtros.executor && normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
+        return false;
+      }
+      if (filtros.orcamento === 'Com orcamento' && !safeTrim_(item.id_orcamento_ativo)) {
+        return false;
+      }
+      if (filtros.orcamento === 'Sem orcamento' && !!safeTrim_(item.id_orcamento_ativo)) {
         return false;
       }
       if (filtros.prioridade && normalizeText_(item.prioridade) !== normalizeText_(filtros.prioridade)) {
