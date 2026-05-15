@@ -2449,16 +2449,22 @@
     return (appState.selectedOrcamentoIds || []).indexOf(id) > -1;
   }
 
-  function toggleSelecaoOrcamento(id, checked) {
+  function toggleSelecaoOrcamento(id) {
     if (!id) {
+      return;
+    }
+    var item = getLocalItemById_(id);
+    if (!isPendenciaOrcavel_(item)) {
+      mostrarMensagemErro('Esta pendencia ja possui um orcamento ativo.');
+      renderPendencias(getFilteredPendencias_(false));
       return;
     }
     sanitizeOrcamentoSelection_();
     var selected = appState.selectedOrcamentoIds || [];
     var index = selected.indexOf(id);
-    if (checked && index === -1) {
+    if (index === -1) {
       selected.push(id);
-    } else if (!checked && index > -1) {
+    } else {
       selected.splice(index, 1);
     }
     appState.selectedOrcamentoIds = selected;
@@ -2512,7 +2518,6 @@
   function updateOrcamentoToolbar_() {
     var toolbar = document.getElementById('orcamentoToolbar');
     var text = document.getElementById('orcamentoToolbarText');
-    var master = document.getElementById('listaSelecionarTodos');
     if (!toolbar || !text) {
       return;
     }
@@ -2523,14 +2528,6 @@
       text.textContent = selectedCount + ' pendencia' + (selectedCount > 1 ? 's' : '') + ' selecionada' + (selectedCount > 1 ? 's' : '') + ' para o orcamento.';
     } else {
       text.textContent = 'Marque uma ou mais pendencias para gerar um orcamento em lote.';
-    }
-    if (master) {
-      var visiveis = getFilteredPendencias_(false).filter(isPendenciaOrcavel_);
-      var visiveisSelecionadas = visiveis.filter(function(item) {
-        return isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
-      }).length;
-      master.checked = !!visiveis.length && visiveisSelecionadas === visiveis.length;
-      master.indeterminate = visiveisSelecionadas > 0 && visiveisSelecionadas < visiveis.length;
     }
   }
 
@@ -2554,7 +2551,7 @@
         '<div class="pendencia-card-head">' +
           '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
           '<label class="orcamento-select-wrap' + (orcavel ? '' : ' disabled') + '">' +
-            '<input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + (orcavel ? '' : 'disabled ') + 'onchange="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\', this.checked)">' +
+            '<input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + 'title="' + escapeHtml(orcavel ? 'Selecionar para orcamento' : 'Pendencia ja possui orcamento ativo') + '" onclick="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\')">' +
             '<span>Orcar</span>' +
           '</label>' +
         '</div>' +
@@ -2590,7 +2587,7 @@
       var orcavel = isPendenciaOrcavel_(item);
       var selecionada = isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
       return '<tr class="' + (selecionada ? 'row-selected' : '') + '">' +
-        '<td><input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + (orcavel ? '' : 'disabled ') + 'onchange="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\', this.checked)"></td>' +
+        '<td><input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + 'title="' + escapeHtml(orcavel ? 'Selecionar para orcamento' : 'Pendencia ja possui orcamento ativo') + '" onclick="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\')"></td>' +
         '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button></td>' +
         '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
