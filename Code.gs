@@ -17,6 +17,8 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   pingBridge: pingBridge,
   gerarCronogramaPdf: gerarCronogramaPdf,
   gerarCronogramaExcel: gerarCronogramaExcel,
+  criarOrcamentoPendencias: criarOrcamentoPendencias,
+  gerarPdfOrcamento: gerarPdfOrcamento,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
   criarTriggerLimpezaFotos: criarTriggerLimpezaFotos

@@ -6,6 +6,8 @@ var APP_CONFIG = {
     USUARIOS: 'USUARIOS',
     PRESTADORES: 'PRESTADORES',
     PENDENCIAS: 'PENDENCIAS',
+    ORCAMENTOS: 'ORCAMENTOS',
+    ORCAMENTO_ITENS: 'ORCAMENTO_ITENS',
     HISTORICO_STATUS: 'HISTORICO_STATUS',
     LOGS: 'LOGS',
     DASHBOARD_BASE: 'DASHBOARD_BASE'
@@ -38,8 +40,39 @@ var APP_CONFIG = {
       'id_arquivo_drive',
       'excluir_foto_em',
       'foto_excluida',
+      'id_orcamento_ativo',
+      'prestador_orcamento_ativo',
+      'valor_orcamento_ativo',
+      'data_orcamento_ativo',
       'ultima_atualizacao',
       'atualizado_por'
+    ],
+    ORCAMENTOS: [
+      'id_orcamento',
+      'data_orcamento',
+      'prestador',
+      'valor_total',
+      'quantidade_pendencias',
+      'observacao',
+      'status',
+      'pdf_file_id',
+      'pdf_file_url',
+      'data_criacao',
+      'criado_por'
+    ],
+    ORCAMENTO_ITENS: [
+      'id_orcamento_item',
+      'id_orcamento',
+      'id_pendencia',
+      'loja_snapshot',
+      'setor_snapshot',
+      'tipo_snapshot',
+      'prioridade_snapshot',
+      'previsao_snapshot',
+      'descricao_snapshot',
+      'responsavel_snapshot',
+      'status_snapshot',
+      'data_criacao'
     ],
     HISTORICO_STATUS: ['id_historico', 'id_pendencia', 'data', 'hora', 'status_anterior', 'status_novo', 'usuario', 'observacao'],
     LOGS: ['id_log', 'data', 'hora', 'tipo', 'mensagem', 'detalhe', 'usuario'],
@@ -209,6 +242,16 @@ function formatDateTime_(dateValue) {
     return '';
   }
   return Utilities.formatDate(date, getTimezone_(), 'dd/MM/yyyy HH:mm:ss');
+}
+
+function formatCurrencyBr_(value) {
+  var number = Number(value || 0);
+  if (!isFinite(number)) {
+    number = 0;
+  }
+  var fixed = number.toFixed(2).split('.');
+  var integerPart = fixed[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return 'R$ ' + integerPart + ',' + fixed[1];
 }
 
 function parseDateInput_(dateValue) {

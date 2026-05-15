@@ -221,11 +221,23 @@
             <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
           </div>
         </div>
+        <div id="orcamentoToolbar" class="panel selection-toolbar hidden">
+          <div>
+            <h3>Orcamento em lote</h3>
+            <p id="orcamentoToolbarText" class="muted-text">Nenhuma pendencia selecionada.</p>
+          </div>
+          <div class="actions-row selection-toolbar-actions">
+            <button class="ghost-button" type="button" onclick="selecionarPendenciasFiltradas()">Selecionar filtradas</button>
+            <button class="ghost-button" type="button" onclick="limparSelecaoOrcamento()">Limpar</button>
+            <button class="primary-button" type="button" onclick="abrirOrcamentoModal()">Gerar orcamento</button>
+          </div>
+        </div>
         <div id="listaPendenciasCards" class="list-cards"></div>
         <div class="table-wrapper">
           <table class="desktop-table listagem-table">
             <thead>
               <tr>
+                <th><input id="listaSelecionarTodos" type="checkbox" onclick="toggleSelecaoPendenciasVisiveis(this.checked)"></th>
                 <th>OK</th>
                 <th>ID</th>
                 <th>Local</th>
@@ -549,6 +561,42 @@
         <div class="actions-row">
           <button class="ghost-button" type="button" onclick="fecharConclusaoModal()">Nao</button>
           <button class="success-button" type="button" onclick="confirmarConclusaoModal()">Sim</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="orcamentoModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="fecharOrcamentoModal()"></div>
+      <div class="modal-card">
+        <div class="drawer-header">
+          <div>
+            <h3>Orcamento das pendencias</h3>
+            <p class="modal-description">Defina o prestador e o valor total unico para as pendencias selecionadas.</p>
+          </div>
+          <button class="ghost-button compact-button" type="button" onclick="fecharOrcamentoModal()">Fechar</button>
+        </div>
+        <div id="orcamentoResumoSelecao" class="panel-note">Nenhuma pendencia selecionada.</div>
+        <div class="form-grid">
+          <label>
+            <span>Prestador *</span>
+            <select id="orcamentoPrestador"></select>
+          </label>
+          <label>
+            <span>Data do orcamento *</span>
+            <input id="orcamentoData" type="date">
+          </label>
+          <label class="full-width">
+            <span>Valor total do orcamento *</span>
+            <input id="orcamentoValor" type="text" inputmode="decimal" placeholder="0,00">
+          </label>
+          <label class="full-width">
+            <span>Observacao do orcamento</span>
+            <textarea id="orcamentoObservacao" rows="4" placeholder="Observacoes gerais para este lote."></textarea>
+          </label>
+        </div>
+        <div class="actions-row">
+          <button class="ghost-button" type="button" onclick="fecharOrcamentoModal()">Cancelar</button>
+          <button class="primary-button" type="button" onclick="confirmarOrcamentoPendencias()">Salvar e gerar PDF</button>
         </div>
       </div>
     </div>
