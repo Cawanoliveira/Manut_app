@@ -2448,6 +2448,17 @@
     return (appState.selectedOrcamentoIds || []).indexOf(id) > -1;
   }
 
+  function renderControleOrcamento_(item, compact) {
+    var orcavel = isPendenciaOrcavel_(item);
+    var selecionada = isPendenciaSelecionadaParaOrcamento_(item && item.id_pendencia);
+    if (!orcavel) {
+      return compact
+        ? '<span class="orcamento-status-chip" title="Pendencia ja possui orcamento ativo">Orcado</span>'
+        : '<span class="orcamento-status-chip" title="Pendencia ja possui orcamento ativo">Orcado</span>';
+    }
+    return '<input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + 'title="Selecionar para orcamento" onclick="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\')">';
+  }
+
   function toggleSelecaoOrcamento(id) {
     if (!id) {
       return;
@@ -2550,8 +2561,8 @@
         '<div class="pendencia-card-head">' +
           '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
           '<label class="orcamento-select-wrap' + (orcavel ? '' : ' disabled') + '">' +
-            '<input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + 'title="' + escapeHtml(orcavel ? 'Selecionar para orcamento' : 'Pendencia ja possui orcamento ativo') + '" onclick="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\')">' +
-            '<span>Orcar</span>' +
+            renderControleOrcamento_(item, false) +
+            '<span>' + (orcavel ? 'Orcar' : 'Orcado') + '</span>' +
           '</label>' +
         '</div>' +
         '<div class="card-meta">' +
@@ -2586,7 +2597,7 @@
       var orcavel = isPendenciaOrcavel_(item);
       var selecionada = isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
       return '<tr class="' + (selecionada ? 'row-selected' : '') + '">' +
-        '<td><input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + 'title="' + escapeHtml(orcavel ? 'Selecionar para orcamento' : 'Pendencia ja possui orcamento ativo') + '" onclick="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\')"></td>' +
+        '<td>' + renderControleOrcamento_(item, true) + '</td>' +
         '<td><button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">OK</button></td>' +
         '<td><button class="id-button compact-button" onclick="mostrarIdPendencia(\'' + escapeJs(item.id_pendencia) + '\')">ID</button></td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
