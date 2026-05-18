@@ -206,8 +206,9 @@ function buildCronogramaPdfData_(filtros, items) {
     vencidos: String(summary.vencidos),
     totalRegistros: String(summary.total),
     logoUrl: buildCronogramaLogoDataUrl_(),
-    pendencias: (items || []).map(function(item) {
+    pendencias: (items || []).map(function(item, index) {
       return {
+        ordem: index + 1,
         local: safeString_(item.loja) || '-',
         setor: safeString_(item.setor) || '-',
         status: safeString_(item.status_cronograma) || '-',
@@ -289,9 +290,15 @@ function montarHtmlCronogramaPrestador_(dados) {
     '.meta-value{height:46px;background:#fff;color:#000;font-size:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}' +
     '.meta-card:first-child .meta-value{border-right:none;font-size:24px;font-weight:700;text-align:center;padding:0 12px;}' +
     '.blocks{position:absolute;left:1cm;right:1cm;top:214px;bottom:92px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;}' +
-    '.block{border:1px solid var(--blockline);background:#fff;display:grid;grid-template-rows:30px 48px 22px 1fr 22px 1fr;min-height:0;}' +
+    '.block{border:1px solid var(--blockline);background:#fff;display:grid;grid-template-rows:26px 30px 48px 22px 1fr 22px 1fr;min-height:0;}' +
     '.block.empty{opacity:.28;}' +
     '.block.overdue{border-color:var(--overdue);}' +
+    '.block.tone-soft{background:#f3f4f6;}' +
+    '.block.tone-soft .values div{background:#f3f4f6;}' +
+    '.block.tone-soft .text-label{background:#eef0f3;}' +
+    '.block.tone-soft .text-box{background:#f3f4f6;}' +
+    '.block-index{display:flex;align-items:center;justify-content:flex-start;padding:0 10px;background:#fff;color:#374151;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);}' +
+    '.block.tone-soft .block-index{background:#eef0f3;}' +
     '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 0.9fr 0.95fr;}' +
     '.head{height:30px;background:#000;border-bottom:1px solid var(--line);}' +
     '.head div{color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:30px;border-right:1px solid var(--line);}' +
@@ -358,11 +365,15 @@ function montarBlocoCronogramaPrestador_(item, extraClass) {
   if (extraClass) {
     classes.push(extraClass);
   }
+  if (item && item.ordem && item.ordem % 2 === 1) {
+    classes.push('tone-soft');
+  }
   if (normalizeCompare_(item.status) === 'vencido') {
     classes.push('overdue');
     statusHtml = '<span class="status-text overdue">' + escapeHtml_(item.status) + '</span>';
   }
   return '<div class="' + classes.join(' ') + '">' +
+    '<div class="block-index">Pendencia ' + (item.ordem ? padCronogramaNumber_(item.ordem, 2) : '--') + '</div>' +
     '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>INICIO</div><div>TERMINO</div></div>' +
     '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + statusHtml + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
     '<div class="text-label">Descricao:</div>' +
@@ -374,6 +385,7 @@ function montarBlocoCronogramaPrestador_(item, extraClass) {
 
 function createCronogramaBlankItem_() {
   return {
+    ordem: '',
     local: '',
     setor: '',
     status: '',
@@ -382,6 +394,14 @@ function createCronogramaBlankItem_() {
     descricao: '',
     observacao: ''
   };
+}
+
+function padCronogramaNumber_(value, size) {
+  var text = safeString_(value || '0');
+  while (text.length < size) {
+    text = '0' + text;
+  }
+  return text;
 }
 
 function nl2brHtml_(value) {

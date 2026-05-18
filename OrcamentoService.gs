@@ -26,7 +26,6 @@ function criarOrcamentoPendencias(payload) {
 
     var orcamentoId = gerarId('ORC');
     var now = now_();
-    var sheetPendencias = getSheet_(APP_CONFIG.SHEETS.PENDENCIAS);
     var itemSnapshots = rows.map(function(entry) {
       var record = entry.record;
       return {
@@ -166,13 +165,23 @@ function normalizeOrcamentoPayload_(payload) {
   var cleanIds = [];
   var seen = {};
   var valorPorPendencia = {};
+  var itensComValor = 0;
 
   itens.forEach(function(item) {
     var cleanId = safeString_(item && item.id_pendencia);
     if (cleanId && !seen[cleanId]) {
       seen[cleanId] = true;
       cleanIds.push(cleanId);
-      valorPorPendencia[cleanId] = parseCurrencyValue_(item && item.valor);
+      var rawValor = safeString_(item && item.valor);
+      if (!rawValor) {
+        valorPorPendencia[cleanId] = '';
+        return;
+      }
+      var parsedValor = parseCurrencyValue_(rawValor);
+      valorPorPendencia[cleanId] = parsedValor;
+      if (isFinite(parsedValor) && parsedValor >= 0) {
+        itensComValor += 1;
+      }
     }
   });
 
@@ -186,11 +195,14 @@ function normalizeOrcamentoPayload_(payload) {
 
   var prestador = sanitizeText_(payload.prestador);
   var dataOrcamento = payload.data_orcamento ? formatDateForInput_(parseDateInput_(payload.data_orcamento)) : formatDateForInput_(now_());
+  var valorTotalManualRaw = safeString_(payload.valor_total);
+  var valorTotalManual = valorTotalManualRaw ? parseCurrencyValue_(valorTotalManualRaw) : NaN;
   var observacao = sanitizeText_(payload.observacao);
-  var valorTotal = cleanIds.reduce(function(total, id) {
+  var somaServicos = cleanIds.reduce(function(total, id) {
     var valor = valorPorPendencia[id];
     return total + (isFinite(valor) ? valor : 0);
   }, 0);
+  var valorTotal = isFinite(valorTotalManual) ? valorTotalManual : somaServicos;
 
   if (!cleanIds.length) {
     return { valid: false, message: 'Selecione ao menos uma pendencia para o orcamento.' };
@@ -202,13 +214,16 @@ function normalizeOrcamentoPayload_(payload) {
     return { valid: false, message: 'Informe a data do orcamento.' };
   }
   var itensInvalidos = cleanIds.filter(function(id) {
-    return !isFinite(valorPorPendencia[id]) || valorPorPendencia[id] <= 0;
+    return safeString_(valorPorPendencia[id]) && (!isFinite(valorPorPendencia[id]) || valorPorPendencia[id] < 0);
   });
   if (itensInvalidos.length) {
     return { valid: false, message: 'Informe um valor valido para cada servico selecionado.' };
   }
-  if (!isFinite(valorTotal) || valorTotal <= 0) {
-    return { valid: false, message: 'Informe ao menos um valor valido para o orcamento.' };
+  if (valorTotalManualRaw && (!isFinite(valorTotalManual) || valorTotalManual < 0)) {
+    return { valid: false, message: 'Informe um valor total valido para o orcamento.' };
+  }
+  if (!isFinite(valorTotal) || valorTotal < 0) {
+    return { valid: false, message: 'Nao foi possivel calcular o valor total do orcamento.' };
   }
 
   return {
@@ -217,6 +232,9 @@ function normalizeOrcamentoPayload_(payload) {
     prestador: prestador,
     data_orcamento: dataOrcamento,
     valor_total: valorTotal,
+    soma_servicos: somaServicos,
+    valor_total_manual_informado: !!valorTotalManualRaw,
+    itens_com_valor: itensComValor,
     valorPorPendencia: valorPorPendencia,
     observacao: observacao
   };
@@ -342,15 +360,16 @@ function buildOrcamentoPdfData_(orcamento, items) {
     valorTotal: formatCurrencyBr_(orcamento.valor_total),
     observacao: safeString_(orcamento.observacao) || '',
     logoUrl: buildCronogramaLogoDataUrl_(),
-    itens: (items || []).map(function(item) {
+    itens: (items || []).map(function(item, index) {
       return {
+        ordem: index + 1,
         id: safeString_(item.id_pendencia) || '-',
         loja: safeString_(item.loja) || '-',
         setor: safeString_(item.setor) || '-',
         tipo: safeString_(item.tipo) || '-',
         prioridade: safeString_(item.prioridade) || '-',
         previsao: safeString_(item.previsao_entrega) || '-',
-        valor: formatCurrencyBr_(item.valor),
+        valor: isFinite(Number(item.valor)) ? formatCurrencyBr_(item.valor) : '-',
         descricao: safeString_(item.descricao) || '-'
       };
     })
@@ -365,11 +384,20 @@ function buildOrcamentoFileName_(orcamento) {
   ].join(' - ')) + '.pdf';
 }
 
+function padNumber_(value, size) {
+  var text = safeString_(value || '0');
+  while (text.length < size) {
+    text = '0' + text;
+  }
+  return text;
+}
+
 function montarHtmlOrcamentoPrestador_(dados) {
-  var grupos = (dados.itens || []).map(function(item) {
-    return '<tbody class="item-group">' +
+  var grupos = (dados.itens || []).map(function(item, index) {
+    var toneClass = index % 2 === 0 ? 'tone-soft' : 'tone-light';
+    return '<tbody class="item-group ' + toneClass + '">' +
       '<tr class="item-main-row">' +
-        '<td>' + escapeHtml_(item.loja) + '</td>' +
+        '<td><div class="item-number">Servico ' + padNumber_(item.ordem, 2) + '</div><div>' + escapeHtml_(item.loja) + '</div></td>' +
         '<td>' + escapeHtml_(item.setor) + '</td>' +
         '<td>' + escapeHtml_(item.tipo) + '</td>' +
         '<td>' + escapeHtml_(item.prioridade) + '</td>' +
@@ -413,8 +441,13 @@ function montarHtmlOrcamentoPrestador_(dados) {
     'tbody.item-group td{border-top:1px solid var(--line);border-right:1px solid var(--line);padding:9px 8px;font-size:11px;line-height:1.35;vertical-align:top;text-align:center;word-break:break-word;background:#fff;}' +
     'tbody.item-group td:last-child{border-right:none;}' +
     'tbody.item-group:first-of-type .item-main-row td{border-top:none;}' +
+    'tbody.item-group + tbody.item-group .item-main-row td{border-top:12px solid #fff;}' +
+    'tbody.item-group.tone-soft td{background:#f3f4f6;}' +
+    'tbody.item-group.tone-soft .item-desc-row td{background:#eef0f3;}' +
+    'tbody.item-group.tone-light td{background:#fff;}' +
     '.item-main-row td{font-weight:700;color:var(--dark);}' +
-    '.item-desc-row td{background:var(--soft);padding:10px 12px 14px;text-align:left;border-top:none;}' +
+    '.item-desc-row td{padding:10px 12px 16px;text-align:left;border-top:none;}' +
+    '.item-number{display:inline-flex;align-items:center;justify-content:center;min-width:72px;margin:0 auto 6px;padding:3px 8px;border-radius:999px;background:rgba(17,24,39,.08);color:#374151;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;}' +
     '.descricao-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}' +
     '.descricao-value{font-size:12px;line-height:1.55;color:#111;white-space:pre-wrap;}' +
     '.valor-cell{white-space:nowrap;}' +

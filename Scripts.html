@@ -2536,7 +2536,7 @@
     }
     sanitizeOrcamentoSelection_();
     var selectedCount = (appState.selectedOrcamentoIds || []).length;
-    toolbar.classList.toggle('hidden', selectedCount === 0 && getFilteredPendencias_(false).filter(isPendenciaOrcavel_).length === 0);
+    toolbar.classList.toggle('hidden', selectedCount === 0);
     if (selectedCount) {
       text.textContent = selectedCount + ' pendencia' + (selectedCount > 1 ? 's' : '') + ' selecionada' + (selectedCount > 1 ? 's' : '') + ' para o orcamento.';
     } else {
@@ -2558,7 +2558,7 @@
       var orcavel = isPendenciaOrcavel_(item);
       var selecionada = isPendenciaSelecionadaParaOrcamento_(item.id_pendencia);
       var orcamentoInfo = safeTrim_(item.id_orcamento_ativo)
-        ? '<div class="muted-text">Orcamento ativo: ' + escapeHtml(item.id_orcamento_ativo) + ' | ' + escapeHtml(formatCurrencyBrClient_(item.valor_orcamento_ativo)) + '</div>'
+        ? '<div class="muted-text">Orcamento ativo: ' + escapeHtml(item.id_orcamento_ativo) + ' | ' + escapeHtml(renderOrcamentoValorResumo_(item.valor_orcamento_ativo)) + '</div>'
         : '';
       return '<article class="pendencia-card' + (selecionada ? ' pendencia-card-selected' : '') + '">' +
         '<div class="pendencia-card-head">' +
@@ -2696,8 +2696,9 @@
     document.getElementById('orcamentoResumoSelecao').innerHTML =
       '<strong>' + selecionadas.length + ' pendencia' + (selecionadas.length > 1 ? 's' : '') + ' selecionada' + (selecionadas.length > 1 ? 's' : '') + '</strong><br>' +
       resumo + (selecionadas.length > 6 ? '<br>...' : '') +
-      '<br><span class="muted-text">O total final sera calculado automaticamente pela soma dos valores de cada servico.</span>';
+      '<br><span class="muted-text">A soma dos servicos aparece automaticamente, mas o valor total do orcamento pode ser ajustado manualmente.</span>';
     document.getElementById('orcamentoData').value = toInputDate_(new Date());
+    document.getElementById('orcamentoValor').value = '';
     document.getElementById('orcamentoObservacao').value = '';
     document.getElementById('orcamentoPrestador').value = prestadores.length === 1 ? prestadores[0] : '';
     preencherItensOrcamentoModal_(selecionadas);
@@ -2741,8 +2742,18 @@
       return;
     }
     var valor = parseCurrencyValueClient_(input.value);
-    input.value = isFinite(valor) && valor > 0 ? formatCurrencyBrClient_(valor).replace(/^R\$\s?/, '') : '';
+    input.value = isFinite(valor) && valor >= 0 ? formatCurrencyBrClient_(valor).replace(/^R\$\s?/, '') : '';
     atualizarTotalOrcamentoModal();
+  }
+
+  function formatarValorOrcamentoTotalInput(input) {
+    if (!input) {
+      return;
+    }
+    var valor = parseCurrencyValueClient_(input.value);
+    input.value = safeTrim_(input.value) && isFinite(valor) && valor >= 0
+      ? formatCurrencyBrClient_(valor).replace(/^R\$\s?/, '')
+      : '';
   }
 
   function atualizarTotalOrcamentoModal() {
@@ -2781,6 +2792,7 @@
       prestador: getElementValue_('orcamentoPrestador'),
       data_orcamento: getElementValue_('orcamentoData'),
       observacao: getElementValue_('orcamentoObservacao'),
+      valor_total: getElementValue_('orcamentoValor'),
       itens: coletarItensOrcamentoFormulario_()
     };
     if (!payload.prestador) {
@@ -2792,12 +2804,22 @@
       return;
     }
     var itensInvalidos = payload.itens.filter(function(item) {
+      if (!safeTrim_(item.valor)) {
+        return false;
+      }
       var valor = parseCurrencyValueClient_(item.valor);
-      return !item.id_pendencia || !isFinite(valor) || valor <= 0;
+      return !item.id_pendencia || !isFinite(valor) || valor < 0;
     });
     if (itensInvalidos.length) {
       mostrarMensagemErro('Informe um valor valido para cada servico selecionado.');
       return;
+    }
+    if (safeTrim_(payload.valor_total)) {
+      var valorTotal = parseCurrencyValueClient_(payload.valor_total);
+      if (!isFinite(valorTotal) || valorTotal < 0) {
+        mostrarMensagemErro('Informe um valor total valido para o orcamento.');
+        return;
+      }
     }
 
     mostrarLoading();
@@ -2900,8 +2922,12 @@
       { label: 'ID', value: item.id_orcamento_ativo || '-' },
       { label: 'Prestador', value: item.prestador_orcamento_ativo || '-' },
       { label: 'Data', value: formatDateBr(item.data_orcamento_ativo) || '-' },
-      { label: 'Valor', value: formatCurrencyBrClient_(item.valor_orcamento_ativo) }
+      { label: 'Valor', value: renderOrcamentoValorResumo_(item.valor_orcamento_ativo) }
     ]) + '<div class="actions-row details-inline-actions"><button class="danger-button compact-button" onclick="abrirPdfOrcamentoExistente(\'' + escapeJs(item.id_orcamento_ativo) + '\')">PDF orcamento</button></div>';
+  }
+
+  function renderOrcamentoValorResumo_(value) {
+    return safeTrim_(value) ? formatCurrencyBrClient_(value) : '-';
   }
 
   function abrirPdfOrcamentoExistente(idOrcamento) {

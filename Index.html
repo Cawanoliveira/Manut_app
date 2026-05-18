@@ -601,12 +601,18 @@
         <div class="orcamento-editor-block">
           <div class="orcamento-editor-header">
             <strong>Servicos selecionados</strong>
-            <span>Informe um valor para cada pendencia.</span>
+            <span>Os valores por servico sao opcionais. O total pode ser ajustado manualmente.</span>
           </div>
           <div id="orcamentoItensEditor" class="orcamento-itens-editor"></div>
-          <div class="orcamento-total-preview">
-            <span>Total do orcamento</span>
-            <strong id="orcamentoValorTotalDisplay">R$ 0,00</strong>
+          <div class="orcamento-total-grid">
+            <label>
+              <span>Valor total do orcamento</span>
+              <input id="orcamentoValor" type="text" inputmode="decimal" placeholder="Se ficar em branco, usa a soma" onblur="formatarValorOrcamentoTotalInput(this)">
+            </label>
+            <div class="orcamento-total-preview">
+              <span>Soma dos servicos</span>
+              <strong id="orcamentoValorTotalDisplay">R$ 0,00</strong>
+            </div>
           </div>
         </div>
         <div class="actions-row">

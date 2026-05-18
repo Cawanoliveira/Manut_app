@@ -992,6 +992,11 @@
     font-weight: 700;
   }
 
+  .orcamento-total-grid {
+    display: grid;
+    gap: 12px;
+  }
+
   .orcamento-total-preview {
     display: flex;
     align-items: center;
@@ -1820,6 +1825,11 @@
 
     .orcamento-item-editor-main {
       grid-template-columns: minmax(0, 1fr) 180px;
+    }
+
+    .orcamento-total-grid {
+      grid-template-columns: minmax(0, 220px) minmax(0, 1fr);
+      align-items: end;
     }
 
     .sidebar-open .page-shell {
