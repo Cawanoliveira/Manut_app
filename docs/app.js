@@ -2454,9 +2454,7 @@
     var orcavel = isPendenciaOrcavel_(item);
     var selecionada = isPendenciaSelecionadaParaOrcamento_(item && item.id_pendencia);
     if (!orcavel) {
-      return compact
-        ? '<span class="orcamento-status-chip" title="Pendencia ja possui orcamento ativo">Orcado</span>'
-        : '<span class="orcamento-status-chip" title="Pendencia ja possui orcamento ativo">Orcado</span>';
+      return '<button class="danger-button compact-button orcamento-pdf-button" type="button" title="Abrir PDF do orcamento" onclick="abrirPdfOrcamentoExistente(\'' + escapeJs(item.id_orcamento_ativo) + '\')">PDF</button>';
     }
     return '<input class="orcamento-select-input" type="checkbox" ' + (selecionada ? 'checked ' : '') + 'title="Selecionar para orcamento" onclick="toggleSelecaoOrcamento(\'' + escapeJs(item.id_pendencia) + '\')">';
   }
@@ -2559,18 +2557,20 @@
       var orcamentoInfo = safeTrim_(item.id_orcamento_ativo)
         ? '<div class="muted-text">Orcamento ativo: ' + escapeHtml(item.id_orcamento_ativo) + ' | ' + escapeHtml(renderOrcamentoValorResumo_(item.valor_orcamento_ativo)) + '</div>'
         : '';
+      var controleOrcamento = orcavel
+        ? '<label class="orcamento-select-wrap">' +
+            renderControleOrcamento_(item, false) +
+            '<span>Orc.</span>' +
+          '</label>'
+        : renderControleOrcamento_(item, false);
       return '<article class="pendencia-card' + (selecionada ? ' pendencia-card-selected' : '') + '">' +
         '<div class="pendencia-card-head">' +
           '<div><h3>' + escapeHtml(item.id_pendencia) + '</h3><p>' + escapeHtml(item.loja) + ' | ' + renderSetorBadge_(item.setor || '-', 'setor-badge-inline') + '</p></div>' +
-          '<label class="orcamento-select-wrap' + (orcavel ? '' : ' disabled') + '">' +
-            renderControleOrcamento_(item, false) +
-            '<span>' + (orcavel ? 'Orcar' : 'Orcado') + '</span>' +
-          '</label>' +
+          controleOrcamento +
         '</div>' +
         '<div class="card-meta">' +
           renderTag('status', item.status) +
           renderTag('prioridade', item.prioridade) +
-          (safeTrim_(item.id_orcamento_ativo) ? '<span class="tag status-aguardando">Orcado</span>' : '') +
           (item.esta_vencida ? '<span class="tag prioridade-critica">Vencida</span>' : '') +
         '</div>' +
         '<div class="card-kv-grid">' +
@@ -2690,12 +2690,11 @@
       return item.executor || '';
     }).filter(Boolean));
     var resumo = selecionadas.slice(0, 6).map(function(item) {
-      return escapeHtml(item.id_pendencia + ' - ' + (item.loja || '-') + ' / ' + (item.setor || '-'));
+      return escapeHtml((item.loja || '-') + ' / ' + (item.setor || '-'));
     }).join('<br>');
     document.getElementById('orcamentoResumoSelecao').innerHTML =
-      '<strong>' + selecionadas.length + ' pendencia' + (selecionadas.length > 1 ? 's' : '') + ' selecionada' + (selecionadas.length > 1 ? 's' : '') + '</strong><br>' +
-      resumo + (selecionadas.length > 6 ? '<br>...' : '') +
-      '<br><span class="muted-text">A soma dos servicos aparece automaticamente, mas o valor total do orcamento pode ser ajustado manualmente.</span>';
+      '<strong>' + selecionadas.length + ' servico' + (selecionadas.length > 1 ? 's' : '') + ' selecionado' + (selecionadas.length > 1 ? 's' : '') + '</strong>' +
+      (resumo ? '<div class="summary-item-sub">' + resumo + (selecionadas.length > 6 ? '<br>...' : '') + '</div>' : '');
     document.getElementById('orcamentoData').value = toInputDate_(new Date());
     document.getElementById('orcamentoValor').value = '';
     document.getElementById('orcamentoObservacao').value = '';
@@ -2722,9 +2721,8 @@
       return '<div class="orcamento-item-editor">' +
         '<div class="orcamento-item-editor-main">' +
           '<div class="orcamento-item-editor-copy">' +
-            '<strong>' + escapeHtml(titulo) + '</strong>' +
-            '<span>' + escapeHtml(subtitulo || 'Preencha o valor deste servico.') + '</span>' +
-            '<small>' + escapeHtml((item.descricao || '-').slice(0, 220)) + '</small>' +
+            '<strong><span class="item-index-badge">' + String(index + 1).padStart(2, '0') + '</span> ' + escapeHtml(titulo) + '</strong>' +
+            '<span>' + escapeHtml(subtitulo || 'Valor opcional por servico.') + '</span>' +
           '</div>' +
           '<label class="orcamento-item-editor-value">' +
             '<span>Valor</span>' +

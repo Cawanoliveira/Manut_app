@@ -896,20 +896,27 @@
     letter-spacing: 0.03em;
   }
 
+  .orcamento-pdf-button {
+    min-width: 72px;
+    min-height: 38px;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
   .panel-note {
-    padding: 12px 14px;
+    padding: 10px 14px;
     border-radius: 14px;
-    background: #fff7ef;
-    border: 1px solid #ffe0be;
-    color: #9a3412;
-    font-size: 13px;
-    line-height: 1.45;
+    background: #fff;
+    border: 1px solid #ececec;
+    color: #374151;
+    font-size: 12px;
+    line-height: 1.35;
     margin-bottom: 14px;
   }
 
   .orcamento-editor-block {
     display: grid;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 16px;
   }
 
@@ -940,8 +947,8 @@
   }
 
   .orcamento-item-editor {
-    border: 1px solid #ffe0be;
-    background: #fffaf5;
+    border: 1px solid #ececec;
+    background: #fff;
     border-radius: 16px;
     padding: 12px 14px;
   }
@@ -963,14 +970,25 @@
     font-size: 14px;
   }
 
+  .item-index-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 22px;
+    margin-right: 6px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #374151;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+
   .orcamento-item-editor-copy span,
   .orcamento-item-editor-copy small {
     color: var(--muted);
     line-height: 1.45;
-  }
-
-  .orcamento-item-editor-copy small {
-    font-size: 11px;
   }
 
   .orcamento-item-editor-value {
@@ -995,6 +1013,19 @@
   .orcamento-total-grid {
     display: grid;
     gap: 12px;
+  }
+
+  .orcamento-observacao-inline {
+    display: grid;
+    gap: 6px;
+  }
+
+  .orcamento-observacao-inline span {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .orcamento-total-preview {

@@ -579,7 +579,6 @@
         <div class="drawer-header">
           <div>
             <h3>Orcamento das pendencias</h3>
-            <p class="modal-description">Defina o prestador e preencha um valor para cada servico selecionado.</p>
           </div>
           <button class="ghost-button compact-button" type="button" onclick="fecharOrcamentoModal()">Fechar</button>
         </div>
@@ -592,10 +591,6 @@
           <label>
             <span>Data do orcamento *</span>
             <input id="orcamentoData" type="date">
-          </label>
-          <label class="full-width">
-            <span>Observacao do orcamento</span>
-            <textarea id="orcamentoObservacao" rows="4" placeholder="Observacoes gerais para este lote."></textarea>
           </label>
         </div>
         <div class="orcamento-editor-block">
@@ -614,6 +609,10 @@
               <strong id="orcamentoValorTotalDisplay">R$ 0,00</strong>
             </div>
           </div>
+          <label class="orcamento-observacao-inline">
+            <span>Obs. do orcamento</span>
+            <input id="orcamentoObservacao" type="text" placeholder="Opcional">
+          </label>
         </div>
         <div class="actions-row">
           <button class="ghost-button" type="button" onclick="fecharOrcamentoModal()">Cancelar</button>
