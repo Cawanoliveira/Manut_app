@@ -908,6 +908,115 @@
     margin-bottom: 14px;
   }
 
+  .orcamento-editor-block {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .orcamento-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .orcamento-editor-header strong {
+    color: var(--primary-strong);
+    font-size: 14px;
+  }
+
+  .orcamento-editor-header span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .orcamento-itens-editor {
+    display: grid;
+    gap: 10px;
+    max-height: min(48vh, 440px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .orcamento-item-editor {
+    border: 1px solid #ffe0be;
+    background: #fffaf5;
+    border-radius: 16px;
+    padding: 12px 14px;
+  }
+
+  .orcamento-item-editor-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .orcamento-item-editor-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .orcamento-item-editor-copy strong {
+    color: var(--black-bar);
+    font-size: 14px;
+  }
+
+  .orcamento-item-editor-copy span,
+  .orcamento-item-editor-copy small {
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .orcamento-item-editor-copy small {
+    font-size: 11px;
+  }
+
+  .orcamento-item-editor-value {
+    display: grid;
+    gap: 6px;
+  }
+
+  .orcamento-item-editor-value span {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--primary-strong);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .orcamento-item-valor-input {
+    min-height: 44px;
+    text-align: right;
+    font-weight: 700;
+  }
+
+  .orcamento-total-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid #ffd7ad;
+    background: linear-gradient(180deg, #fff8ef 0%, #fff2dd 100%);
+  }
+
+  .orcamento-total-preview span {
+    color: #9a3412;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .orcamento-total-preview strong {
+    color: var(--black-bar);
+    font-size: 22px;
+  }
+
   .card-kv-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1708,6 +1817,10 @@
       right: auto;
       width: min(900px, calc(100vw - 32px));
       transform: translate(-50%, -50%);
+    }
+
+    .orcamento-item-editor-main {
+      grid-template-columns: minmax(0, 1fr) 180px;
     }
 
     .sidebar-open .page-shell {

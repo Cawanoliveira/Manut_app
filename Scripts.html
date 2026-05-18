@@ -1,5 +1,5 @@
 ﻿<script>
-  var CACHE_KEY = 'manutencao_offline_cache_v3';
+  var CACHE_KEY = 'manutencao_offline_cache_v4';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -2695,16 +2695,75 @@
     }).join('<br>');
     document.getElementById('orcamentoResumoSelecao').innerHTML =
       '<strong>' + selecionadas.length + ' pendencia' + (selecionadas.length > 1 ? 's' : '') + ' selecionada' + (selecionadas.length > 1 ? 's' : '') + '</strong><br>' +
-      resumo + (selecionadas.length > 6 ? '<br>...' : '');
+      resumo + (selecionadas.length > 6 ? '<br>...' : '') +
+      '<br><span class="muted-text">O total final sera calculado automaticamente pela soma dos valores de cada servico.</span>';
     document.getElementById('orcamentoData').value = toInputDate_(new Date());
-    document.getElementById('orcamentoValor').value = '';
     document.getElementById('orcamentoObservacao').value = '';
     document.getElementById('orcamentoPrestador').value = prestadores.length === 1 ? prestadores[0] : '';
+    preencherItensOrcamentoModal_(selecionadas);
     document.getElementById('orcamentoModal').classList.remove('hidden');
   }
 
   function fecharOrcamentoModal() {
     document.getElementById('orcamentoModal').classList.add('hidden');
+  }
+
+  function preencherItensOrcamentoModal_(selecionadas) {
+    var host = document.getElementById('orcamentoItensEditor');
+    if (!host) {
+      return;
+    }
+    host.innerHTML = (selecionadas || []).map(function(item, index) {
+      var titulo = [item.loja || '-', item.setor || '-', item.tipo || '-'].join(' | ');
+      var subtitulo = [
+        item.prioridade ? ('Prioridade: ' + item.prioridade) : '',
+        item.previsao_entrega ? ('Previsao: ' + formatDateBr(item.previsao_entrega)) : ''
+      ].filter(Boolean).join(' | ');
+      return '<div class="orcamento-item-editor">' +
+        '<div class="orcamento-item-editor-main">' +
+          '<div class="orcamento-item-editor-copy">' +
+            '<strong>' + escapeHtml(titulo) + '</strong>' +
+            '<span>' + escapeHtml(subtitulo || 'Preencha o valor deste servico.') + '</span>' +
+            '<small>' + escapeHtml((item.descricao || '-').slice(0, 220)) + '</small>' +
+          '</div>' +
+          '<label class="orcamento-item-editor-value">' +
+            '<span>Valor</span>' +
+            '<input class="orcamento-item-valor-input" data-id="' + escapeHtml(item.id_pendencia) + '" type="text" inputmode="decimal" placeholder="0,00" oninput="atualizarTotalOrcamentoModal()" onblur="formatarValorOrcamentoItemInput(this)">' +
+          '</label>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    atualizarTotalOrcamentoModal();
+  }
+
+  function formatarValorOrcamentoItemInput(input) {
+    if (!input) {
+      return;
+    }
+    var valor = parseCurrencyValueClient_(input.value);
+    input.value = isFinite(valor) && valor > 0 ? formatCurrencyBrClient_(valor).replace(/^R\$\s?/, '') : '';
+    atualizarTotalOrcamentoModal();
+  }
+
+  function atualizarTotalOrcamentoModal() {
+    var totalNode = document.getElementById('orcamentoValorTotalDisplay');
+    if (!totalNode) {
+      return;
+    }
+    var total = coletarItensOrcamentoFormulario_().reduce(function(sum, item) {
+      var valor = parseCurrencyValueClient_(item.valor);
+      return sum + (isFinite(valor) ? valor : 0);
+    }, 0);
+    totalNode.textContent = formatCurrencyBrClient_(total);
+  }
+
+  function coletarItensOrcamentoFormulario_() {
+    return Array.from(document.querySelectorAll('#orcamentoItensEditor .orcamento-item-valor-input')).map(function(input) {
+      return {
+        id_pendencia: input.getAttribute('data-id') || '',
+        valor: input.value || ''
+      };
+    });
   }
 
   function confirmarOrcamentoPendencias() {
@@ -2721,8 +2780,8 @@
       pendenciaIds: selecionadas.map(function(item) { return item.id_pendencia; }),
       prestador: getElementValue_('orcamentoPrestador'),
       data_orcamento: getElementValue_('orcamentoData'),
-      valor_total: getElementValue_('orcamentoValor'),
-      observacao: getElementValue_('orcamentoObservacao')
+      observacao: getElementValue_('orcamentoObservacao'),
+      itens: coletarItensOrcamentoFormulario_()
     };
     if (!payload.prestador) {
       mostrarMensagemErro('Selecione o prestador do orcamento.');
@@ -2732,8 +2791,12 @@
       mostrarMensagemErro('Informe a data do orcamento.');
       return;
     }
-    if (!isFinite(parseCurrencyValueClient_(payload.valor_total)) || parseCurrencyValueClient_(payload.valor_total) <= 0) {
-      mostrarMensagemErro('Informe um valor total valido para o orcamento.');
+    var itensInvalidos = payload.itens.filter(function(item) {
+      var valor = parseCurrencyValueClient_(item.valor);
+      return !item.id_pendencia || !isFinite(valor) || valor <= 0;
+    });
+    if (itensInvalidos.length) {
+      mostrarMensagemErro('Informe um valor valido para cada servico selecionado.');
       return;
     }
 

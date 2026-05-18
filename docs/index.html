@@ -586,7 +586,7 @@
         <div class="drawer-header">
           <div>
             <h3>Orcamento das pendencias</h3>
-            <p class="modal-description">Defina o prestador e o valor total unico para as pendencias selecionadas.</p>
+            <p class="modal-description">Defina o prestador e preencha um valor para cada servico selecionado.</p>
           </div>
           <button class="ghost-button compact-button" type="button" onclick="fecharOrcamentoModal()">Fechar</button>
         </div>
@@ -601,13 +601,20 @@
             <input id="orcamentoData" type="date">
           </label>
           <label class="full-width">
-            <span>Valor total do orcamento *</span>
-            <input id="orcamentoValor" type="text" inputmode="decimal" placeholder="0,00">
-          </label>
-          <label class="full-width">
             <span>Observacao do orcamento</span>
             <textarea id="orcamentoObservacao" rows="4" placeholder="Observacoes gerais para este lote."></textarea>
           </label>
+        </div>
+        <div class="orcamento-editor-block">
+          <div class="orcamento-editor-header">
+            <strong>Servicos selecionados</strong>
+            <span>Informe um valor para cada pendencia.</span>
+          </div>
+          <div id="orcamentoItensEditor" class="orcamento-itens-editor"></div>
+          <div class="orcamento-total-preview">
+            <span>Total do orcamento</span>
+            <strong id="orcamentoValorTotalDisplay">R$ 0,00</strong>
+          </div>
         </div>
         <div class="actions-row">
           <button class="ghost-button" type="button" onclick="fecharOrcamentoModal()">Cancelar</button>

@@ -69,6 +69,7 @@ var APP_CONFIG = {
       'tipo_snapshot',
       'prioridade_snapshot',
       'previsao_snapshot',
+      'valor_snapshot',
       'descricao_snapshot',
       'responsavel_snapshot',
       'status_snapshot',

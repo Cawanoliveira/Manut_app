@@ -36,6 +36,7 @@ function criarOrcamentoPendencias(payload) {
         tipo: record.tipo || '-',
         prioridade: record.prioridade || '-',
         previsao_entrega: formatarData(record.previsao_entrega) || '-',
+        valor: clean.valorPorPendencia[record.id_pendencia],
         descricao: sanitizeText_(record.descricao) || '-',
         responsavel: record.responsavel || 'Nao definido'
       };
@@ -67,6 +68,7 @@ function criarOrcamentoPendencias(payload) {
         tipo_snapshot: snapshot.tipo,
         prioridade_snapshot: snapshot.prioridade,
         previsao_snapshot: snapshot.previsao_entrega,
+        valor_snapshot: snapshot.valor,
         descricao_snapshot: snapshot.descricao,
         responsavel_snapshot: snapshot.responsavel,
         status_snapshot: 'Ativo',
@@ -79,7 +81,7 @@ function criarOrcamentoPendencias(payload) {
         executor: clean.prestador,
         id_orcamento_ativo: orcamentoId,
         prestador_orcamento_ativo: clean.prestador,
-        valor_orcamento_ativo: clean.valor_total,
+        valor_orcamento_ativo: clean.valorPorPendencia[entry.record.id_pendencia],
         data_orcamento_ativo: parseDateInput_(clean.data_orcamento),
         ultima_atualizacao: now,
         atualizado_por: getCurrentUserIdentifier_()
@@ -160,8 +162,20 @@ function gerarPdfOrcamento(idOrcamento) {
 
 function normalizeOrcamentoPayload_(payload) {
   var pendenciaIds = Array.isArray(payload.pendenciaIds) ? payload.pendenciaIds : [];
+  var itens = Array.isArray(payload.itens) ? payload.itens : [];
   var cleanIds = [];
   var seen = {};
+  var valorPorPendencia = {};
+
+  itens.forEach(function(item) {
+    var cleanId = safeString_(item && item.id_pendencia);
+    if (cleanId && !seen[cleanId]) {
+      seen[cleanId] = true;
+      cleanIds.push(cleanId);
+      valorPorPendencia[cleanId] = parseCurrencyValue_(item && item.valor);
+    }
+  });
+
   pendenciaIds.forEach(function(id) {
     var cleanId = safeString_(id);
     if (cleanId && !seen[cleanId]) {
@@ -172,8 +186,11 @@ function normalizeOrcamentoPayload_(payload) {
 
   var prestador = sanitizeText_(payload.prestador);
   var dataOrcamento = payload.data_orcamento ? formatDateForInput_(parseDateInput_(payload.data_orcamento)) : formatDateForInput_(now_());
-  var valorTotal = parseCurrencyValue_(payload.valor_total);
   var observacao = sanitizeText_(payload.observacao);
+  var valorTotal = cleanIds.reduce(function(total, id) {
+    var valor = valorPorPendencia[id];
+    return total + (isFinite(valor) ? valor : 0);
+  }, 0);
 
   if (!cleanIds.length) {
     return { valid: false, message: 'Selecione ao menos uma pendencia para o orcamento.' };
@@ -184,8 +201,14 @@ function normalizeOrcamentoPayload_(payload) {
   if (!dataOrcamento) {
     return { valid: false, message: 'Informe a data do orcamento.' };
   }
+  var itensInvalidos = cleanIds.filter(function(id) {
+    return !isFinite(valorPorPendencia[id]) || valorPorPendencia[id] <= 0;
+  });
+  if (itensInvalidos.length) {
+    return { valid: false, message: 'Informe um valor valido para cada servico selecionado.' };
+  }
   if (!isFinite(valorTotal) || valorTotal <= 0) {
-    return { valid: false, message: 'Informe um valor total valido para o orcamento.' };
+    return { valid: false, message: 'Informe ao menos um valor valido para o orcamento.' };
   }
 
   return {
@@ -194,6 +217,7 @@ function normalizeOrcamentoPayload_(payload) {
     prestador: prestador,
     data_orcamento: dataOrcamento,
     valor_total: valorTotal,
+    valorPorPendencia: valorPorPendencia,
     observacao: observacao
   };
 }
@@ -284,6 +308,7 @@ function listarItensOrcamento_(idOrcamento) {
       tipo: item.tipo_snapshot || '-',
       prioridade: item.prioridade_snapshot || '-',
       previsao_entrega: item.previsao_snapshot || '-',
+      valor: item.valor_snapshot,
       descricao: item.descricao_snapshot || '-',
       responsavel: item.responsavel_snapshot || 'Nao definido'
     };
@@ -325,6 +350,7 @@ function buildOrcamentoPdfData_(orcamento, items) {
         tipo: safeString_(item.tipo) || '-',
         prioridade: safeString_(item.prioridade) || '-',
         previsao: safeString_(item.previsao_entrega) || '-',
+        valor: formatCurrencyBr_(item.valor),
         descricao: safeString_(item.descricao) || '-'
       };
     })
@@ -340,16 +366,23 @@ function buildOrcamentoFileName_(orcamento) {
 }
 
 function montarHtmlOrcamentoPrestador_(dados) {
-  var linhas = (dados.itens || []).map(function(item) {
-    return '<tr>' +
-      '<td>' + escapeHtml_(item.id) + '</td>' +
-      '<td>' + escapeHtml_(item.loja) + '</td>' +
-      '<td>' + escapeHtml_(item.setor) + '</td>' +
-      '<td>' + escapeHtml_(item.tipo) + '</td>' +
-      '<td>' + escapeHtml_(item.prioridade) + '</td>' +
-      '<td>' + escapeHtml_(item.previsao) + '</td>' +
-      '<td class="descricao-cell">' + escapeHtml_(item.descricao) + '</td>' +
-    '</tr>';
+  var grupos = (dados.itens || []).map(function(item) {
+    return '<tbody class="item-group">' +
+      '<tr class="item-main-row">' +
+        '<td>' + escapeHtml_(item.loja) + '</td>' +
+        '<td>' + escapeHtml_(item.setor) + '</td>' +
+        '<td>' + escapeHtml_(item.tipo) + '</td>' +
+        '<td>' + escapeHtml_(item.prioridade) + '</td>' +
+        '<td>' + escapeHtml_(item.previsao) + '</td>' +
+        '<td class="valor-cell">' + escapeHtml_(item.valor) + '</td>' +
+      '</tr>' +
+      '<tr class="item-desc-row">' +
+        '<td colspan="6">' +
+          '<div class="descricao-label">Descricao do servico</div>' +
+          '<div class="descricao-value">' + escapeHtml_(item.descricao) + '</div>' +
+        '</td>' +
+      '</tr>' +
+    '</tbody>';
   }).join('');
 
   var logoHtml = dados.logoUrl
@@ -366,20 +399,25 @@ function montarHtmlOrcamentoPrestador_(dados) {
     '.logo{position:absolute;left:22px;top:14px;width:56px;height:56px;object-fit:contain;}' +
     '.logo-fallback{position:absolute;left:22px;top:14px;width:56px;height:56px;border-radius:50%;background:#000;color:#fff;font:700 36px/56px Arial,sans-serif;text-align:center;}' +
     '.subtitle{background:#111;height:38px;color:#fff;padding:8px 22px 0 104px;font-size:16px;line-height:22px;border-radius:0 0 16px 16px;}' +
-    '.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 14px;}' +
+    '.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 14px;}' +
     '.meta-card{border:1px solid var(--line);border-top:4px solid var(--orange);border-radius:14px;background:#fff;padding:10px 12px;min-height:74px;}' +
     '.meta-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}' +
     '.meta-value{font-size:17px;font-weight:700;color:var(--dark);line-height:1.25;word-break:break-word;}' +
     '.intro{margin:0 0 14px;font-size:12px;line-height:1.5;color:#374151;}' +
     '.table-wrap{border:1px solid var(--line);border-radius:16px;overflow:hidden;}' +
     'table{width:100%;border-collapse:collapse;table-layout:fixed;}' +
+    'thead{display:table-header-group;}' +
     'thead th{background:#111;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:10px 8px;text-align:center;border-right:1px solid #2f3640;}' +
     'thead th:last-child{border-right:none;}' +
-    'tbody td{border-top:1px solid var(--line);border-right:1px solid var(--line);padding:9px 8px;font-size:11px;line-height:1.35;vertical-align:top;text-align:center;word-break:break-word;}' +
-    'tbody td:last-child{border-right:none;}' +
-    'tbody tr:nth-child(odd){background:#fff;}' +
-    'tbody tr:nth-child(even){background:var(--soft);}' +
-    '.descricao-cell{text-align:left;}' +
+    'tbody.item-group{break-inside:avoid;page-break-inside:avoid;}' +
+    'tbody.item-group td{border-top:1px solid var(--line);border-right:1px solid var(--line);padding:9px 8px;font-size:11px;line-height:1.35;vertical-align:top;text-align:center;word-break:break-word;background:#fff;}' +
+    'tbody.item-group td:last-child{border-right:none;}' +
+    'tbody.item-group:first-of-type .item-main-row td{border-top:none;}' +
+    '.item-main-row td{font-weight:700;color:var(--dark);}' +
+    '.item-desc-row td{background:var(--soft);padding:10px 12px 14px;text-align:left;border-top:none;}' +
+    '.descricao-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}' +
+    '.descricao-value{font-size:12px;line-height:1.55;color:#111;white-space:pre-wrap;}' +
+    '.valor-cell{white-space:nowrap;}' +
     '.notes{margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:#fff;}' +
     '.notes-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}' +
     '.notes-value{font-size:12px;line-height:1.55;color:#111;min-height:18px;white-space:pre-wrap;}' +
@@ -391,21 +429,19 @@ function montarHtmlOrcamentoPrestador_(dados) {
     '<div class="header">' + logoHtml + '<div class="header-title">Relatorio de Orcamento do Prestador</div></div>' +
     '<div class="subtitle">Documento consolidado das pendencias selecionadas para o prestador</div>' +
     '<div class="meta-grid">' +
-      '<div class="meta-card"><div class="meta-label">Orcamento</div><div class="meta-value">' + escapeHtml_(dados.idOrcamento) + '</div></div>' +
       '<div class="meta-card"><div class="meta-label">Prestador</div><div class="meta-value">' + escapeHtml_(dados.prestador) + '</div></div>' +
       '<div class="meta-card"><div class="meta-label">Data</div><div class="meta-value">' + escapeHtml_(dados.dataOrcamento) + '</div></div>' +
       '<div class="meta-card"><div class="meta-label">Pendencias</div><div class="meta-value">' + escapeHtml_(dados.quantidadePendencias) + '</div></div>' +
     '</div>' +
-    '<p class="intro">Valor total referente ao conjunto completo das pendencias listadas abaixo.</p>' +
+    '<p class="intro">Cada servico abaixo traz seu valor individual, e o total consolidado permanece destacado no fechamento do documento.</p>' +
     '<div class="table-wrap"><table><thead><tr>' +
-      '<th style="width:12%;">ID</th>' +
-      '<th style="width:14%;">Loja</th>' +
-      '<th style="width:13%;">Setor</th>' +
-      '<th style="width:11%;">Tipo</th>' +
-      '<th style="width:11%;">Prioridade</th>' +
-      '<th style="width:13%;">Previsao</th>' +
-      '<th style="width:26%;">Descricao</th>' +
-    '</tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+      '<th style="width:18%;">Loja</th>' +
+      '<th style="width:16%;">Setor</th>' +
+      '<th style="width:16%;">Tipo</th>' +
+      '<th style="width:15%;">Prioridade</th>' +
+      '<th style="width:17%;">Previsao</th>' +
+      '<th style="width:18%;">Valor</th>' +
+    '</tr></thead>' + grupos + '</table></div>' +
     '<div class="notes"><div class="notes-label">Observacao do Orcamento</div><div class="notes-value">' + escapeHtml_(dados.observacao || '-') + '</div></div>' +
     '<div class="total-box"><div class="total-label">Valor total do orcamento</div><div class="total-value">' + escapeHtml_(dados.valorTotal) + '</div></div>' +
     '<div class="footer-note">Emitido em ' + escapeHtml_(formatarData(now_())) + '</div>' +
