@@ -393,6 +393,7 @@ function padNumber_(value, size) {
 }
 
 function montarHtmlOrcamentoPrestador_(dados) {
+  var totalItens = (dados.itens || []).length;
   var grupos = (dados.itens || []).map(function(item, index) {
     var toneClass = index % 2 === 0 ? 'tone-soft' : 'tone-light';
     return '<tbody class="item-group ' + toneClass + '">' +
@@ -410,6 +411,9 @@ function montarHtmlOrcamentoPrestador_(dados) {
           '<div class="descricao-value">' + escapeHtml_(item.descricao) + '</div>' +
         '</td>' +
       '</tr>' +
+      (index < totalItens - 1
+        ? '<tr class="item-spacer-row"><td colspan="6"></td></tr>'
+        : '') +
     '</tbody>';
   }).join('');
 
@@ -441,12 +445,12 @@ function montarHtmlOrcamentoPrestador_(dados) {
     'tbody.item-group td{border-top:1px solid var(--line);border-right:1px solid var(--line);padding:9px 8px;font-size:11px;line-height:1.35;vertical-align:top;text-align:center;word-break:break-word;background:#fff;}' +
     'tbody.item-group td:last-child{border-right:none;}' +
     'tbody.item-group:first-of-type .item-main-row td{border-top:none;}' +
-    'tbody.item-group + tbody.item-group .item-main-row td{border-top:12px solid #fff;}' +
     'tbody.item-group.tone-soft td{background:#f3f4f6;}' +
     'tbody.item-group.tone-soft .item-desc-row td{background:#eef0f3;}' +
     'tbody.item-group.tone-light td{background:#fff;}' +
     '.item-main-row td{font-weight:700;color:var(--dark);}' +
     '.item-desc-row td{padding:10px 12px 16px;text-align:left;border-top:none;}' +
+    '.item-spacer-row td{height:12px;padding:0;border:none;background:#fff !important;}' +
     '.item-number{display:inline-flex;align-items:center;justify-content:center;min-width:72px;margin:0 auto 6px;padding:3px 8px;border-radius:999px;background:rgba(17,24,39,.08);color:#374151;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;}' +
     '.descricao-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}' +
     '.descricao-value{font-size:12px;line-height:1.55;color:#111;white-space:pre-wrap;}' +
