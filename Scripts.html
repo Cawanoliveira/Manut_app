@@ -534,8 +534,8 @@
     }
     mostrarLoading();
     return Promise.all([
-      serverCall_('getAppInitData', []),
-      serverCall_('listarPendencias', [{ incluirFinalizadas: true }])
+      serverCall_('getAppInitData', [], { timeoutMs: 120000 }),
+      serverCall_('listarPendencias', [{ incluirFinalizadas: true }], { timeoutMs: 120000 })
     ]).then(function(results) {
       var initResponse = results[0];
       var pendenciasResponse = results[1];
