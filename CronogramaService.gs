@@ -72,9 +72,12 @@ function gerarCronogramaExcel(filtros) {
   }
 }
 
+var CRONOGRAMA_EXECUTOR_ALL = '__TODOS_PRESTADORES__';
+var CRONOGRAMA_EXECUTOR_UNASSIGNED = '__SEM_PRESTADOR__';
+
 function normalizeCronogramaFilters_(filtros) {
   return {
-    executor: sanitizeText_(filtros.executor),
+    executor: normalizeCronogramaExecutorFilter_(filtros.executor),
     loja: sanitizeText_(filtros.loja),
     setor: sanitizeText_(filtros.setor),
     responsavel: sanitizeText_(filtros.responsavel),
@@ -84,6 +87,14 @@ function normalizeCronogramaFilters_(filtros) {
     previsaoEntregaDe: normalizeCronogramaDateFilter_(filtros.previsaoEntregaDe),
     previsaoEntregaAte: normalizeCronogramaDateFilter_(filtros.previsaoEntregaAte)
   };
+}
+
+function normalizeCronogramaExecutorFilter_(value) {
+  var sanitized = sanitizeText_(value);
+  if (sanitized === CRONOGRAMA_EXECUTOR_ALL || sanitized === CRONOGRAMA_EXECUTOR_UNASSIGNED) {
+    return sanitized;
+  }
+  return sanitized;
 }
 
 function normalizeCronogramaDateFilter_(value) {
@@ -125,12 +136,16 @@ function getCronogramaItems_(filtros) {
     if (normalizeCompare_(item.status) === 'cancelado') {
       return false;
     }
-    if (filtros.executor) {
+    if (filtros.executor === CRONOGRAMA_EXECUTOR_ALL) {
+      // todos os prestadores
+    } else if (filtros.executor === CRONOGRAMA_EXECUTOR_UNASSIGNED || !filtros.executor) {
+      if (safeString_(item.executor)) {
+        return false;
+      }
+    } else if (filtros.executor) {
       if (normalizeCompare_(item.executor) !== normalizeCompare_(filtros.executor)) {
         return false;
       }
-    } else if (safeString_(item.executor)) {
-      return false;
     }
     if (filtros.status && normalizeCompare_(item.status_cronograma) !== normalizeCompare_(filtros.status)) {
       return false;
@@ -155,6 +170,23 @@ function getCronogramaStatusServer_(item) {
     return 'Em andamento';
   }
   return 'Aberto';
+}
+
+function getCronogramaExecutorFilterLabel_(executorFilter) {
+  if (executorFilter === CRONOGRAMA_EXECUTOR_ALL) {
+    return 'Todos os prestadores';
+  }
+  if (executorFilter === CRONOGRAMA_EXECUTOR_UNASSIGNED || !executorFilter) {
+    return 'Sem prestador definido';
+  }
+  return safeString_(executorFilter) || 'Sem prestador definido';
+}
+
+function resolveCronogramaExecutorDisplay_(item, filtros) {
+  if (safeString_(item && item.executor)) {
+    return item.executor;
+  }
+  return getCronogramaExecutorFilterLabel_(filtros && filtros.executor);
 }
 
 function compareCronogramaItems_(a, b) {
@@ -182,24 +214,24 @@ function compareCronogramaItems_(a, b) {
 function buildCronogramaFileName_(filtros, docName) {
   var base = [
     docName ? 'Cronograma Temporario' : 'Cronograma',
-    filtros.executor || 'Sem prestador',
+    getCronogramaExecutorFilterLabel_(filtros.executor),
     Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')
   ].join(' - ');
   return sanitizeFileName_(base) + (docName ? '' : '.pdf');
 }
 
 function buildCronogramaSpreadsheetName_(filtros) {
-  return sanitizeFileName_(['Cronograma Planilha', filtros.executor || 'Sem prestador', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - '));
+  return sanitizeFileName_(['Cronograma Planilha', getCronogramaExecutorFilterLabel_(filtros.executor), Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - '));
 }
 
 function buildCronogramaExcelFileName_(filtros) {
-  return sanitizeFileName_(['Cronograma', filtros.executor || 'Sem prestador', Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
+  return sanitizeFileName_(['Cronograma', getCronogramaExecutorFilterLabel_(filtros.executor), Utilities.formatDate(now_(), getTimezone_(), 'yyyyMMdd-HHmmss')].join(' - ')) + '.xlsx';
 }
 
 function buildCronogramaPdfData_(filtros, items) {
   var summary = buildCronogramaStatusSummaryMap_(items);
   return {
-    prestador: filtros.executor || 'Sem prestador definido',
+    prestador: getCronogramaExecutorFilterLabel_(filtros.executor),
     dataEmissao: formatarData(now_()),
     horaEmissao: Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss'),
     emAndamento: String(summary.emAndamento),
@@ -459,7 +491,7 @@ function buildCronogramaHeader_(body, filtros, items) {
 
   var metaTable = body.appendTable([
     ['PRESTADOR', 'TOTAL DE PENDENCIAS', 'DATA DE EMISSAO'],
-    [filtros.executor || '-', String(items.length), formatarData(now_())]
+    [getCronogramaExecutorFilterLabel_(filtros.executor), String(items.length), formatarData(now_())]
   ]);
   styleCronogramaMetaTable_(metaTable);
 }
@@ -538,8 +570,12 @@ function styleCronogramaMetaTable_(table) {
 
 function buildCronogramaResumoFiltros_(filtros, total) {
   var parts = ['Total de pendencias: ' + total];
-  if (!filtros.executor) {
+  if (filtros.executor === CRONOGRAMA_EXECUTOR_ALL) {
+    parts.push('Executor: todos os prestadores');
+  } else if (filtros.executor === CRONOGRAMA_EXECUTOR_UNASSIGNED || !filtros.executor) {
     parts.push('Executor: sem prestador definido');
+  } else if (filtros.executor) {
+    parts.push('Executor: ' + filtros.executor);
   }
   if (filtros.loja) {
     parts.push('Loja: ' + filtros.loja);
@@ -658,7 +694,7 @@ function styleCronogramaTextValueRow_(row) {
 
 function appendCronogramaTableRow_(table, filtros, item) {
   var row = table.appendTableRow();
-  setCronogramaCellText_(row.appendTableCell(), item.executor || filtros.executor || '-', true, '#111111');
+  setCronogramaCellText_(row.appendTableCell(), resolveCronogramaExecutorDisplay_(item, filtros), true, '#111111');
   setCronogramaCellText_(row.appendTableCell(), item.loja || '-', false, '#2C2C2C');
   setCronogramaCellText_(row.appendTableCell(), item.setor || '-', false, '#2C2C2C');
   setCronogramaCellText_(row.appendTableCell(), buildCronogramaStatusLabel_(item.status_cronograma || '-'), true, '#E8720C');
@@ -772,7 +808,7 @@ function buildCronogramaSpreadsheet_(spreadsheet, filtros, items) {
 
   var data = items.map(function(item) {
     return [
-      item.executor || filtros.executor || '-',
+      resolveCronogramaExecutorDisplay_(item, filtros),
       item.loja || '-',
       item.setor || '-',
       item.status_cronograma || '-',

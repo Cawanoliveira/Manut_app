@@ -1,4 +1,6 @@
   var CACHE_KEY = 'manutencao_offline_cache_v4';
+  var CRONOGRAMA_EXECUTOR_ALL = '__TODOS_PRESTADORES__';
+  var CRONOGRAMA_EXECUTOR_UNASSIGNED = '__SEM_PRESTADOR__';
   var bridgeResolvers_ = {};
   var bridgeListenerReady_ = false;
   var filterFabDragState_ = null;
@@ -687,7 +689,7 @@
     preencherSelect('editSetor', combos.setores, 'Selecione um setor');
     preencherSelect('editTipo', combos.tipos, 'Selecione um tipo');
     preencherSelect('editPrioridade', combos.prioridades, 'Selecione uma prioridade');
-    preencherSelect('cronogramaExecutor', combos.prestadores, 'Sem prestador definido', true);
+    preencherSelectCronogramaExecutor_(combos.prestadores);
     preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('cronogramaResponsavel', combos.responsaveis, 'Todos os responsaveis', true);
@@ -716,6 +718,30 @@
     if (select.value) {
       select.dataset.lastValue = select.value;
     }
+  }
+
+  function preencherSelectCronogramaExecutor_(values) {
+    var select = document.getElementById('cronogramaExecutor');
+    if (!select) {
+      return;
+    }
+    var currentValue = select.value || (select.dataset.lastValue || CRONOGRAMA_EXECUTOR_ALL);
+    var options = [
+      '<option value="' + CRONOGRAMA_EXECUTOR_ALL + '">Todos os prestadores</option>',
+      '<option value="' + CRONOGRAMA_EXECUTOR_UNASSIGNED + '">Sem prestador definido</option>'
+    ];
+    (values || []).forEach(function(value) {
+      if (!value) {
+        return;
+      }
+      options.push('<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>');
+    });
+    select.innerHTML = options.join('');
+    select.value = currentValue;
+    if (!select.value) {
+      select.value = CRONOGRAMA_EXECUTOR_ALL;
+    }
+    select.dataset.lastValue = select.value || CRONOGRAMA_EXECUTOR_ALL;
   }
 
   function bindManagedSelects_() {
@@ -991,7 +1017,7 @@
       .forEach(function(id) {
         var field = document.getElementById(id);
         if (field) {
-          field.value = '';
+          field.value = id === 'cronogramaExecutor' ? CRONOGRAMA_EXECUTOR_ALL : '';
         }
       });
     renderCronogramaPreview_();
@@ -1004,7 +1030,13 @@
       if (normalizeText_(item.status) === 'cancelado') {
         return false;
       }
-      if (filtros.executor) {
+      if (filtros.executor === CRONOGRAMA_EXECUTOR_ALL) {
+        // todos os prestadores
+      } else if (filtros.executor === CRONOGRAMA_EXECUTOR_UNASSIGNED) {
+        if (safeTrim_(item.executor)) {
+          return false;
+        }
+      } else if (filtros.executor) {
         if (normalizeText_(item.executor) !== normalizeText_(filtros.executor)) {
           return false;
         }
@@ -1052,6 +1084,23 @@
       return 'Em andamento';
     }
     return 'Aberto';
+  }
+
+  function getCronogramaExecutorFilterLabel_(executorFilter, lowerCase) {
+    if (executorFilter === CRONOGRAMA_EXECUTOR_ALL) {
+      return lowerCase ? 'todos os prestadores' : 'Todos os prestadores';
+    }
+    if (executorFilter === CRONOGRAMA_EXECUTOR_UNASSIGNED || !executorFilter) {
+      return lowerCase ? 'pendencias sem prestador definido' : 'Sem prestador definido';
+    }
+    return executorFilter;
+  }
+
+  function getCronogramaExecutorDisplayName_(item, filtros) {
+    if (safeTrim_(item && item.executor)) {
+      return item.executor;
+    }
+    return getCronogramaExecutorFilterLabel_(filtros && filtros.executor, false);
   }
 
   function compareCronogramaItemsLocal_(a, b) {
@@ -1132,8 +1181,8 @@
     var filtros = validarFiltrosCronograma_(false);
     var items = getCronogramaItemsLocal_();
     resumoEl.textContent = items.length
-      ? ('Programacao de ' + (filtros.executor || 'pendencias sem prestador definido') + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
-      : ('Nenhuma pendencia ativa encontrada para ' + (filtros.executor || 'sem prestador definido') + '.');
+      ? ('Programacao de ' + getCronogramaExecutorFilterLabel_(filtros.executor, true) + ' com ' + items.length + ' pendencia' + (items.length > 1 ? 's' : '') + '.')
+      : ('Nenhuma pendencia ativa encontrada para ' + getCronogramaExecutorFilterLabel_(filtros.executor, true) + '.');
 
     if (!items.length) {
       cardsEl.innerHTML = '<div class="panel empty-state">Nenhuma pendencia ativa encontrada para os filtros informados.</div>';
@@ -1143,7 +1192,7 @@
 
     cardsEl.innerHTML = items.map(function(item) {
       return '<article class="pendencia-card cronograma-card">' +
-        '<div class="cronograma-card-top"><h3>' + escapeHtml(item.executor || filtros.executor) + '</h3>' +
+        '<div class="cronograma-card-top"><h3>' + escapeHtml(getCronogramaExecutorDisplayName_(item, filtros)) + '</h3>' +
         ((item.id_arquivo_drive || item.foto_preview) ? '<button class="clip-button" onclick="abrirFotoRapida(\'' + escapeJs(item.id_pendencia) + '\')">&#128206;</button>' : '') +
         '</div>' +
         '<div class="cronograma-card-grid">' +
@@ -1160,7 +1209,7 @@
 
     tableEl.innerHTML = items.map(function(item) {
       return '<tr>' +
-        '<td>' + escapeHtml(item.executor || filtros.executor || '-') + '</td>' +
+        '<td>' + escapeHtml(getCronogramaExecutorDisplayName_(item, filtros) || '-') + '</td>' +
         '<td>' + escapeHtml(item.loja || '-') + '</td>' +
         '<td>' + renderSetorBadge_(item.setor || '-') + '</td>' +
         '<td>' + renderTag('status', item.status_cronograma || getCronogramaStatusLocal_(item)) + '</td>' +
