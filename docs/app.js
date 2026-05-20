@@ -691,7 +691,7 @@
     preencherSelect('cronogramaLoja', combos.lojas, 'Todas as lojas', true);
     preencherSelect('cronogramaSetor', combos.setores, 'Todos os setores', true);
     preencherSelect('cronogramaResponsavel', combos.responsaveis, 'Todos os responsaveis', true);
-    preencherSelect('cronogramaStatus', ['Em andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
+    preencherSelect('cronogramaStatus', ['Aberto', 'Em Andamento', 'Concluido', 'Vencido'], 'Todos os status', true);
     preencherSelect('orcamentoPrestador', combos.prestadores, 'Selecione um prestador');
     bindManagedSelects_();
   }
