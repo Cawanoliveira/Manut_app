@@ -120,8 +120,13 @@ function getCronogramaItems_(filtros) {
     return item;
   });
 
+  var executorFiltroBase = '';
+  if (filtros.executor && filtros.executor !== CRONOGRAMA_EXECUTOR_ALL && filtros.executor !== CRONOGRAMA_EXECUTOR_UNASSIGNED) {
+    executorFiltroBase = filtros.executor;
+  }
+
   var filtered = applyPendenciasFilters_(items, {
-    executor: filtros.executor,
+    executor: executorFiltroBase,
     loja: filtros.loja,
     setor: filtros.setor,
     responsavel: filtros.responsavel,
