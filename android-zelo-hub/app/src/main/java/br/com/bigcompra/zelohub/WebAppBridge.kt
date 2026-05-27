@@ -39,6 +39,13 @@ class WebAppBridge(
     }
 
     @JavascriptInterface
+    fun openExternalLink(url: String, title: String) {
+        activity.runOnUiThread {
+            activity.openExternalLink(url, title)
+        }
+    }
+
+    @JavascriptInterface
     fun isOnDeviceSpeechAvailable(): Boolean {
         return VoiceRecognitionManager.isOnDeviceSpeechAvailable(activity)
     }

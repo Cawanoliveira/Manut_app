@@ -1272,22 +1272,7 @@
     if (!payload || !(payload.openUrl || payload.url)) {
       throw new Error('Arquivo PDF invalido.');
     }
-    var url = payload.downloadUrl || payload.openUrl || payload.url;
-    if (hasNativeBridgeMethod_('openExternalDocument')) {
-      getNativeBridge_().openExternalDocument(url, 'application/pdf', payload.fileName || 'cronograma.pdf');
-      return;
-    }
-    var anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = payload.fileName || 'cronograma.pdf';
-    anchor.target = '_blank';
-    document.body.appendChild(anchor);
-    anchor.click();
-    setTimeout(function() {
-      if (anchor.parentNode) {
-        anchor.parentNode.removeChild(anchor);
-      }
-    }, 600);
+    abrirPdfExterno_(payload.openUrl || payload.url, payload.fileName || 'cronograma.pdf');
   }
 
   function baixarArquivoCronograma_(payload) {
@@ -2898,19 +2883,30 @@
     if (!payload || !(payload.openUrl || payload.url || payload.downloadUrl)) {
       throw new Error('Arquivo PDF do orcamento invalido.');
     }
-    var url = payload.openUrl || payload.url || payload.downloadUrl;
-    if (hasNativeBridgeMethod_('openExternalDocument')) {
-      getNativeBridge_().openExternalDocument(url, 'application/pdf', payload.fileName || 'orcamento.pdf');
-      return;
+    abrirPdfExterno_(payload.openUrl || payload.url || payload.downloadUrl, payload.fileName || 'orcamento.pdf');
+  }
+
+  function abrirPdfExterno_(url, fileName) {
+    if (!url) {
+      throw new Error('Link do PDF invalido.');
+    }
+    if (hasNativeBridgeMethod_('openExternalLink')) {
+      try {
+        getNativeBridge_().openExternalLink(url, fileName || 'arquivo.pdf');
+        return;
+      } catch (error) {}
     }
     var anchor = document.createElement('a');
     anchor.href = url;
     anchor.target = '_blank';
     anchor.rel = 'noopener';
-    anchor.download = payload.fileName || 'orcamento.pdf';
     document.body.appendChild(anchor);
     anchor.click();
-    anchor.remove();
+    setTimeout(function() {
+      if (anchor.parentNode) {
+        anchor.parentNode.removeChild(anchor);
+      }
+    }, 600);
   }
 
   function renderDetalhesPendencia(item) {

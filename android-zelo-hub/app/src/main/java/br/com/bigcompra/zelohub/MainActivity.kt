@@ -199,6 +199,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun openExternalLink(url: String, title: String) {
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return
+        val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(Intent.createChooser(intent, title.ifBlank { "Abrir link" }))
+        } catch (_: Exception) {
+            try {
+                startActivity(intent)
+            } catch (_: Exception) {
+                showToast("Nao foi possivel abrir o link no dispositivo.")
+            }
+        }
+    }
+
     private fun handleVoiceEvent(event: VoiceRecognitionManager.VoiceEvent) {
         when (event.type) {
             VoiceRecognitionManager.EventType.STARTED ->
