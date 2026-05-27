@@ -1410,6 +1410,7 @@
     document.getElementById('editPrevisaoEntrega').value = normalizeDateForInputValue_(item.previsao_entrega || item.previsao_entrega_label);
     document.getElementById('editTipo').value = item.tipo || '';
     document.getElementById('editPrioridade').value = item.prioridade || '';
+    document.getElementById('editDescricao').value = item.descricao || '';
     document.getElementById('editObservacao').value = item.observacao || '';
     document.getElementById('editFoto').value = '';
     atualizarNomeArquivo('editFoto', 'editFotoNome');
@@ -1516,6 +1517,7 @@
       previsao_entrega: document.getElementById('editPrevisaoEntrega').value,
       tipo: document.getElementById('editTipo').value,
       prioridade: document.getElementById('editPrioridade').value,
+      descricao: document.getElementById('editDescricao').value,
       observacao: document.getElementById('editObservacao').value
     };
 
@@ -2944,10 +2946,7 @@
             { label: 'Conclusao', value: joinDateAndTime_(item.data_conclusao, item.hora_conclusao) }
           ])) +
           detailsRow_('Orcamento ativo', renderOrcamentoAtivoInfo_(item)) +
-          detailsRow_('Textos', groupedDetail_([
-            { label: 'Descricao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'descricao\')">Descricao</button>' },
-            { label: 'Observacao', value: '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'observacao\')">Observacao</button>' }
-          ], true)) +
+          detailsRow_('Textos', renderEditableTextDetails_(item)) +
           detailsRow_('Acoes', '<span class="details-table-title">Acoes da pendencia</span><div class="details-table-actions">' +
             '<button class="success-button compact-button" onclick="concluirPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Concluido</button>' +
             '<button class="warning-button compact-button" onclick="editarPendencia(\'' + escapeJs(item.id_pendencia) + '\')">Editar</button>' +
@@ -2958,6 +2957,26 @@
       '</table>' +
     '</div>';
     document.getElementById('detalhesPendencia').innerHTML = html;
+  }
+
+  function renderEditableTextDetails_(item) {
+    return '<div class="detail-text-grid">' +
+      renderEditableTextCard_(item, 'descricao', 'Descricao', item.descricao || 'Sem descricao.') +
+      renderEditableTextCard_(item, 'observacao', 'Observacao', safeTrim_(item.observacao) || 'Nao ha observacao registrada para esta pendencia.') +
+    '</div>';
+  }
+
+  function renderEditableTextCard_(item, campo, titulo, valor) {
+    return '<div class="detail-text-card">' +
+      '<div class="detail-text-card-header">' +
+        '<strong>' + escapeHtml(titulo) + '</strong>' +
+        '<div class="details-inline-actions table-actions">' +
+          '<button class="ghost-button compact-button" onclick="abrirTextoRapido(\'' + escapeJs(item.id_pendencia) + '\', \'' + escapeJs(campo) + '\')">Ver</button>' +
+          '<button class="warning-button compact-button" onclick="abrirEditorTextoPendencia(\'' + escapeJs(item.id_pendencia) + '\', \'' + escapeJs(campo) + '\')">Editar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="detail-text-value">' + escapeHtml(valor).replace(/\n/g, '<br>') + '</div>' +
+    '</div>';
   }
 
   function renderOrcamentoAtivoInfo_(item) {
@@ -3018,6 +3037,76 @@
     document.getElementById('quickViewTitle').textContent = 'ID da pendencia';
     document.getElementById('quickViewContent').innerHTML = '<p><strong>' + escapeHtml(id || '-') + '</strong></p>';
     document.getElementById('quickViewModal').classList.remove('hidden');
+  }
+
+  function abrirEditorTextoPendencia(id, campo) {
+    var item = buildDetailFromLocalItem_(getLocalItemById_(id));
+    if (!item) {
+      mostrarMensagemErro('Pendencia nao encontrada.');
+      return;
+    }
+    var titulo = campo === 'observacao' ? 'Editar observacao' : 'Editar descricao';
+    var descricao = campo === 'observacao'
+      ? 'Atualize a observacao vinculada a esta pendencia.'
+      : 'Atualize a descricao principal desta pendencia.';
+    var valor = campo === 'observacao' ? (item.observacao || '') : (item.descricao || '');
+    document.getElementById('textEditorPendenciaId').value = item.id_pendencia;
+    document.getElementById('textEditorCampo').value = campo;
+    document.getElementById('textEditorTitle').textContent = titulo;
+    document.getElementById('textEditorDescription').textContent = descricao;
+    document.getElementById('textEditorValue').value = valor;
+    document.getElementById('textEditorModal').classList.remove('hidden');
+  }
+
+  function fecharEditorTextoPendencia() {
+    var modal = document.getElementById('textEditorModal');
+    if (!modal) {
+      return;
+    }
+    modal.classList.add('hidden');
+    document.getElementById('textEditorPendenciaId').value = '';
+    document.getElementById('textEditorCampo').value = '';
+    document.getElementById('textEditorValue').value = '';
+  }
+
+  function salvarTextoPendenciaDetalhes() {
+    var id = document.getElementById('textEditorPendenciaId').value;
+    var campo = document.getElementById('textEditorCampo').value;
+    var valor = document.getElementById('textEditorValue').value;
+    if (!id || (campo !== 'descricao' && campo !== 'observacao')) {
+      mostrarMensagemErro('Nao foi possivel identificar o texto a ser atualizado.');
+      return;
+    }
+    if (campo === 'descricao' && !safeTrim_(valor)) {
+      mostrarMensagemErro('Descricao nao pode ficar vazia.');
+      return;
+    }
+    var dados = {};
+    dados[campo] = valor;
+    if (!appState.connection.online) {
+      fecharEditorTextoPendencia();
+      atualizarPendenciaOffline_(id, dados, 'update');
+      return;
+    }
+    mostrarLoading();
+    serverCall_('atualizarPendencia', [resolveRemoteId_(id), dados])
+      .then(function(response) {
+        ocultarLoading();
+        if (!response.success) {
+          mostrarMensagemErro(response.message);
+          return;
+        }
+        fecharEditorTextoPendencia();
+        if (response.data && response.data.pendencia) {
+          mergeItemIntoState_(response.data.pendencia);
+          renderDetalhesPendencia(response.data.pendencia);
+          navegar('secaoDetalhesPendencia');
+        } else {
+          abrirDetalhesPendencia(resolveRemoteId_(id));
+        }
+        mostrarMensagemSucesso((campo === 'observacao' ? 'Observacao' : 'Descricao') + ' atualizada com sucesso.');
+      })
+      .catch(handleFailure);
   }
 
   function renderConfiguracoes(items) {
@@ -4247,6 +4336,9 @@
 
   function applyOfflineMutationToItem_(item, dados) {
     var now = new Date();
+    if (Object.prototype.hasOwnProperty.call(dados, 'descricao')) {
+      item.descricao = dados.descricao || '';
+    }
     if (Object.prototype.hasOwnProperty.call(dados, 'responsavel')) {
       item.responsavel = dados.responsavel || '';
     }

@@ -337,6 +337,15 @@
                 <select id="editPrioridade"></select>
               </label>
           <label class="full-width">
+            <span>Descricao</span>
+            <div class="field-with-action">
+              <textarea id="editDescricao" rows="5"></textarea>
+              <div class="field-actions-stack">
+                <button type="button" class="mic-button" onclick="toggleDitado('editDescricao', this)">Voz</button>
+              </div>
+            </div>
+          </label>
+          <label class="full-width">
             <span>Observacao</span>
             <div class="field-with-action">
               <textarea id="editObservacao" rows="4"></textarea>
@@ -558,6 +567,31 @@
           <button class="ghost-button compact-button" onclick="fecharQuickView()">Fechar</button>
         </div>
         <div id="quickViewContent" class="modal-rich-content"></div>
+      </div>
+    </div>
+
+    <div id="textEditorModal" class="modal hidden">
+      <div class="modal-backdrop" onclick="fecharEditorTextoPendencia()"></div>
+      <div class="modal-card">
+        <div class="drawer-header">
+          <div>
+            <h3 id="textEditorTitle">Editar texto</h3>
+            <p id="textEditorDescription" class="modal-description">Atualize o texto da pendencia.</p>
+          </div>
+          <button class="ghost-button compact-button" onclick="fecharEditorTextoPendencia()">Fechar</button>
+        </div>
+        <input id="textEditorPendenciaId" type="hidden">
+        <input id="textEditorCampo" type="hidden">
+        <div class="field-with-action">
+          <textarea id="textEditorValue" class="text-editor-textarea" rows="8"></textarea>
+          <div class="field-actions-stack">
+            <button type="button" class="mic-button" onclick="toggleDitado('textEditorValue', this)">Voz</button>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button class="secondary-button" type="button" onclick="fecharEditorTextoPendencia()">Cancelar</button>
+          <button class="primary-button" type="button" onclick="salvarTextoPendenciaDetalhes()">Salvar</button>
+        </div>
       </div>
     </div>
 

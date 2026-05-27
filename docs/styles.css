@@ -1657,6 +1657,54 @@
     letter-spacing: 0.04em;
   }
 
+  .detail-text-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .detail-text-card {
+    display: grid;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid #efe7db;
+    background: #ffffff;
+  }
+
+  .detail-text-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .detail-text-card-header strong {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-strong);
+  }
+
+  .detail-text-value {
+    white-space: pre-wrap;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  .detail-text-card .table-actions {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+    justify-content: start;
+  }
+
+  .detail-text-card .table-actions button {
+    width: auto;
+    min-width: 78px;
+  }
+
+  .text-editor-textarea {
+    min-height: 220px;
+  }
+
   .grouped-detail {
     display: grid;
     gap: 10px;
