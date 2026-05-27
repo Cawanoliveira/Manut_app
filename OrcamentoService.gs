@@ -352,27 +352,40 @@ function gerarPdfOrcamentoInterno_(orcamento, items) {
 }
 
 function buildOrcamentoPdfData_(orcamento, items) {
+  var itens = (items || []).map(function(item, index) {
+    var rawValor = typeof item.valor === 'number' ? item.valor : parseCurrencyValue_(item.valor);
+    return {
+      ordem: index + 1,
+      id: safeString_(item.id_pendencia) || '-',
+      loja: safeString_(item.loja) || '-',
+      setor: safeString_(item.setor) || '-',
+      tipo: safeString_(item.tipo) || '-',
+      prioridade: safeString_(item.prioridade) || '-',
+      previsao: safeString_(item.previsao_entrega) || '-',
+      valor: isFinite(rawValor) ? formatCurrencyBr_(rawValor) : '-',
+      valorRaw: isFinite(rawValor) ? rawValor : NaN,
+      descricao: safeString_(item.descricao) || '-'
+    };
+  });
+  var somaServicosRaw = itens.reduce(function(total, item) {
+    return total + (isFinite(item.valorRaw) ? item.valorRaw : 0);
+  }, 0);
+  var valorTotalRaw = typeof orcamento.valor_total === 'number'
+    ? orcamento.valor_total
+    : parseCurrencyValue_(orcamento.valor_total);
+  var valorTotalNormalizado = isFinite(valorTotalRaw) ? valorTotalRaw : somaServicosRaw;
+  var temAjusteTotal = somaServicosRaw > 0 && Math.abs(valorTotalNormalizado - somaServicosRaw) >= 0.01;
   return {
     idOrcamento: safeString_(orcamento.id_orcamento),
     prestador: safeString_(orcamento.prestador) || '-',
     dataOrcamento: formatarData(orcamento.data_orcamento) || '-',
-    quantidadePendencias: String((items || []).length),
-    valorTotal: formatCurrencyBr_(orcamento.valor_total),
+    quantidadePendencias: String(itens.length),
+    valorTotal: formatCurrencyBr_(valorTotalNormalizado),
+    somaServicos: formatCurrencyBr_(somaServicosRaw),
+    temAjusteTotal: temAjusteTotal,
     observacao: safeString_(orcamento.observacao) || '',
     logoUrl: buildCronogramaLogoDataUrl_(),
-    itens: (items || []).map(function(item, index) {
-      return {
-        ordem: index + 1,
-        id: safeString_(item.id_pendencia) || '-',
-        loja: safeString_(item.loja) || '-',
-        setor: safeString_(item.setor) || '-',
-        tipo: safeString_(item.tipo) || '-',
-        prioridade: safeString_(item.prioridade) || '-',
-        previsao: safeString_(item.previsao_entrega) || '-',
-        valor: isFinite(Number(item.valor)) ? formatCurrencyBr_(item.valor) : '-',
-        descricao: safeString_(item.descricao) || '-'
-      };
-    })
+    itens: itens
   };
 }
 
@@ -421,6 +434,10 @@ function montarHtmlOrcamentoPrestador_(dados) {
     ? '<img class="logo" src="' + escapeHtml_(dados.logoUrl) + '" alt="Logo">'
     : '<div class="logo-fallback">b</div>';
 
+  var totalBoxHtml = dados.temAjusteTotal
+    ? '<div class="total-box total-box-split"><div><div class="total-label">Valor total do orcamento</div><div class="total-subline">De: ' + escapeHtml_(dados.somaServicos) + '</div></div><div class="total-stack"><span>Por:</span><strong class="total-value">' + escapeHtml_(dados.valorTotal) + '</strong></div></div>'
+    : '<div class="total-box"><div class="total-label">Valor total do orcamento</div><div class="total-value">' + escapeHtml_(dados.valorTotal) + '</div></div>';
+
   return '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' +
     '@page{size:A4 portrait;margin:16mm 12mm 16mm 12mm;}' +
     'html,body{margin:0;padding:0;background:#fff;color:#111;font-family:Calibri,Arial,Helvetica,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
@@ -459,7 +476,10 @@ function montarHtmlOrcamentoPrestador_(dados) {
     '.notes-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}' +
     '.notes-value{font-size:12px;line-height:1.55;color:#111;min-height:18px;white-space:pre-wrap;}' +
     '.total-box{margin-top:14px;border:2px solid var(--orange);border-radius:16px;padding:14px 16px;background:#fff7ef;display:flex;justify-content:space-between;align-items:center;gap:12px;}' +
+    '.total-box-split{align-items:flex-end;}' +
     '.total-label{font-size:13px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.04em;}' +
+    '.total-subline{margin-top:6px;font-size:14px;font-weight:700;color:#7c2d12;}' +
+    '.total-stack{display:grid;justify-items:end;gap:4px;color:#7c2d12;font-size:15px;font-weight:700;}' +
     '.total-value{font-size:26px;font-weight:800;color:#111827;}' +
     '.footer-note{margin-top:8px;font-size:11px;color:#6b7280;text-align:right;}' +
     '</style></head><body>' +
@@ -480,7 +500,7 @@ function montarHtmlOrcamentoPrestador_(dados) {
       '<th style="width:18%;">Valor</th>' +
     '</tr></thead>' + grupos + '</table></div>' +
     '<div class="notes"><div class="notes-label">Observacao do Orcamento</div><div class="notes-value">' + escapeHtml_(dados.observacao || '-') + '</div></div>' +
-    '<div class="total-box"><div class="total-label">Valor total do orcamento</div><div class="total-value">' + escapeHtml_(dados.valorTotal) + '</div></div>' +
+    totalBoxHtml +
     '<div class="footer-note">Emitido em ' + escapeHtml_(formatarData(now_())) + '</div>' +
     '</body></html>';
 }

@@ -2755,11 +2755,13 @@
         item.prioridade ? ('Prioridade: ' + item.prioridade) : '',
         item.previsao_entrega ? ('Previsao: ' + formatDateBr(item.previsao_entrega)) : ''
       ].filter(Boolean).join(' | ');
+      var descricao = safeTrim_(item.descricao) || 'Sem descricao informada.';
       return '<div class="orcamento-item-editor">' +
         '<div class="orcamento-item-editor-main">' +
           '<div class="orcamento-item-editor-copy">' +
             '<strong><span class="item-index-badge">' + String(index + 1).padStart(2, '0') + '</span> ' + escapeHtml(titulo) + '</strong>' +
             '<span>' + escapeHtml(subtitulo || 'Valor opcional por servico.') + '</span>' +
+            '<small class="orcamento-item-editor-desc">' + escapeHtml(descricao) + '</small>' +
           '</div>' +
           '<label class="orcamento-item-editor-value">' +
             '<span>Valor</span>' +

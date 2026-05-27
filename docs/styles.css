@@ -991,6 +991,15 @@
     line-height: 1.45;
   }
 
+  .orcamento-item-editor-desc {
+    margin-top: 2px;
+    color: var(--black-bar);
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   .orcamento-item-editor-value {
     display: grid;
     gap: 6px;
