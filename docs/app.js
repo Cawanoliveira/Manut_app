@@ -519,6 +519,38 @@
     refreshBackButtons_();
   }
 
+  function rerenderViewsAfterPendenciaUpdate_(id) {
+    sanitizeOrcamentoSelection_();
+    if (appState.currentSection === 'secaoListaPendencias') {
+      renderPendencias(getFilteredPendencias_(false));
+    } else if (appState.currentSection === 'secaoHistorico') {
+      renderHistoricoGeral(getFilteredPendencias_(true));
+    } else if (appState.currentSection === 'secaoDashboard') {
+      renderDashboard(buildDashboardFromVisibleState_());
+    } else if (appState.currentSection === 'secaoCronograma') {
+      renderCronogramaPreview_();
+    } else if (appState.currentSection === 'secaoDetalhesPendencia') {
+      var itemAtualizado = buildDetailFromLocalItem_(getLocalItemById_(id));
+      if (itemAtualizado) {
+        renderDetalhesPendencia(itemAtualizado);
+      }
+    }
+    if (appState.zoomContext && !document.getElementById('metricZoomModal').classList.contains('hidden')) {
+      aplicarFiltrosZoom();
+    }
+    renderFiltroResumo();
+    updateSyncStatusBar_();
+    refreshBackButtons_();
+  }
+
+  function setInlineFieldSavingState_(fieldEl, saving) {
+    if (!fieldEl) {
+      return;
+    }
+    fieldEl.disabled = !!saving;
+    fieldEl.dataset.saving = saving ? '1' : '0';
+  }
+
   function resetDashboardChartModes_() {
     appState.dashboardChartMode = {
       loja: 'list',
@@ -1402,7 +1434,7 @@
     navegar('secaoEdicaoPendencia');
   }
 
-  function salvarExecutorRapido(id, executor) {
+  function salvarExecutorRapido(id, executor, fieldEl) {
     var item = getLocalItemById_(id);
     if (!item) {
       mostrarMensagemErro('Pendencia nao encontrada.');
@@ -1423,30 +1455,37 @@
         payload: { executor: executor || '' },
         observacao: ''
       });
-      renderAll_();
+      rerenderViewsAfterPendenciaUpdate_(id);
       mostrarMensagemSucesso('Executor atualizado offline. Sera sincronizado ao reconectar.');
       return;
     }
-    mostrarLoading();
+    setInlineFieldSavingState_(fieldEl, true);
     serverCall_('atualizarPendencia', [resolveRemoteId_(id), { executor: executor || '' }])
       .then(function(response) {
-        ocultarLoading();
+        setInlineFieldSavingState_(fieldEl, false);
         if (!response.success) {
+          rerenderViewsAfterPendenciaUpdate_(id);
           mostrarMensagemErro(response.message);
           return;
         }
         if (response.data && response.data.pendencia) {
           mergeItemIntoState_(response.data.pendencia);
-          renderAll_();
+          rerenderViewsAfterPendenciaUpdate_(id);
+          mostrarMensagemSucesso('Executor atualizado com sucesso.');
         } else {
-          return carregarEstadoServidor_();
+          return carregarEstadoServidor_().then(function() {
+            mostrarMensagemSucesso('Executor atualizado com sucesso.');
+          });
         }
-        mostrarMensagemSucesso('Executor atualizado com sucesso.');
       })
-      .catch(handleFailure);
+      .catch(function(error) {
+        setInlineFieldSavingState_(fieldEl, false);
+        rerenderViewsAfterPendenciaUpdate_(id);
+        handleFailure(error);
+      });
   }
 
-  function salvarResponsavelRapido(id, responsavel) {
+  function salvarResponsavelRapido(id, responsavel, fieldEl) {
     var item = getLocalItemById_(id);
     if (!item) {
       mostrarMensagemErro('Pendencia nao encontrada.');
@@ -1467,27 +1506,34 @@
         payload: { responsavel: responsavel || '' },
         observacao: ''
       });
-      renderAll_();
+      rerenderViewsAfterPendenciaUpdate_(id);
       mostrarMensagemSucesso('Responsavel atualizado offline. Sera sincronizado ao reconectar.');
       return;
     }
-    mostrarLoading();
+    setInlineFieldSavingState_(fieldEl, true);
     serverCall_('atualizarPendencia', [resolveRemoteId_(id), { responsavel: responsavel || '' }])
       .then(function(response) {
-        ocultarLoading();
+        setInlineFieldSavingState_(fieldEl, false);
         if (!response.success) {
+          rerenderViewsAfterPendenciaUpdate_(id);
           mostrarMensagemErro(response.message);
           return;
         }
         if (response.data && response.data.pendencia) {
           mergeItemIntoState_(response.data.pendencia);
-          renderAll_();
+          rerenderViewsAfterPendenciaUpdate_(id);
+          mostrarMensagemSucesso('Responsavel atualizado com sucesso.');
         } else {
-          return carregarEstadoServidor_();
+          return carregarEstadoServidor_().then(function() {
+            mostrarMensagemSucesso('Responsavel atualizado com sucesso.');
+          });
         }
-        mostrarMensagemSucesso('Responsavel atualizado com sucesso.');
       })
-      .catch(handleFailure);
+      .catch(function(error) {
+        setInlineFieldSavingState_(fieldEl, false);
+        rerenderViewsAfterPendenciaUpdate_(id);
+        handleFailure(error);
+      });
   }
 
   async function salvarEdicaoPendencia(event) {
@@ -1994,7 +2040,7 @@
     ((appState.combos && appState.combos.prestadores) || []).forEach(function(nome) {
       options.push('<option value="' + escapeHtml(nome) + '"' + (normalizeText_(nome) === normalizeText_(item.executor) ? ' selected' : '') + '>' + escapeHtml(nome) + '</option>');
     });
-    return '<select class="executor-inline-select" onchange="salvarExecutorRapido(\'' + pendenciaId + '\', this.value)">' + options.join('') + '</select>';
+    return '<select class="executor-inline-select" onchange="salvarExecutorRapido(\'' + pendenciaId + '\', this.value, this)">' + options.join('') + '</select>';
   }
 
   function renderResponsavelSelect_(item) {
@@ -2003,7 +2049,7 @@
     ((appState.combos && appState.combos.responsaveis) || []).forEach(function(nome) {
       options.push('<option value="' + escapeHtml(nome) + '"' + (normalizeText_(nome) === normalizeText_(item.responsavel) ? ' selected' : '') + '>' + escapeHtml(nome) + '</option>');
     });
-    return '<select class="executor-inline-select" onchange="salvarResponsavelRapido(\'' + pendenciaId + '\', this.value)">' + options.join('') + '</select>';
+    return '<select class="executor-inline-select" onchange="salvarResponsavelRapido(\'' + pendenciaId + '\', this.value, this)">' + options.join('') + '</select>';
   }
 
   function renderHistoryStatusButton_(item) {
