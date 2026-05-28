@@ -594,9 +594,50 @@
     });
   }
 
+  function getCurrentScrollTop_() {
+    return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+  }
+
+  function restoreScrollTop_(scrollTop) {
+    var top = Number(scrollTop || 0);
+    setTimeout(function() {
+      window.scrollTo(0, top);
+    }, 0);
+  }
+
+  function captureNavigationState_() {
+    var zoomModal = document.getElementById('metricZoomModal');
+    var zoomOpen = !!(zoomModal && !zoomModal.classList.contains('hidden'));
+    return {
+      sectionId: appState.currentSection || 'secaoDashboard',
+      scrollTop: getCurrentScrollTop_(),
+      zoomOpen: zoomOpen,
+      zoomContext: zoomOpen ? deepClone_(appState.zoomContext || {}) : null,
+      dashboardSelection: zoomOpen ? deepClone_(appState.dashboardSelection || {}) : null
+    };
+  }
+
+  function restoreNavigationState_(state) {
+    var isLegacy = typeof state === 'string';
+    var sectionId = isLegacy ? state : (state && state.sectionId) || 'secaoDashboard';
+    navegar(sectionId || 'secaoDashboard', null, true);
+    if (!isLegacy && state && sectionId === 'secaoDashboard' && state.zoomOpen && state.zoomContext) {
+      appState.zoomContext = deepClone_(state.zoomContext);
+      appState.dashboardSelection = deepClone_(state.dashboardSelection || appState.dashboardSelection || {});
+      preencherFiltrosZoom_();
+      aplicarFiltrosZoom();
+      document.getElementById('metricZoomModal').classList.remove('hidden');
+    } else {
+      fecharZoomCard();
+    }
+    if (!isLegacy && state) {
+      restoreScrollTop_(state.scrollTop);
+    }
+  }
+
   function navegar(sectionId, buttonEl, skipHistory) {
     if (appState.currentSection && appState.currentSection !== sectionId && !skipHistory) {
-      appState.navigationStack.push(appState.currentSection);
+      appState.navigationStack.push(captureNavigationState_());
     }
     appState.currentSection = sectionId;
     document.querySelectorAll('.page-section').forEach(function(section) {
@@ -635,7 +676,7 @@
       return;
     }
     var previous = appState.navigationStack.pop();
-    navegar(previous || 'secaoDashboard', null, true);
+    restoreNavigationState_(previous);
   }
 
   function refreshBackButtons_() {
@@ -4056,6 +4097,10 @@
   }
 
   function voltarParaLista() {
+    if (appState.navigationStack.length) {
+      voltarTelaAnterior();
+      return;
+    }
     navegar('secaoListaPendencias');
   }
 
