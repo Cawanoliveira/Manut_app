@@ -1,10 +1,10 @@
-<html lang="pt-BR">
+﻿<html lang="pt-BR">
   <head>
     <base target="_top">
     <meta charset="utf-8">
     <title>Zelo Hub</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#ff7a00">
+        <meta name="theme-color" content="#ff7a00">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Zelo Hub">
@@ -28,11 +28,15 @@
     <button id="filterFab" class="filter-fab" type="button" onclick="abrirFiltrosFlutuante()">
       <span class="filter-fab-icon">&#9776;</span>
       <span class="filter-fab-label">Filtros</span>
+      <span id="filterFabCount" class="filter-fab-count hidden">0</span>
     </button>
 
     <aside id="filtroDrawer" class="filter-sidebar hidden">
       <div class="drawer-header">
-        <h3>Filtros</h3>
+        <div>
+          <h3>Filtros</h3>
+          <p class="drawer-helper-text">Selecione quantos valores precisar em cada grupo.</p>
+        </div>
         <button class="ghost-button compact-button" onclick="toggleFiltroDrawer(false)">Fechar</button>
       </div>
       <div class="filters-grid filter-groups">
@@ -40,37 +44,37 @@
           <h4>Loja e setor</h4>
           <label>
             <span>Loja</span>
-            <select id="filtroLoja"></select>
+            <select id="filtroLoja" class="multi-select-native" multiple size="5"></select>
           </label>
           <label>
             <span>Setor</span>
-            <select id="filtroSetor"></select>
+            <select id="filtroSetor" class="multi-select-native" multiple size="5"></select>
           </label>
         </div>
         <div class="filter-group">
           <h4>Status, prioridade e tipo</h4>
           <label>
             <span>Status</span>
-            <select id="filtroStatus"></select>
+            <select id="filtroStatus" class="multi-select-native" multiple size="5"></select>
           </label>
           <label>
             <span>Prioridade</span>
-            <select id="filtroPrioridade"></select>
+            <select id="filtroPrioridade" class="multi-select-native" multiple size="5"></select>
           </label>
           <label>
             <span>Tipo</span>
-            <select id="filtroTipo"></select>
+            <select id="filtroTipo" class="multi-select-native" multiple size="5"></select>
           </label>
         </div>
         <div class="filter-group">
           <h4>Responsavel e executor</h4>
           <label>
             <span>Responsavel</span>
-            <select id="filtroResponsavel"></select>
+            <select id="filtroResponsavel" class="multi-select-native" multiple size="5"></select>
           </label>
           <label>
             <span>Executor</span>
-            <select id="filtroExecutor"></select>
+            <select id="filtroExecutor" class="multi-select-native" multiple size="5"></select>
           </label>
           <label>
             <span>Orcamento</span>
@@ -117,7 +121,9 @@
             <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
           </div>
         </div>
-        <div id="dashboardCards" class="cards-grid"></div>
+        <div class="panel action-hub-panel">
+          <div id="dashboardActionHub" class="action-hub-grid"></div>
+        </div>
         <div class="summary-grid">
             <article class="panel">
               <div class="panel-title-row">
@@ -129,7 +135,6 @@
             <article class="panel">
               <div class="panel-title-row">
                 <h3>Por setor</h3>
-                <button type="button" class="chart-toggle-button" onclick="alternarGraficoResumo('setor')" title="Alternar grafico por setor">&#128202;</button>
               </div>
               <div id="resumoPorSetor" class="summary-list empty-state">Nenhum dado carregado.</div>
             </article>
@@ -149,72 +154,107 @@
             <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
           </div>
         </div>
-
-          <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
-            <label>
-              <span>Loja *</span>
-              <select id="novaLoja" required></select>
-            </label>
-            <label>
-              <span>Setor *</span>
-              <select id="novoSetor" required></select>
-            </label>
-            <label>
-              <span>Tipo</span>
-              <select id="novoTipo"></select>
-            </label>
-            <label>
-              <span>Prioridade</span>
-              <select id="novaPrioridade"></select>
-            </label>
-            <label>
-              <span>Executor</span>
-              <select id="novoExecutor"></select>
-            </label>
-            <label>
-              <span>Responsavel</span>
-              <select id="novoResponsavel"></select>
-            </label>
-
-          <label class="full-width">
-            <span>Descricao *</span>
-            <div class="field-with-action">
-              <textarea id="novaDescricao" rows="5" placeholder="Descreva o problema encontrado." required></textarea>
-              <div class="field-actions-stack">
-                <button type="button" class="mic-button" onclick="toggleDitado('novaDescricao', this)">Voz</button>
-              </div>
+        <form id="formNovaPendencia" class="panel form-grid" onsubmit="salvarNovaPendencia(event)">
+          <div class="full-width flow-shell">
+            <div class="flow-header">
+              <div></div>
+              <button type="button" class="ghost-button compact-button" onclick="limparFormularioNovaPendencia(true)">Limpar</button>
             </div>
-            <details class="voice-help-box">
-              <summary>Comandos de voz possiveis</summary>
-              <div class="voice-commands">
-                "nova linha", "novo paragrafo", "virgula", "ponto final", "dois pontos", "ponto e virgula", "abrir parenteses" e "fechar parenteses".
-              </div>
-            </details>
-          </label>
+            <div id="novaPendenciaStepIndicator" class="flow-stepper"></div>
+          </div>
 
-          <label class="full-width">
-            <span>Observacao</span>
-            <div class="field-with-action">
-              <textarea id="novaObservacao" rows="4" placeholder="Detalhes adicionais, local exato, contexto."></textarea>
-              <div class="field-actions-stack">
-                <button type="button" class="mic-button" onclick="toggleDitado('novaObservacao', this)">Voz</button>
-              </div>
+          <div class="full-width flow-step-panel active" data-step="1">
+            <div class="flow-step-fields">
+              <label>
+                <span>Loja *</span>
+                <select id="novaLoja" required></select>
+              </label>
+              <label>
+                <span>Setor *</span>
+                <select id="novoSetor" required></select>
+              </label>
             </div>
-          </label>
+          </div>
 
-          <label class="full-width">
-            <span>Foto opcional</span>
-            <input id="novaFoto" class="native-file-input" type="file" accept="image/*" capture="environment" onchange="atualizarNomeArquivo('novaFoto', 'novaFotoNome')">
-            <label for="novaFoto" class="file-picker-button">
-              <span class="file-picker-icon">&#128247;</span>
-              <span>Escolher ou tirar foto</span>
-            </label>
-            <div id="novaFotoNome" class="file-picker-name">Nenhuma foto selecionada.</div>
-          </label>
+          <div class="full-width flow-step-panel" data-step="2">
+            <div class="flow-step-fields">
+              <label>
+                <span>Tipo</span>
+                <select id="novoTipo"></select>
+              </label>
+              <label>
+                <span>Prioridade</span>
+                <select id="novaPrioridade"></select>
+              </label>
+              <label>
+                <span>Responsavel</span>
+                <select id="novoResponsavel"></select>
+              </label>
+              <label>
+                <span>Executor</span>
+                <select id="novoExecutor"></select>
+              </label>
+              <label>
+                <span>Inicio planejado</span>
+                <input id="novaDataInicio" type="date">
+              </label>
+              <label>
+                <span>Previsao de entrega</span>
+                <input id="novaPrevisaoEntrega" type="date">
+              </label>
+            </div>
+            <div id="novaPlanningHint" class="planning-hint muted-text"></div>
+          </div>
 
-          <div class="full-width actions-row">
-            <button type="submit" class="primary-button">Salvar</button>
-            <button type="button" class="ghost-button" onclick="limparFormularioNovaPendencia(true)">Limpar</button>
+          <div class="full-width flow-step-panel" data-step="3">
+            <div class="flow-step-fields">
+              <label class="full-width">
+                <span>Descricao *</span>
+                <div class="field-with-action">
+                  <textarea id="novaDescricao" rows="5" placeholder="Descreva o problema encontrado." required></textarea>
+                  <div class="field-actions-stack">
+                    <button type="button" class="mic-button" onclick="toggleDitado('novaDescricao', this)">Voz</button>
+                  </div>
+                </div>
+                <details class="voice-help-box">
+                  <summary>Comandos de voz possiveis</summary>
+                  <div class="voice-commands">
+                    "nova linha", "novo paragrafo", "virgula", "ponto final", "dois pontos", "ponto e virgula", "abrir parenteses" e "fechar parenteses".
+                  </div>
+                </details>
+              </label>
+
+              <label class="full-width">
+                <span>Observacao</span>
+                <div class="field-with-action">
+                  <textarea id="novaObservacao" rows="4" placeholder="Detalhes adicionais, local exato, contexto."></textarea>
+                  <div class="field-actions-stack">
+                    <button type="button" class="mic-button" onclick="toggleDitado('novaObservacao', this)">Voz</button>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="full-width flow-step-panel" data-step="4">
+            <div class="flow-step-fields flow-step-fields-single">
+              <div class="flow-photo-field">
+                <span>Foto opcional</span>
+                <input id="novaFoto" class="native-file-input" type="file" accept="image/*" capture="environment" onchange="atualizarNomeArquivo('novaFoto', 'novaFotoNome')">
+                <label for="novaFoto" class="file-picker-button compact-file-picker">
+                  <span class="file-picker-icon">&#128247;</span>
+                  <span>Adicionar foto</span>
+                </label>
+                <div id="novaFotoNome" class="file-picker-name">Nenhuma foto selecionada.</div>
+              </div>
+              <div id="novaPendenciaReviewCard" class="flow-review-card"></div>
+            </div>
+          </div>
+
+          <div class="full-width flow-actions-row">
+            <button id="novaPendenciaPrevButton" type="button" class="ghost-button" onclick="moveNovaPendenciaStep_(-1)">Voltar etapa</button>
+            <button id="novaPendenciaNextButton" type="button" class="primary-button" onclick="moveNovaPendenciaStep_(1)">Continuar</button>
+            <button id="novaPendenciaSubmitButton" type="submit" class="primary-button hidden">Salvar pendencia</button>
           </div>
         </form>
       </section>
@@ -225,12 +265,16 @@
             <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
             <div class="section-title-copy">
               <h2>Lista</h2>
+              <p>Acompanhe pendencias abertas, refine o recorte e monte orcamentos em lote.</p>
             </div>
           </div>
           <div class="header-actions">
             <button class="secondary-button back-button" onclick="voltarTelaAnterior()">Voltar</button>
             <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
           </div>
+        </div>
+        <div class="panel worklist-presets-panel">
+          <div id="listPresetBar" class="worklist-preset-bar"></div>
         </div>
         <div id="orcamentoToolbar" class="panel selection-toolbar hidden">
           <div>
@@ -245,7 +289,7 @@
         </div>
         <div id="listaPendenciasCards" class="list-cards"></div>
         <div class="table-wrapper">
-          <table class="desktop-table listagem-table">
+          <table class="desktop-table listagem-table worklist-table">
             <thead>
               <tr>
                 <th>
@@ -257,8 +301,6 @@
                 <th>ID</th>
                 <th>Local</th>
                 <th>Setor</th>
-                <th>Classif.</th>
-                <th>Urg.</th>
                 <th>Desc. / Obs.</th>
                 <th>Resp.</th>
                 <th>Exec.</th>
@@ -278,6 +320,7 @@
             <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
             <div class="section-title-copy">
               <h2>Detalhes</h2>
+              <p>Consulte contexto, historico e anexos antes de decidir a proxima acao.</p>
             </div>
           </div>
         <div class="header-actions">
@@ -302,6 +345,7 @@
           <button class="primary-button" onclick="atualizarTelaAtual()">Atualizar</button>
         </div>
         </div>
+        <div id="editGuidancePanel" class="panel edit-guidance-panel"></div>
         <form id="formEditarPendencia" class="panel form-grid" onsubmit="salvarEdicaoPendencia(event)">
           <input id="editIdPendencia" type="hidden">
               <label>
@@ -328,6 +372,13 @@
             <span>Previsao</span>
             <input id="editPrevisaoEntrega" type="date">
           </label>
+          <div class="full-width planning-toolbar">
+            <button type="button" class="ghost-button compact-button" onclick="aplicarPlanejamentoFormulario_('edit', 'today')">Iniciar hoje</button>
+            <button type="button" class="ghost-button compact-button" onclick="aplicarPlanejamentoFormulario_('edit', 'tomorrow')">Comecar amanha</button>
+            <button type="button" class="warning-button compact-button" onclick="aplicarPlanejamentoFormulario_('edit', 'suggested')">Prazo sugerido</button>
+            <button type="button" class="compact-button" onclick="aplicarPlanejamentoFormulario_('edit', 'clear')">Limpar datas</button>
+          </div>
+          <div id="editPlanningHint" class="full-width planning-hint muted-text"></div>
               <label>
                 <span>Tipo</span>
                 <select id="editTipo"></select>
@@ -354,7 +405,7 @@
               </div>
             </div>
           </label>
-          <label class="full-width">
+          <div class="full-width flow-photo-field">
             <span>Nova foto</span>
             <input id="editFoto" class="native-file-input" type="file" accept="image/*" capture="environment" onchange="atualizarNomeArquivo('editFoto', 'editFotoNome')">
             <label for="editFoto" class="file-picker-button">
@@ -362,7 +413,7 @@
               <span>Escolher ou tirar foto</span>
             </label>
             <div id="editFotoNome" class="file-picker-name">Nenhuma foto selecionada.</div>
-          </label>
+          </div>
           <div class="full-width actions-row">
             <button type="submit" class="primary-button">Salvar</button>
             <button type="button" class="success-button" onclick="concluirPendencia(document.getElementById('editIdPendencia').value)">Concluir</button>
@@ -376,7 +427,6 @@
             <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
             <div class="section-title-copy">
               <h2>Historico</h2>
-              <p>Itens concluidos ou cancelados.</p>
             </div>
           </div>
           <div class="header-actions">
@@ -393,8 +443,6 @@
                 <th>ID</th>
                 <th>Local</th>
                 <th>Setor</th>
-                <th>Classif.</th>
-                <th>Urg.</th>
                 <th>Desc. / Obs.</th>
                 <th>Resp.</th>
                 <th>Exec.</th>
@@ -414,7 +462,6 @@
             <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
             <div class="section-title-copy">
               <h2>Cronograma</h2>
-              <p>Filtre por prestador e gere um PDF da programacao.</p>
             </div>
           </div>
           <div class="header-actions">
@@ -431,19 +478,19 @@
             </label>
             <label>
               <span>Loja</span>
-              <select id="cronogramaLoja"></select>
+              <select id="cronogramaLoja" class="multi-select-native" multiple size="5"></select>
             </label>
             <label>
               <span>Setor</span>
-              <select id="cronogramaSetor"></select>
+              <select id="cronogramaSetor" class="multi-select-native" multiple size="5"></select>
             </label>
             <label>
               <span>Responsavel</span>
-              <select id="cronogramaResponsavel"></select>
+              <select id="cronogramaResponsavel" class="multi-select-native" multiple size="5"></select>
             </label>
             <label>
               <span>Status</span>
-              <select id="cronogramaStatus"></select>
+              <select id="cronogramaStatus" class="multi-select-native" multiple size="5"></select>
             </label>
             <label>
               <span>Abertura de</span>
@@ -480,7 +527,6 @@
                   <th>Local</th>
                   <th>Setor</th>
                   <th>Status</th>
-                  <th>Inicio</th>
                   <th>Termino</th>
                   <th>Descricao / Observacao</th>
                   <th>Acoes</th>
@@ -498,7 +544,6 @@
               <img class="brand-logo-inline" src="https://cawanoliveira.github.io/Manut_app/logopretoelaranja.webp" alt="Big Compra">
             <div class="section-title-copy">
               <h2>Configuracoes</h2>
-              <p>Ajustes do sistema.</p>
             </div>
           </div>
           <div class="header-actions">
@@ -614,6 +659,22 @@
       </div>
     </div>
 
+    <div id="novaPendenciaPosSaveModal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card modal-card-sm">
+        <div class="drawer-header">
+          <div>
+            <h3>Nova pendencia</h3>
+            <p id="novaPendenciaPosSaveMessage" class="modal-description">Deseja abrir a proxima mantendo loja, setor, tipo e prioridade?</p>
+          </div>
+        </div>
+        <div class="actions-row">
+          <button class="ghost-button" type="button" onclick="escolherContextoPosSalvarPendencia_(false)">Limpar tudo</button>
+          <button class="primary-button" type="button" onclick="escolherContextoPosSalvarPendencia_(true)">Continuar no mesmo contexto</button>
+        </div>
+      </div>
+    </div>
+
     <div id="orcamentoModal" class="modal hidden">
       <div class="modal-backdrop" onclick="fecharOrcamentoModal()"></div>
       <div class="modal-card">
@@ -723,19 +784,43 @@
 
     <nav class="bottom-nav">
       <button class="nav-button active" data-section="secaoDashboard" onclick="navegar('secaoDashboard', this)">
-        <span class="nav-icon">&#8962;</span>
+        <span class="nav-icon nav-icon-svg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M4 10.5 12 4l8 6.5"></path>
+            <path d="M6.5 9.5V20h11V9.5"></path>
+          </svg>
+        </span>
         <span class="nav-label">Dashboard</span>
       </button>
       <button class="nav-button" data-section="secaoNovaPendencia" onclick="navegar('secaoNovaPendencia', this)">
-        <span class="nav-icon">&#10010;</span>
+        <span class="nav-icon nav-icon-svg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </span>
         <span class="nav-label">Nova</span>
       </button>
       <button class="nav-button" data-section="secaoListaPendencias" onclick="navegar('secaoListaPendencias', this)">
-        <span class="nav-icon">&#9776;</span>
+        <span class="nav-icon nav-icon-svg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M8 7h11"></path>
+            <path d="M8 12h11"></path>
+            <path d="M8 17h11"></path>
+            <circle cx="4.5" cy="7" r="1"></circle>
+            <circle cx="4.5" cy="12" r="1"></circle>
+            <circle cx="4.5" cy="17" r="1"></circle>
+          </svg>
+        </span>
         <span class="nav-label">Lista</span>
       </button>
       <button class="nav-button" data-section="secaoHistorico" onclick="navegar('secaoHistorico', this)">
-        <span class="nav-icon">&#8635;</span>
+        <span class="nav-icon nav-icon-svg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M7 7h6a5 5 0 1 1-4.8 6.4"></path>
+            <path d="M7 3v4h4"></path>
+          </svg>
+        </span>
         <span class="nav-label">Historico</span>
       </button>
       <button class="nav-button" data-section="secaoCronograma" onclick="navegar('secaoCronograma', this)">
@@ -750,12 +835,21 @@
         <span class="nav-label">Cronograma</span>
       </button>
       <button class="nav-button" data-section="secaoConfiguracoes" onclick="navegar('secaoConfiguracoes', this)">
-        <span class="nav-icon">&#9881;</span>
+        <span class="nav-icon nav-icon-svg" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="3.2"></circle>
+            <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1.8 1.8 0 0 1 0 2.5 1.8 1.8 0 0 1-2.5 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a1.8 1.8 0 0 1-3.6 0v-.2a1 1 0 0 0-.7-.9 1 1 0 0 0-1 .2l-.2.1a1.8 1.8 0 0 1-2.5 0 1.8 1.8 0 0 1 0-2.5l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a1.8 1.8 0 0 1 0-3.6h.2a1 1 0 0 0 .9-.7 1 1 0 0 0-.2-1l-.1-.2a1.8 1.8 0 0 1 0-2.5 1.8 1.8 0 0 1 2.5 0l.2.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a1.8 1.8 0 0 1 3.6 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1.8 1.8 0 0 1 2.5 0 1.8 1.8 0 0 1 0 2.5l-.1.2a1 1 0 0 0-.2 1 1 1 0 0 0 .9.7h.2a1.8 1.8 0 0 1 0 3.6h-.2a1 1 0 0 0-.9.6Z"></path>
+          </svg>
+        </span>
         <span class="nav-label">Config</span>
       </button>
     </nav>
-    <script src="config.js"></script>
-    <script src="app.js"></script>
 
+        <script src="config.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
+
+
+
+
