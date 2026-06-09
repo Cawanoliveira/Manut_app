@@ -159,6 +159,86 @@ function gerarPdfOrcamento(idOrcamento) {
   }
 }
 
+function excluirOrcamento(idOrcamento) {
+  var lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(30000);
+    var cleanId = safeString_(idOrcamento);
+    if (!cleanId) {
+      return createErrorResponse_('Orcamento nao informado.');
+    }
+
+    var orcamento = buscarOrcamentoById_(cleanId);
+    if (!orcamento) {
+      return createErrorResponse_('Orcamento nao encontrado.');
+    }
+
+    if (safeString_(orcamento.pdf_file_id)) {
+      try {
+        DriveApp.getFileById(orcamento.pdf_file_id).setTrashed(true);
+      } catch (fileError) {
+        registrarLog('ALERTA', 'Falha ao mover PDF de orcamento para a lixeira.', cleanId + ' | ' + getErrorStack_(fileError), getCurrentUserIdentifier_());
+      }
+    }
+
+    var pendenciasSheet = getSheet_(APP_CONFIG.SHEETS.PENDENCIAS);
+    var pendenciasHeaders = APP_CONFIG.HEADERS[APP_CONFIG.SHEETS.PENDENCIAS];
+    var pendenciasIndexMap = getHeaderIndexMap_(APP_CONFIG.SHEETS.PENDENCIAS);
+    var pendenciasIds = [];
+    if (pendenciasSheet.getLastRow() > 1) {
+      var pendenciasValues = pendenciasSheet.getRange(2, 1, pendenciasSheet.getLastRow() - 1, pendenciasHeaders.length).getValues();
+      pendenciasValues.forEach(function(row, index) {
+        if (safeString_(row[pendenciasIndexMap.id_orcamento_ativo]) !== cleanId) {
+          return;
+        }
+        pendenciasIds.push(safeString_(row[pendenciasIndexMap.id_pendencia]));
+        updateSheetRecordByRow_(APP_CONFIG.SHEETS.PENDENCIAS, index + 2, {
+          id_orcamento_ativo: '',
+          prestador_orcamento_ativo: '',
+          valor_orcamento_ativo: '',
+          data_orcamento_ativo: '',
+          ultima_atualizacao: now_(),
+          atualizado_por: getCurrentUserIdentifier_()
+        });
+      });
+    }
+
+    var itensSheet = getSheet_(APP_CONFIG.SHEETS.ORCAMENTO_ITENS);
+    var itensHeaders = APP_CONFIG.HEADERS[APP_CONFIG.SHEETS.ORCAMENTO_ITENS];
+    var itensIndexMap = getHeaderIndexMap_(APP_CONFIG.SHEETS.ORCAMENTO_ITENS);
+    if (itensSheet.getLastRow() > 1) {
+      var itensValues = itensSheet.getRange(2, 1, itensSheet.getLastRow() - 1, itensHeaders.length).getValues();
+      var itemRowsToDelete = [];
+      itensValues.forEach(function(row, index) {
+        if (safeString_(row[itensIndexMap.id_orcamento]) === cleanId) {
+          itemRowsToDelete.push(index + 2);
+        }
+      });
+      itemRowsToDelete.reverse().forEach(function(rowIndex) {
+        itensSheet.deleteRow(rowIndex);
+      });
+    }
+
+    var orcamentoRowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.ORCAMENTOS, 'id_orcamento', cleanId);
+    if (orcamentoRowIndex > -1) {
+      getSheet_(APP_CONFIG.SHEETS.ORCAMENTOS).deleteRow(orcamentoRowIndex);
+    }
+
+    SpreadsheetApp.flush();
+    atualizarDashboardBase_();
+    registrarLog('INFO', 'Orcamento excluido com sucesso.', cleanId, getCurrentUserIdentifier_());
+    return createSuccessResponse_('Orcamento excluido com sucesso.', {
+      id_orcamento: cleanId,
+      pendencias: pendenciasIds
+    });
+  } catch (error) {
+    registrarLog('ERRO', 'Falha ao excluir orcamento.', getErrorStack_(error), getCurrentUserIdentifier_());
+    return createErrorResponse_('Nao foi possivel excluir o orcamento.', error);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function normalizeOrcamentoPayload_(payload) {
   var pendenciaIds = Array.isArray(payload.pendenciaIds) ? payload.pendenciaIds : [];
   var itens = Array.isArray(payload.itens) ? payload.itens : [];

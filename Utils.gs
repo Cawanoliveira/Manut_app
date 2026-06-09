@@ -80,7 +80,7 @@ var APP_CONFIG = {
     DASHBOARD_BASE: ['indicador', 'valor', 'ultima_atualizacao']
   },
   STATUS_VALIDOS: ['Aberto', 'Em andamento', 'Aguardando', 'Concluido', 'Cancelado'],
-  PRIORIDADES_VALIDAS: ['Baixa', 'Media', 'Alta', 'Critica'],
+  PRIORIDADES_VALIDAS: ['Critica', 'Alta', 'Media', 'Baixa', 'Projeto'],
   TIPOS_VALIDOS: ['Melhoria', 'Manutencao', 'Limpeza', 'Organizacao', 'Seguranca', 'Outro'],
   PERFIS_VALIDOS: ['Admin', 'Gestor', 'Consulta'],
   STATUS_CONCLUIDOS: ['Concluido', 'Cancelado'],
@@ -98,6 +98,11 @@ var APP_CONFIG = {
   DEFAULT_CONFIG: [
     ['DIAS_PARA_EXCLUIR_FOTO_APOS_CONCLUSAO', '10', 'Quantidade de dias apos conclusao para excluir fotos'],
     ['STATUS_PADRAO_NOVO_REGISTRO', 'Aberto', 'Status inicial de novas pendencias'],
+    ['SLA_CRITICA_DIAS', '7', 'Prazo sugerido em dias para pendencias de prioridade critica'],
+    ['SLA_ALTA_DIAS', '14', 'Prazo sugerido em dias para pendencias de prioridade alta'],
+    ['SLA_MEDIA_DIAS', '21', 'Prazo sugerido em dias para pendencias de prioridade media'],
+    ['SLA_BAIXA_DIAS', '28', 'Prazo sugerido em dias para pendencias de prioridade baixa'],
+    ['SLA_PROJETO_DIAS', '30', 'Prazo sugerido em dias para pendencias de prioridade projeto'],
     ['PERMITIR_EXCLUSAO_FOTO_AUTOMATICA', 'SIM', 'Define se fotos serao excluidas automaticamente'],
     ['VERSAO_SISTEMA', '1.0', 'Versao inicial do sistema']
   ],
@@ -245,6 +250,27 @@ function formatDateTime_(dateValue) {
   return Utilities.formatDate(date, getTimezone_(), 'dd/MM/yyyy HH:mm:ss');
 }
 
+function formatTimeValue_(timeValue) {
+  if (!timeValue) {
+    return '';
+  }
+  if (timeValue instanceof Date) {
+    if (isNaN(timeValue.getTime())) {
+      return '';
+    }
+    return Utilities.formatDate(timeValue, getTimezone_(), 'HH:mm:ss');
+  }
+  var text = safeString_(timeValue);
+  if (!text) {
+    return '';
+  }
+  var match = text.match(/(\d{2}:\d{2}:\d{2})$/);
+  if (match) {
+    return match[1];
+  }
+  return text;
+}
+
 function formatCurrencyBr_(value) {
   var number = Number(value || 0);
   if (!isFinite(number)) {
@@ -309,7 +335,9 @@ function serializeRecord_(record) {
   Object.keys(record || {}).forEach(function(key) {
     var value = record[key];
     if (value instanceof Date) {
-      if (key === 'ultima_atualizacao') {
+      if (key.indexOf('hora') === 0 || key.indexOf('_hora') > -1) {
+        cloned[key] = formatTimeValue_(value);
+      } else if (key === 'ultima_atualizacao') {
         cloned[key] = formatDateTime_(value);
       } else if (key.indexOf('data') === 0 || key.indexOf('_em') > -1) {
         cloned[key] = formatDateForInput_(value);
@@ -317,7 +345,9 @@ function serializeRecord_(record) {
         cloned[key] = formatDateTime_(value);
       }
     } else {
-      cloned[key] = value;
+      cloned[key] = key.indexOf('hora') === 0 || key.indexOf('_hora') > -1
+        ? formatTimeValue_(value)
+        : value;
     }
   });
   return cloned;

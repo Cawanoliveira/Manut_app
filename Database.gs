@@ -134,13 +134,36 @@ function corrigirColunasLegadasOrcamentoPendencias_(sheet) {
 }
 
 function popularConfiguracoesIniciais_() {
+  var legacyDefaults = {
+    SLA_BAIXA_DIAS: '10',
+    SLA_MEDIA_DIAS: '5',
+    SLA_ALTA_DIAS: '2',
+    SLA_CRITICA_DIAS: '0'
+  };
   APP_CONFIG.DEFAULT_CONFIG.forEach(function(configRow) {
-    if (findRowIndexByValue_(APP_CONFIG.SHEETS.CONFIG, 'chave', configRow[0]) === -1) {
+    var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.CONFIG, 'chave', configRow[0]);
+    if (rowIndex === -1) {
       appendSheetRecord_(APP_CONFIG.SHEETS.CONFIG, {
         chave: configRow[0],
         valor: configRow[1],
         descricao: configRow[2]
       });
+      return;
+    }
+
+    var currentValue = safeString_(getSheet_(APP_CONFIG.SHEETS.CONFIG).getRange(rowIndex, 2).getValue());
+    var currentDescription = safeString_(getSheet_(APP_CONFIG.SHEETS.CONFIG).getRange(rowIndex, 3).getValue());
+    var nextValue = currentValue;
+    var nextDescription = currentDescription || configRow[2];
+
+    if (!currentValue) {
+      nextValue = configRow[1];
+    } else if (legacyDefaults[configRow[0]] && currentValue === legacyDefaults[configRow[0]]) {
+      nextValue = configRow[1];
+    }
+
+    if (nextValue !== currentValue || nextDescription !== currentDescription) {
+      getSheet_(APP_CONFIG.SHEETS.CONFIG).getRange(rowIndex, 2, 1, 2).setValues([[nextValue, nextDescription]]);
     }
   });
 }

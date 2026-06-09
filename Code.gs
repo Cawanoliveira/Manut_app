@@ -19,6 +19,7 @@ var BRIDGE_ALLOWED_FUNCTIONS = {
   gerarCronogramaExcel: gerarCronogramaExcel,
   criarOrcamentoPendencias: criarOrcamentoPendencias,
   gerarPdfOrcamento: gerarPdfOrcamento,
+  excluirOrcamento: excluirOrcamento,
   salvarConfiguracoesSimples: salvarConfiguracoesSimples,
   setupSistema: setupSistema,
   criarTriggerLimpezaFotos: criarTriggerLimpezaFotos

@@ -338,6 +338,28 @@ function parseManagedConfigOptions_(grupo, fallbackValues) {
   }).filter(function(item) {
     return !!item.nome;
   });
+
+  return mergeManagedFallbackOptions_(grupo, items, fallbackValues);
+}
+
+function mergeManagedFallbackOptions_(grupo, items, fallbackValues) {
+  var result = (items || []).slice();
+  var known = {};
+  result.forEach(function(item) {
+    known[normalizeCompare_(item.nome)] = true;
+  });
+  (fallbackValues || []).forEach(function(value) {
+    var nome = normalizeLabel_(value);
+    if (!nome || known[normalizeCompare_(nome)]) {
+      return;
+    }
+    result.push({
+      id: grupo.toUpperCase() + '_AUTO_' + (result.length + 1),
+      nome: nome,
+      status: 'Ativo'
+    });
+  });
+  return result;
 }
 
 function saveManagedConfigOptions_(grupo, items) {

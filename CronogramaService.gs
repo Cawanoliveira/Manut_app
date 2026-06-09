@@ -78,10 +78,10 @@ var CRONOGRAMA_EXECUTOR_UNASSIGNED = '__SEM_PRESTADOR__';
 function normalizeCronogramaFilters_(filtros) {
   return {
     executor: normalizeCronogramaExecutorFilter_(filtros.executor),
-    loja: sanitizeText_(filtros.loja),
-    setor: sanitizeText_(filtros.setor),
-    responsavel: sanitizeText_(filtros.responsavel),
-    status: normalizeLabel_(filtros.status),
+    loja: normalizeCronogramaMultiFilter_(filtros.loja),
+    setor: normalizeCronogramaMultiFilter_(filtros.setor),
+    responsavel: normalizeCronogramaMultiFilter_(filtros.responsavel),
+    status: normalizeCronogramaMultiFilter_(filtros.status),
     dataAberturaDe: normalizeCronogramaDateFilter_(filtros.dataAberturaDe),
     dataAberturaAte: normalizeCronogramaDateFilter_(filtros.dataAberturaAte),
     previsaoEntregaDe: normalizeCronogramaDateFilter_(filtros.previsaoEntregaDe),
@@ -95,6 +95,18 @@ function normalizeCronogramaExecutorFilter_(value) {
     return sanitized;
   }
   return sanitized;
+}
+
+function normalizeCronogramaMultiFilter_(value) {
+  if (Array.isArray(value)) {
+    return value.map(function(entry) {
+      return sanitizeText_(entry);
+    }).filter(function(entry) {
+      return !!entry;
+    });
+  }
+  var sanitized = sanitizeText_(value);
+  return sanitized ? [sanitized] : [];
 }
 
 function normalizeCronogramaDateFilter_(value) {
@@ -152,7 +164,7 @@ function getCronogramaItems_(filtros) {
         return false;
       }
     }
-    if (filtros.status && normalizeCompare_(item.status_cronograma) !== normalizeCompare_(filtros.status)) {
+    if (!matchesFilterSelectionServer_(item.status_cronograma, filtros.status)) {
       return false;
     }
     return true;
@@ -241,6 +253,7 @@ function buildCronogramaPdfData_(filtros, items) {
     horaEmissao: Utilities.formatDate(now_(), getTimezone_(), 'HH:mm:ss'),
     emAndamento: String(summary.emAndamento),
     vencidos: String(summary.vencidos),
+    dentroPrazo: String(Math.max(0, summary.total - summary.vencidos)),
     totalRegistros: String(summary.total),
     logoUrl: buildCronogramaLogoDataUrl_(),
     pendencias: (items || []).map(function(item, index) {
@@ -249,7 +262,6 @@ function buildCronogramaPdfData_(filtros, items) {
         local: safeString_(item.loja) || '-',
         setor: safeString_(item.setor) || '-',
         status: safeString_(item.status_cronograma) || '-',
-        dataInicio: safeString_(item.data_inicio_label || formatCronogramaDateOnly_(item.data_inicio)) || '-',
         previsaoTermino: safeString_(item.previsao_termino_label || formatCronogramaDateOnly_(item.previsao_entrega)) || '-',
         descricao: sanitizeText_(item.descricao) || '-',
         observacao: sanitizeText_(item.observacao) || '-'
@@ -310,49 +322,50 @@ function montarHtmlCronogramaPrestador_(dados) {
     '@page{size:A4 landscape;margin:0;}' +
     'html,body{margin:0;padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-family:Calibri,Arial,Helvetica,sans-serif;}' +
     '*{box-sizing:border-box;}' +
-    ':root{--orange:#ef7200;--line:#d9d9d9;--cream:#f5f5f5;--blockline:#2b2b2b;--overdue:#a63a3a;}' +
-    '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:#fff;page-break-after:always;}' +
+    ':root{--orange-light:#ffb869;--orange:#f97316;--orange-dark:#b45309;--ink:#18181b;--muted:#6b7280;--line:#f2d4b0;--panel:#fffaf5;--overdue:#b42318;--success:#166534;}' +
+    '.page{position:relative;width:1123px;height:794px;overflow:hidden;background:linear-gradient(180deg, #fffdfb 0%, #fff7ef 100%);page-break-after:always;}' +
     '.page.last{page-break-after:auto;}' +
-    '.page-inner{position:absolute;inset:0;}' +
-    '.top-orange{position:absolute;left:0;top:0;width:100%;height:60px;background:var(--orange);}' +
-    '.main-title{position:absolute;left:126px;top:12px;font-size:28px;line-height:34px;color:#fff;font-weight:700;}' +
-    '.logo{position:absolute;left:27px;top:28px;width:77px;height:77px;object-fit:contain;z-index:5;}' +
-    '.logo-fallback{background:#000;color:#fff;border-radius:50%;font-family:Arial Black,Arial,sans-serif;font-size:58px;line-height:72px;text-align:center;}' +
-    '.subtitle-bar{position:absolute;left:0;top:60px;width:100%;height:48px;background:#000;}' +
-    '.subtitle{position:absolute;left:126px;top:70px;color:#fff;font-size:24px;line-height:30px;font-weight:400;}' +
-    '.white-strip{position:absolute;left:0;top:108px;width:100%;height:18px;background:#fff;}' +
-    '.meta-wrap{position:absolute;left:1cm;right:1cm;top:126px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:24px 46px;justify-content:center;}' +
-    '.meta-label{background:var(--cream);color:#000;font-size:14px;font-weight:700;text-align:center;line-height:24px;border:1px solid var(--line);border-bottom:none;}' +
-    '.meta-card:first-child .meta-label{border-right:none;}' +
-    '.meta-value{height:46px;background:#fff;color:#000;font-size:30px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);}' +
-    '.meta-card:first-child .meta-value{border-right:none;font-size:24px;font-weight:700;text-align:center;padding:0 12px;}' +
-    '.blocks{position:absolute;left:1cm;right:1cm;top:214px;bottom:92px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:10px;}' +
-    '.block{border:1px solid var(--blockline);background:#fff;display:grid;grid-template-rows:26px 30px 48px 22px 1fr 22px 1fr;min-height:0;}' +
-    '.block.empty{opacity:.28;}' +
-    '.block.overdue{border-color:var(--overdue);}' +
-    '.block.tone-soft{background:#f3f4f6;}' +
-    '.block.tone-soft .values div{background:#f3f4f6;}' +
-    '.block.tone-soft .text-label{background:#eef0f3;}' +
-    '.block.tone-soft .text-box{background:#f3f4f6;}' +
-    '.block-index{display:flex;align-items:center;justify-content:flex-start;padding:0 10px;background:#fff;color:#374151;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);}' +
-    '.block.tone-soft .block-index{background:#eef0f3;}' +
-    '.grid{display:grid;grid-template-columns:1fr 1fr 1fr 0.9fr 0.95fr;}' +
-    '.head{height:30px;background:#000;border-bottom:1px solid var(--line);}' +
-    '.head div{color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:30px;border-right:1px solid var(--line);}' +
-    '.head div:last-child{border-right:none;}' +
-    '.values{height:48px;background:#fff;border-bottom:1px solid var(--line);}' +
-    '.values div{color:#000;font-size:12px;font-weight:400;text-align:center;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);padding:4px 5px;word-break:break-word;}' +
-    '.values div:last-child{border-right:none;}' +
-    '.status-text.overdue{color:#991b1b;font-weight:700;}' +
-    '.text-label{height:22px;background:#fff;color:#000;font-size:12px;font-weight:700;padding:4px 8px;border-bottom:1px solid var(--line);}' +
-    '.text-box{background:#fff;color:#000;font-size:11px;line-height:1.2;padding:6px 8px;white-space:pre-wrap;overflow:hidden;border-bottom:1px solid var(--line);}' +
-    '.text-box.obs{border-bottom:none;}.text-box.desc{border-bottom:1px solid var(--line);}' +
-    '.summary{position:absolute;left:1cm;right:1cm;bottom:12px;height:74px;display:grid;grid-template-columns:1.45fr 1fr 1fr 1fr;border:1px solid var(--line);background:#fff;overflow:hidden;}' +
-    '.summary-title{grid-row:span 2;background:var(--orange);color:#000;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--line);}' +
-    '.summary-label{height:28px;background:var(--orange);color:#000;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
-    '.summary-label:last-of-type{border-right:none;}' +
-    '.summary-value{height:46px;background:#fff;color:#000;border-right:1px solid var(--line);font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;}' +
-    '.summary-value:last-child{border-right:none;}' +
+    '.page-inner{position:absolute;inset:0;padding:28px;}' +
+    '.hero{display:grid;grid-template-columns:88px 1fr auto;gap:18px;align-items:center;padding:20px 24px;border-radius:26px;background:linear-gradient(135deg, var(--orange-light) 0%, var(--orange) 52%, var(--orange-dark) 100%);box-shadow:0 20px 34px rgba(180, 83, 9, 0.18);}' +
+    '.logo{width:72px;height:72px;object-fit:contain;border-radius:20px;background:rgba(255,255,255,0.92);padding:8px;}' +
+    '.logo-fallback{display:flex;align-items:center;justify-content:center;background:#fff;color:#111;border-radius:20px;font-family:Arial Black,Arial,sans-serif;font-size:46px;line-height:1;}' +
+    '.hero-copy h1{margin:0;color:#fff;font-size:30px;line-height:1.1;font-weight:700;}' +
+    '.hero-copy p{margin:8px 0 0;color:rgba(255,255,255,0.92);font-size:14px;line-height:1.45;}' +
+    '.hero-meta{display:grid;gap:8px;justify-items:end;color:#fff;text-align:right;}' +
+    '.hero-meta strong{font-size:13px;letter-spacing:.05em;text-transform:uppercase;}' +
+    '.hero-meta span{font-size:15px;font-weight:700;}' +
+    '.stats{display:grid;grid-template-columns:1.6fr repeat(4, 1fr);gap:12px;margin-top:18px;}' +
+    '.stat-card{border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,0.94);padding:14px 16px;box-shadow:0 10px 18px rgba(17,17,17,0.05);}' +
+    '.stat-card main{display:grid;gap:6px;}' +
+    '.stat-card strong{color:var(--ink);font-size:13px;letter-spacing:.05em;text-transform:uppercase;}' +
+    '.stat-card span{color:var(--muted);font-size:12px;line-height:1.4;}' +
+    '.stat-card.big strong{font-size:12px;}' +
+    '.stat-card.big b{display:block;margin-top:8px;color:var(--ink);font-size:26px;line-height:1.15;}' +
+    '.stat-card.big span{font-size:13px;}' +
+    '.stat-card.metric{display:grid;align-content:space-between;}' +
+    '.stat-card.metric em{display:block;color:var(--ink);font-style:normal;font-size:28px;font-weight:700;line-height:1.1;}' +
+    '.cards{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:14px;margin-top:18px;}' +
+    '.card{border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,0.98);padding:18px 18px 16px;box-shadow:0 14px 24px rgba(17,17,17,0.06);display:grid;gap:14px;min-height:0;}' +
+    '.card.empty{opacity:.28;}' +
+    '.card.overdue{border-color:#f4b8ad;box-shadow:0 14px 24px rgba(180, 35, 24, 0.08);}' +
+    '.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}' +
+    '.card-index{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:28px;border-radius:999px;background:#fff2e6;color:#9a3412;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;}' +
+    '.status-pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:#fff3e3;color:#9a3412;}' +
+    '.status-pill.status-vencido{background:#ffe5e3;color:var(--overdue);}' +
+    '.status-pill.status-concluido{background:#e8f7ec;color:var(--success);}' +
+    '.status-pill.status-em-andamento{background:#fff1e3;color:#9a3412;}' +
+    '.status-pill.status-aguardando{background:#fff7d6;color:#8a5a00;}' +
+    '.card-grid{display:grid;grid-template-columns:1.15fr .95fr .75fr;gap:10px;}' +
+    '.meta-box{padding:12px 14px;border-radius:16px;background:var(--panel);border:1px solid #f8dfbf;}' +
+    '.meta-box strong{display:block;color:var(--orange-dark);font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;}' +
+    '.meta-box span{display:block;color:var(--ink);font-size:14px;font-weight:700;line-height:1.35;word-break:break-word;}' +
+    '.copy-block{display:grid;gap:8px;}' +
+    '.copy-box{padding:12px 14px;border-radius:18px;background:#fffaf5;border:1px solid #f4dec1;}' +
+    '.copy-box strong{display:block;color:var(--orange-dark);font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;}' +
+    '.copy-box span{display:block;color:var(--ink);font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:110px;overflow:hidden;}' +
+    '.footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;padding:14px 18px;border-radius:20px;background:#fff;border:1px solid var(--line);}' +
+    '.footer strong{color:var(--ink);font-size:13px;letter-spacing:.05em;text-transform:uppercase;}' +
+    '.footer span{color:var(--muted);font-size:12px;}' +
     '</style></head><body>' + pages + '</body></html>';
 }
 
@@ -365,28 +378,28 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
   var third = pendencias[2] || createCronogramaBlankItem_();
   var fourth = pendencias[3] || createCronogramaBlankItem_();
   var summaryHtml = includeSummary ? (
-    '<div class="summary">' +
-      '<div class="summary-title">RESUMO</div>' +
-      '<div class="summary-label">Em andamento</div>' +
-      '<div class="summary-label">Vencidos</div>' +
-      '<div class="summary-label">Total Registros</div>' +
-      '<div class="summary-value">' + escapeHtml_(dados.emAndamento) + '</div>' +
-      '<div class="summary-value">' + escapeHtml_(dados.vencidos) + '</div>' +
-      '<div class="summary-value">' + escapeHtml_(dados.totalRegistros) + '</div>' +
+    '<div class="footer">' +
+      '<div><strong>Resumo</strong><span>Distribuicao final do cronograma emitido.</span></div>' +
+      '<div><strong>Dentro do prazo</strong><span>' + escapeHtml_(dados.dentroPrazo) + '</span></div>' +
+      '<div><strong>Fora do prazo</strong><span>' + escapeHtml_(dados.vencidos) + '</span></div>' +
+      '<div><strong>Total</strong><span>' + escapeHtml_(dados.totalRegistros) + '</span></div>' +
     '</div>'
   ) : '';
 
   return '<div class="page' + (includeSummary ? ' last' : '') + '"><div class="page-inner">' +
-    '<div class="top-orange"><div class="main-title">Cronograma do Prestador</div></div>' +
-    logoHtml +
-    '<div class="subtitle-bar"></div>' +
-    '<div class="subtitle">Relatorio de pendencias por prestador de servico</div>' +
-    '<div class="white-strip"></div>' +
-    '<div class="meta-wrap">' +
-      '<div class="meta-card"><div class="meta-label">PRESTADOR</div><div class="meta-value">' + escapeHtml_(dados.prestador) + '</div></div>' +
-      '<div class="meta-card"><div class="meta-label">DATA DE EMISSAO</div><div class="meta-value">' + escapeHtml_(dados.dataEmissao) + '</div></div>' +
+    '<div class="hero">' +
+      logoHtml +
+      '<div class="hero-copy"><h1>Cronograma do Prestador</h1><p>Agenda operacional das pendencias em aberto com foco em clareza, prazo e contexto de execucao.</p></div>' +
+      '<div class="hero-meta"><strong>Emitido em</strong><span>' + escapeHtml_(dados.dataEmissao) + ' ' + escapeHtml_(dados.horaEmissao) + '</span></div>' +
     '</div>' +
-    '<div class="blocks">' +
+    '<div class="stats">' +
+      '<div class="stat-card big"><main><strong>Prestador</strong><b>' + escapeHtml_(dados.prestador) + '</b><span>Use este material como roteiro de execucao e acompanhamento.</span></main></div>' +
+      '<div class="stat-card metric"><main><strong>Dentro do prazo</strong><em>' + escapeHtml_(dados.dentroPrazo) + '</em><span>Pendencias ainda dentro da janela de entrega.</span></main></div>' +
+      '<div class="stat-card metric"><main><strong>Fora do prazo</strong><em>' + escapeHtml_(dados.vencidos) + '</em><span>Itens que pedem prioridade de tratamento.</span></main></div>' +
+      '<div class="stat-card metric"><main><strong>Em andamento</strong><em>' + escapeHtml_(dados.emAndamento) + '</em><span>Pendencias com execucao ativa.</span></main></div>' +
+      '<div class="stat-card metric"><main><strong>Total</strong><em>' + escapeHtml_(dados.totalRegistros) + '</em><span>Registros considerados neste recorte.</span></main></div>' +
+    '</div>' +
+    '<div class="cards">' +
       montarBlocoCronogramaPrestador_(first, first.local || first.setor || first.descricao || first.observacao ? '' : 'empty') +
       montarBlocoCronogramaPrestador_(second, second.local || second.setor || second.descricao || second.observacao ? '' : 'empty') +
       montarBlocoCronogramaPrestador_(third, third.local || third.setor || third.descricao || third.observacao ? '' : 'empty') +
@@ -397,26 +410,27 @@ function montarPaginaCronogramaPrestador_(dados, pendencias, includeSummary) {
 }
 
 function montarBlocoCronogramaPrestador_(item, extraClass) {
-  var classes = ['block'];
-  var statusHtml = escapeHtml_(item.status);
+  var classes = ['card'];
   if (extraClass) {
     classes.push(extraClass);
   }
-  if (item && item.ordem && item.ordem % 2 === 1) {
-    classes.push('tone-soft');
-  }
   if (normalizeCompare_(item.status) === 'vencido') {
     classes.push('overdue');
-    statusHtml = '<span class="status-text overdue">' + escapeHtml_(item.status) + '</span>';
   }
   return '<div class="' + classes.join(' ') + '">' +
-    '<div class="block-index">Pendencia ' + (item.ordem ? padCronogramaNumber_(item.ordem, 2) : '--') + '</div>' +
-    '<div class="grid head"><div>LOCAL</div><div>SETOR</div><div>STATUS</div><div>INICIO</div><div>TERMINO</div></div>' +
-    '<div class="grid values"><div>' + escapeHtml_(item.local) + '</div><div>' + escapeHtml_(item.setor) + '</div><div>' + statusHtml + '</div><div>' + escapeHtml_(item.dataInicio) + '</div><div>' + escapeHtml_(item.previsaoTermino) + '</div></div>' +
-    '<div class="text-label">Descricao:</div>' +
-    '<div class="text-box desc">' + nl2brHtml_(item.descricao) + '</div>' +
-    '<div class="text-label">Observacao:</div>' +
-    '<div class="text-box obs">' + nl2brHtml_(item.observacao) + '</div>' +
+    '<div class="card-head">' +
+      '<span class="card-index">Item ' + (item.ordem ? padCronogramaNumber_(item.ordem, 2) : '--') + '</span>' +
+      '<span class="status-pill ' + getCronogramaStatusClass_(item.status) + '">' + escapeHtml_(item.status || '-') + '</span>' +
+    '</div>' +
+    '<div class="card-grid">' +
+      '<div class="meta-box"><strong>Local</strong><span>' + escapeHtml_(item.local) + '</span></div>' +
+      '<div class="meta-box"><strong>Setor</strong><span>' + escapeHtml_(item.setor) + '</span></div>' +
+      '<div class="meta-box"><strong>Prazo</strong><span>' + escapeHtml_(item.previsaoTermino) + '</span></div>' +
+    '</div>' +
+    '<div class="copy-block">' +
+      '<div class="copy-box"><strong>Descricao</strong><span>' + nl2brHtml_(item.descricao) + '</span></div>' +
+      '<div class="copy-box"><strong>Observacao</strong><span>' + nl2brHtml_(item.observacao) + '</span></div>' +
+    '</div>' +
   '</div>';
 }
 
@@ -426,11 +440,18 @@ function createCronogramaBlankItem_() {
     local: '',
     setor: '',
     status: '',
-    dataInicio: '',
     previsaoTermino: '',
     descricao: '',
     observacao: ''
   };
+}
+
+function getCronogramaStatusClass_(status) {
+  var normalized = normalizeCompare_(status);
+  if (!normalized) {
+    return '';
+  }
+  return 'status-' + normalized.replace(/\s+/g, '-');
 }
 
 function padCronogramaNumber_(value, size) {

@@ -57,6 +57,117 @@ function validarDadosPendencia(dados, modo) {
   };
 }
 
+function hasOwnPendenciaField_(source, key) {
+  return Object.prototype.hasOwnProperty.call(source || {}, key);
+}
+
+function isStatusFinalPendencia_(status) {
+  var normalized = normalizeCompare_(status);
+  return normalized === 'concluido' || normalized === 'cancelado';
+}
+
+function addCalendarDays_(baseDate, days) {
+  var date = baseDate instanceof Date ? baseDate : parseDateInput_(baseDate);
+  var amount = Number(days || 0);
+  if (!date || isNaN(date.getTime())) {
+    return null;
+  }
+  if (!isFinite(amount)) {
+    amount = 0;
+  }
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + amount);
+}
+
+function getPrioritySlaDays_(prioridade) {
+  var normalized = normalizeCompare_(prioridade);
+  var keyMap = {
+    'critica': 'SLA_CRITICA_DIAS',
+    'alta': 'SLA_ALTA_DIAS',
+    'media': 'SLA_MEDIA_DIAS',
+    'baixa': 'SLA_BAIXA_DIAS',
+    'projeto': 'SLA_PROJETO_DIAS'
+  };
+  var fallbackMap = {
+    'critica': 7,
+    'alta': 14,
+    'media': 21,
+    'baixa': 28,
+    'projeto': 30
+  };
+  var configKey = keyMap[normalized] || 'SLA_MEDIA_DIAS';
+  var fallback = fallbackMap[normalized] === undefined ? 21 : fallbackMap[normalized];
+  var configured = Number(getConfig(configKey) || fallback);
+  return isFinite(configured) && configured >= 0 ? configured : fallback;
+}
+
+function resolvePendenciaWorkflowStatus_(currentRecord, clean, dados, modo, defaultStatus) {
+  var explicitStatus = clean.status ? normalizeLabel_(clean.status) : '';
+  var currentStatus = normalizeLabel_(currentRecord && currentRecord.status);
+  var baseStatus = explicitStatus || currentStatus || normalizeLabel_(defaultStatus) || 'Aberto';
+  var workflowTouched = modo === 'criacao' ||
+    hasOwnPendenciaField_(dados, 'executor') ||
+    hasOwnPendenciaField_(dados, 'data_inicio') ||
+    hasOwnPendenciaField_(dados, 'previsao_entrega');
+
+  if (explicitStatus) {
+    return explicitStatus;
+  }
+  if (isStatusFinalPendencia_(baseStatus)) {
+    return baseStatus;
+  }
+  if (!workflowTouched) {
+    return baseStatus;
+  }
+
+  var hasInicio = hasOwnPendenciaField_(dados, 'data_inicio')
+    ? !!clean.data_inicio
+    : !!(currentRecord && currentRecord.data_inicio);
+  var hasExecutor = hasOwnPendenciaField_(dados, 'executor')
+    ? !!clean.executor
+    : !!(currentRecord && safeString_(currentRecord.executor));
+
+  if (!hasExecutor) {
+    return 'Aberto';
+  }
+  if (hasInicio) {
+    return 'Em andamento';
+  }
+  return 'Aguardando';
+}
+
+function resolvePendenciaPlanningFields_(currentRecord, clean, dados, status) {
+  var today = parseDateInput_(formatDateForInput_(now_()));
+  var planningTouched = !currentRecord ||
+    hasOwnPendenciaField_(dados, 'status') ||
+    hasOwnPendenciaField_(dados, 'executor') ||
+    hasOwnPendenciaField_(dados, 'data_inicio') ||
+    hasOwnPendenciaField_(dados, 'previsao_entrega') ||
+    hasOwnPendenciaField_(dados, 'prioridade');
+  var dataInicio = hasOwnPendenciaField_(dados, 'data_inicio')
+    ? (clean.data_inicio ? parseDateInput_(clean.data_inicio) : '')
+    : (currentRecord ? currentRecord.data_inicio : '');
+  var previsaoEntrega = hasOwnPendenciaField_(dados, 'previsao_entrega')
+    ? (clean.previsao_entrega ? parseDateInput_(clean.previsao_entrega) : '')
+    : (currentRecord ? currentRecord.previsao_entrega : '');
+  var prioridade = clean.prioridade || (currentRecord && currentRecord.prioridade) || 'Media';
+  var normalizedStatus = normalizeCompare_(status);
+
+  if (!currentRecord && !dataInicio && !isStatusFinalPendencia_(status)) {
+    dataInicio = today;
+  }
+  if (planningTouched && normalizedStatus === 'em andamento' && !dataInicio) {
+    dataInicio = today;
+  }
+  if (planningTouched && !previsaoEntrega && !isStatusFinalPendencia_(status)) {
+    previsaoEntrega = addCalendarDays_(dataInicio || today, getPrioritySlaDays_(prioridade));
+  }
+
+  return {
+    data_inicio: dataInicio,
+    previsao_entrega: previsaoEntrega
+  };
+}
+
 function criarPendencia(dados) {
   var lock = LockService.getDocumentLock();
   try {
@@ -70,6 +181,8 @@ function criarPendencia(dados) {
     var now = now_();
     var idPendencia = gerarId('PEN');
     var statusInicial = getConfig('STATUS_PADRAO_NOVO_REGISTRO') || 'Aberto';
+    var statusResolvido = resolvePendenciaWorkflowStatus_(null, clean, dados, 'criacao', statusInicial);
+    var planejamento = resolvePendenciaPlanningFields_(null, clean, dados, statusResolvido);
     var fotoInfo = null;
 
     if (clean.foto && clean.foto.base64) {
@@ -99,9 +212,9 @@ function criarPendencia(dados) {
       solicitante: clean.solicitante,
       responsavel: clean.responsavel,
       executor: clean.executor,
-      data_inicio: clean.data_inicio ? parseDateInput_(clean.data_inicio) : '',
-      previsao_entrega: clean.previsao_entrega ? parseDateInput_(clean.previsao_entrega) : '',
-      status: normalizeLabel_(statusInicial),
+      data_inicio: planejamento.data_inicio || '',
+      previsao_entrega: planejamento.previsao_entrega || '',
+      status: statusResolvido,
       data_conclusao: '',
       hora_conclusao: '',
       link_foto: fotoInfo ? fotoInfo.link_foto : '',
@@ -165,25 +278,25 @@ function applyPendenciasFilters_(items, filtros) {
         return false;
       }
     }
-    if (filtros.loja && normalizeCompare_(item.loja) !== normalizeCompare_(filtros.loja)) {
+    if (!matchesFilterSelectionServer_(item.loja, filtros.loja)) {
       return false;
     }
-    if (filtros.setor && normalizeCompare_(item.setor) !== normalizeCompare_(filtros.setor)) {
+    if (!matchesFilterSelectionServer_(item.setor, filtros.setor)) {
       return false;
     }
-    if (filtros.status && normalizeCompare_(item.status) !== normalizeCompare_(filtros.status)) {
+    if (!matchesFilterSelectionServer_(item.status, filtros.status)) {
       return false;
     }
-    if (filtros.responsavel && normalizeCompare_(item.responsavel) !== normalizeCompare_(filtros.responsavel)) {
+    if (!matchesFilterSelectionServer_(item.responsavel, filtros.responsavel)) {
       return false;
     }
-    if (filtros.executor && normalizeCompare_(item.executor) !== normalizeCompare_(filtros.executor)) {
+    if (!matchesFilterSelectionServer_(item.executor, filtros.executor)) {
       return false;
     }
-    if (filtros.prioridade && normalizeCompare_(item.prioridade) !== normalizeCompare_(filtros.prioridade)) {
+    if (!matchesFilterSelectionServer_(item.prioridade, filtros.prioridade)) {
       return false;
     }
-    if (filtros.tipo && normalizeCompare_(item.tipo) !== normalizeCompare_(filtros.tipo)) {
+    if (!matchesFilterSelectionServer_(item.tipo, filtros.tipo)) {
       return false;
     }
     if (filtros.dataAberturaDe || filtros.dataAberturaAte) {
@@ -202,6 +315,24 @@ function applyPendenciasFilters_(items, filtros) {
   }).sort(function(a, b) {
     return String(b.id_pendencia).localeCompare(String(a.id_pendencia));
   });
+}
+
+function matchesFilterSelectionServer_(value, filterValue) {
+  var normalizedFilter = normalizeFilterListServer_(filterValue);
+  if (!normalizedFilter.length) {
+    return true;
+  }
+  return normalizedFilter.indexOf(normalizeCompare_(value)) > -1;
+}
+
+function normalizeFilterListServer_(filterValue) {
+  if (Array.isArray(filterValue)) {
+    return filterValue.map(normalizeCompare_).filter(function(value) {
+      return !!value;
+    });
+  }
+  var normalized = normalizeCompare_(filterValue);
+  return normalized ? [normalized] : [];
 }
 
 function dateWithinRange_(dateValue, fromValue, toValue) {
@@ -270,7 +401,8 @@ function atualizarPendencia(id, dados) {
       currentRecord[header] = currentValues[index];
     });
     var clean = validation.sanitized;
-    var novoStatus = clean.status || normalizeLabel_(currentRecord.status);
+    var novoStatus = resolvePendenciaWorkflowStatus_(currentRecord, clean, dados, 'edicao', currentRecord.status);
+    var planejamento = resolvePendenciaPlanningFields_(currentRecord, clean, dados, novoStatus);
 
     if (clean.foto && clean.foto.base64) {
       var nomeArquivo = [
@@ -298,8 +430,8 @@ function atualizarPendencia(id, dados) {
       solicitante: clean.solicitante || currentRecord.solicitante,
       responsavel: Object.prototype.hasOwnProperty.call(dados || {}, 'responsavel') ? clean.responsavel : currentRecord.responsavel,
       executor: Object.prototype.hasOwnProperty.call(dados || {}, 'executor') ? clean.executor : currentRecord.executor,
-      data_inicio: Object.prototype.hasOwnProperty.call(dados || {}, 'data_inicio') ? (clean.data_inicio ? parseDateInput_(clean.data_inicio) : '') : currentRecord.data_inicio,
-      previsao_entrega: Object.prototype.hasOwnProperty.call(dados || {}, 'previsao_entrega') ? (clean.previsao_entrega ? parseDateInput_(clean.previsao_entrega) : '') : currentRecord.previsao_entrega,
+      data_inicio: planejamento.data_inicio || '',
+      previsao_entrega: planejamento.previsao_entrega || '',
       status: novoStatus,
       link_foto: currentRecord.link_foto,
       id_arquivo_drive: currentRecord.id_arquivo_drive,
@@ -448,12 +580,15 @@ function listarHistoricoPorPendencia_(idPendencia) {
     })
     .map(function(item) {
       item.data_label = formatarData(item.data);
+      item.hora = formatTimeValue_(item.hora);
       return item;
     })
     .sort(function(a, b) {
-      var chaveA = (a.data || '') + ' ' + (a.hora || '');
-      var chaveB = (b.data || '') + ' ' + (b.hora || '');
-      return String(chaveB).localeCompare(String(chaveA));
+      var chaveA = parseDateInput_((a.data_label || formatarData(a.data) || '') + ' ' + formatTimeValue_(a.hora));
+      var chaveB = parseDateInput_((b.data_label || formatarData(b.data) || '') + ' ' + formatTimeValue_(b.hora));
+      var tempoA = chaveA && !isNaN(chaveA.getTime()) ? chaveA.getTime() : 0;
+      var tempoB = chaveB && !isNaN(chaveB.getTime()) ? chaveB.getTime() : 0;
+      return tempoB - tempoA;
     });
 }
 
