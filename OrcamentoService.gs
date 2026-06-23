@@ -34,7 +34,7 @@ function criarOrcamentoPendencias(payload) {
         setor: record.setor || '-',
         tipo: record.tipo || '-',
         prioridade: record.prioridade || '-',
-        previsao_entrega: formatarData(record.previsao_entrega) || '-',
+        previsao_entrega: resolveOrcamentoPrevisaoLabel_(record.previsao_entrega) || '-',
         valor: clean.valorPorPendencia[record.id_pendencia],
         descricao: sanitizeText_(record.descricao) || '-',
         responsavel: record.responsavel || 'Nao definido'
@@ -394,18 +394,24 @@ function buscarOrcamentoById_(idOrcamento) {
 }
 
 function listarItensOrcamento_(idOrcamento) {
+  var pendenciaMap = {};
+  getAllSheetData_(APP_CONFIG.SHEETS.PENDENCIAS).forEach(function(pendencia) {
+    pendenciaMap[safeString_(pendencia.id_pendencia)] = pendencia;
+  });
+
   return getAllSheetData_(APP_CONFIG.SHEETS.ORCAMENTO_ITENS).filter(function(item) {
     return safeString_(item.id_orcamento) === safeString_(idOrcamento);
   }).sort(function(a, b) {
     return safeString_(a.id_pendencia).localeCompare(safeString_(b.id_pendencia), 'pt-BR');
   }).map(function(item) {
+    var pendenciaAtual = pendenciaMap[safeString_(item.id_pendencia)];
     return {
       id_pendencia: item.id_pendencia,
       loja: item.loja_snapshot || '-',
       setor: item.setor_snapshot || '-',
       tipo: item.tipo_snapshot || '-',
       prioridade: item.prioridade_snapshot || '-',
-      previsao_entrega: item.previsao_snapshot || '-',
+      previsao_entrega: resolveOrcamentoPrevisaoLabel_(item.previsao_snapshot, pendenciaAtual && pendenciaAtual.previsao_entrega) || '-',
       valor: item.valor_snapshot,
       descricao: item.descricao_snapshot || '-',
       responsavel: item.responsavel_snapshot || 'Nao definido'
@@ -441,7 +447,7 @@ function buildOrcamentoPdfData_(orcamento, items) {
       setor: safeString_(item.setor) || '-',
       tipo: safeString_(item.tipo) || '-',
       prioridade: safeString_(item.prioridade) || '-',
-      previsao: safeString_(item.previsao_entrega) || '-',
+      previsao: resolveOrcamentoPrevisaoLabel_(item.previsao_entrega) || '-',
       valor: isFinite(rawValor) ? formatCurrencyBr_(rawValor) : '-',
       valorRaw: isFinite(rawValor) ? rawValor : NaN,
       descricao: safeString_(item.descricao) || '-'
@@ -483,6 +489,30 @@ function padNumber_(value, size) {
     text = '0' + text;
   }
   return text;
+}
+
+function resolveOrcamentoPrevisaoLabel_(primaryValue, fallbackValue) {
+  var primaryLabel = formatarData(primaryValue);
+  if (primaryLabel) {
+    return primaryLabel;
+  }
+
+  var fallbackLabel = formatarData(fallbackValue);
+  if (fallbackLabel) {
+    return fallbackLabel;
+  }
+
+  var rawPrimary = safeString_(primaryValue);
+  if (rawPrimary && rawPrimary !== '-') {
+    return rawPrimary;
+  }
+
+  var rawFallback = safeString_(fallbackValue);
+  if (rawFallback && rawFallback !== '-') {
+    return rawFallback;
+  }
+
+  return '';
 }
 
 function montarHtmlOrcamentoPrestador_(dados) {

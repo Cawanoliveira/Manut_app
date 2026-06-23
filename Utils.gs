@@ -221,8 +221,8 @@ function formatarData(dateValue) {
   if (!dateValue) {
     return '';
   }
-  var date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-  if (isNaN(date.getTime())) {
+  var date = parseDateInput_(dateValue);
+  if (!date || isNaN(date.getTime())) {
     return '';
   }
   return Utilities.formatDate(date, getTimezone_(), 'dd/MM/yyyy');
@@ -232,8 +232,8 @@ function formatDateForInput_(dateValue) {
   if (!dateValue) {
     return '';
   }
-  var date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-  if (isNaN(date.getTime())) {
+  var date = parseDateInput_(dateValue);
+  if (!date || isNaN(date.getTime())) {
     return '';
   }
   return Utilities.formatDate(date, getTimezone_(), 'yyyy-MM-dd');
@@ -243,8 +243,8 @@ function formatDateTime_(dateValue) {
   if (!dateValue) {
     return '';
   }
-  var date = dateValue instanceof Date ? dateValue : new Date(dateValue);
-  if (isNaN(date.getTime())) {
+  var date = parseDateInput_(dateValue);
+  if (!date || isNaN(date.getTime())) {
     return '';
   }
   return Utilities.formatDate(date, getTimezone_(), 'dd/MM/yyyy HH:mm:ss');
@@ -339,7 +339,7 @@ function serializeRecord_(record) {
         cloned[key] = formatTimeValue_(value);
       } else if (key === 'ultima_atualizacao') {
         cloned[key] = formatDateTime_(value);
-      } else if (key.indexOf('data') === 0 || key.indexOf('_em') > -1) {
+      } else if (key.indexOf('data') === 0 || key.indexOf('_em') > -1 || key.indexOf('previsao') > -1) {
         cloned[key] = formatDateForInput_(value);
       } else {
         cloned[key] = formatDateTime_(value);
