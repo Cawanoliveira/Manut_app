@@ -26,24 +26,25 @@ Criar uma copia funcional do sistema em Firebase sem tocar na base oficial atual
 - `scripts/schema.mjs`
   Centraliza o mapeamento entre as abas legadas e as colecoes do Firebase.
 
-## Pre-requisitos
+## Ambiente atual
 
-1. Criar o projeto Firebase na conta Google `biggestao`.
-2. Ativar:
-   - Firebase Authentication
-   - Cloud Firestore
-   - Cloud Storage for Firebase
-   - Firebase Hosting
-   - Cloud Functions for Firebase
-3. Colocar o projeto no plano Blaze.
-4. Gerar uma credencial de acesso:
-   - Recomendado: service account para a automacao
-   - Alternativa: Application Default Credentials local
+- Projeto `dev` criado: `big-compra-firebase-dev`
+- App web criado: `BIG Compra Web Dev`
+- Firestore criado em `southamerica-east1`
+- Service account criada: `manut-migration-runner@big-compra-firebase-dev.iam.gserviceaccount.com`
+- Bucket de Storage ainda depende de billing ativo no projeto para ser criado fisicamente
+
+## Pre-requisitos restantes
+
+1. Ativar billing Blaze no projeto `big-compra-firebase-dev`.
+2. Compartilhar a planilha oficial e os arquivos legados do Drive com a service account:
+   - `manut-migration-runner@big-compra-firebase-dev.iam.gserviceaccount.com`
+3. Opcional depois: criar tambem o projeto `prod`.
 
 ## Fluxo recomendado
 
 1. Copiar `.env.example` para `.env`
-2. Ajustar `FIREBASE_PROJECT_ID` e `FIREBASE_STORAGE_BUCKET`
+2. Ajustar `FIREBASE_PROJECT_ID` e `FIREBASE_STORAGE_BUCKET` se mudar de ambiente
 3. Instalar dependencias:
 
 ```bash
@@ -79,4 +80,4 @@ npm run firebase:verify
 - O sistema atual continua sendo a fonte oficial ate a virada.
 - O snapshot exportado e a primeira linha de rollback.
 - A virada final deve acontecer apenas apos validacao funcional da copia Firebase.
-
+- O espelhamento de anexos fica bloqueado ate o projeto ter billing ativo e bucket criado.

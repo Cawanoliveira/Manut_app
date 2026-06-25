@@ -5,10 +5,11 @@
 - [ ] Planilha oficial copiada
 - [ ] Projeto Apps Script oficial copiado
 - [ ] Branch `firebase-migration` criada
-- [ ] Projeto Firebase `dev` criado
+- [x] Projeto Firebase `dev` criado (`big-compra-firebase-dev`)
 - [ ] Projeto Firebase `prod` criado
 - [ ] Billing Blaze ativado
-- [ ] Credencial de acesso preparada
+- [x] Credencial de acesso preparada
+- [ ] Planilha e Drive compartilhados com `manut-migration-runner@big-compra-firebase-dev.iam.gserviceaccount.com`
 
 ## Exportacao inicial
 
@@ -48,4 +49,3 @@
 - [ ] Validar smoke test
 - [ ] Liberar sistema Firebase como principal
 - [ ] Manter legado disponivel para rollback
-
