@@ -17,14 +17,9 @@ function gerarCronogramaPdf(filtros) {
       .setName(buildCronogramaFileName_(cleanFilters, false));
     pdfFile = DriveApp.createFile(pdfBlob);
     ensureGeneratedFileSharing_(pdfFile);
-    return createSuccessResponse_('PDF do cronograma gerado com sucesso.', {
-      fileName: pdfFile.getName(),
-      fileId: pdfFile.getId(),
-      url: pdfFile.getUrl(),
-      openUrl: pdfFile.getUrl(),
-      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + pdfFile.getId(),
-      total: items.length
-    });
+    var pdfPayload = buildGeneratedDriveFilePayload_(pdfFile);
+    pdfPayload.total = items.length;
+    return createSuccessResponse_('PDF do cronograma gerado com sucesso.', pdfPayload);
   } catch (error) {
     registrarLog('ERRO', 'Falha ao gerar PDF do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
     return createErrorResponse_('Nao foi possivel gerar o PDF do cronograma. Detalhe: ' + safeString_(error && error.message), error);
@@ -49,15 +44,10 @@ function gerarCronogramaExcel(filtros) {
     var xlsxBlob = exportSpreadsheetAsXlsx_(tempSpreadsheet.getId(), buildCronogramaExcelFileName_(cleanFilters));
     xlsxFile = DriveApp.createFile(xlsxBlob);
     ensureGeneratedFileSharing_(xlsxFile);
-    return createSuccessResponse_('Excel do cronograma gerado com sucesso.', {
-      fileName: xlsxFile.getName(),
-      fileId: xlsxFile.getId(),
-      url: xlsxFile.getUrl(),
-      openUrl: xlsxFile.getUrl(),
-      downloadUrl: 'https://drive.google.com/uc?export=download&id=' + xlsxFile.getId() + '&confirm=t',
-      total: items.length,
-      format: 'xlsx'
-    });
+    var xlsxPayload = buildGeneratedDriveFilePayload_(xlsxFile);
+    xlsxPayload.total = items.length;
+    xlsxPayload.format = 'xlsx';
+    return createSuccessResponse_('Excel do cronograma gerado com sucesso.', xlsxPayload);
   } catch (error) {
     registrarLog('ERRO', 'Falha ao gerar Excel do cronograma.', getErrorStack_(error), getCurrentUserIdentifier_());
     return createErrorResponse_('Nao foi possivel gerar o Excel do cronograma. Detalhe: ' + safeString_(error && error.message), error);

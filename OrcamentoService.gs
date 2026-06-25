@@ -428,13 +428,7 @@ function gerarPdfOrcamentoInterno_(orcamento, items) {
     .setName(buildOrcamentoFileName_(orcamento));
   var file = DriveApp.createFile(pdfBlob);
   ensureGeneratedFileSharing_(file);
-  return {
-    fileName: file.getName(),
-    fileId: file.getId(),
-    url: file.getUrl(),
-    openUrl: file.getUrl(),
-    downloadUrl: 'https://drive.google.com/uc?export=download&id=' + file.getId()
-  };
+  return buildGeneratedDriveFilePayload_(file);
 }
 
 function buildOrcamentoPdfData_(orcamento, items) {

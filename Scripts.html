@@ -1,6 +1,6 @@
 ﻿<script>
   var CACHE_KEY = 'manutencao_offline_cache_v4';
-  var CLIENT_BUILD_LABEL = 'v20';
+  var CLIENT_BUILD_LABEL = 'v21';
   var CRONOGRAMA_EXECUTOR_ALL = '__TODOS_PRESTADORES__';
   var CRONOGRAMA_EXECUTOR_UNASSIGNED = '__SEM_PRESTADOR__';
   var bridgeResolvers_ = {};
@@ -122,6 +122,62 @@
   function hasNativeBridgeMethod_(methodName) {
     var bridge = getNativeBridge_();
     return !!(bridge && typeof bridge[methodName] === 'function');
+  }
+
+  function shouldPreferNativeExternalOpen_() {
+    return /Android/i.test(navigator.userAgent || '') && hasNativeBridgeMethod_('openExternalLink');
+  }
+
+  function reservarJanelaExterna_(titleText) {
+    if (shouldPreferNativeExternalOpen_()) {
+      return null;
+    }
+    try {
+      var popup = window.open('', '_blank');
+      if (!popup) {
+        return null;
+      }
+      try {
+        popup.document.open();
+        popup.document.write(
+          '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Abrindo arquivo</title>' +
+          '<style>body{margin:0;padding:28px;font-family:Arial,sans-serif;background:#fff;color:#111827;}strong{display:block;font-size:18px;margin-bottom:8px;}span{color:#6b7280;font-size:14px;line-height:1.5;}</style>' +
+          '</head><body><strong>' + (titleText || 'Abrindo arquivo...') + '</strong><span>Seu documento esta sendo preparado. Esta aba sera atualizada automaticamente.</span></body></html>'
+        );
+        popup.document.close();
+      } catch (renderError) {}
+      return popup;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function fecharJanelaExternaReservada_(popup) {
+    if (!popup || popup.closed) {
+      return;
+    }
+    try {
+      popup.close();
+    } catch (error) {}
+  }
+
+  function normalizeExternalFilePayload_(payloadOrUrl, fileName) {
+    if (payloadOrUrl && typeof payloadOrUrl === 'object') {
+      return {
+        fileName: payloadOrUrl.fileName || fileName || 'arquivo.pdf',
+        openUrl: payloadOrUrl.openUrl || '',
+        previewUrl: payloadOrUrl.previewUrl || '',
+        downloadUrl: payloadOrUrl.downloadUrl || '',
+        url: payloadOrUrl.url || ''
+      };
+    }
+    return {
+      fileName: fileName || 'arquivo.pdf',
+      openUrl: safeTrim_(payloadOrUrl),
+      previewUrl: '',
+      downloadUrl: safeTrim_(payloadOrUrl),
+      url: safeTrim_(payloadOrUrl)
+    };
   }
 
   function parseNativePayload_(payload) {
@@ -2007,18 +2063,23 @@
       mostrarMensagemErro('A geracao do PDF do cronograma precisa de internet.');
       return;
     }
+    var pendingWindow = reservarJanelaExterna_('Gerando PDF do cronograma...');
     mostrarLoading();
     serverCall_('gerarCronogramaPdf', [filtros])
       .then(function(response) {
         ocultarLoading();
         if (!response.success) {
+          fecharJanelaExternaReservada_(pendingWindow);
           mostrarMensagemErro(response.message);
           return;
         }
-        abrirPdfCronograma_(response.data);
+        abrirPdfCronograma_(response.data, pendingWindow);
         mostrarMensagemSucesso(response.message);
       })
-      .catch(handleFailure);
+      .catch(function(error) {
+        fecharJanelaExternaReservada_(pendingWindow);
+        handleFailure(error);
+      });
   }
 
   function gerarExcelCronograma() {
@@ -2044,11 +2105,11 @@
       .catch(handleFailure);
   }
 
-  function abrirPdfCronograma_(payload) {
-    if (!payload || !(payload.openUrl || payload.url)) {
+  function abrirPdfCronograma_(payload, pendingWindow) {
+    if (!payload || !(payload.openUrl || payload.previewUrl || payload.url || payload.downloadUrl)) {
       throw new Error('Arquivo PDF invalido.');
     }
-    abrirPdfExterno_(payload.openUrl || payload.url, payload.fileName || 'cronograma.pdf');
+    abrirPdfExterno_(payload, payload.fileName || 'cronograma.pdf', pendingWindow);
   }
 
   function baixarArquivoCronograma_(payload) {
@@ -4479,11 +4540,13 @@
       }
     }
 
+    var pendingWindow = reservarJanelaExterna_('Gerando PDF do orcamento...');
     mostrarLoading();
     serverCall_('criarOrcamentoPendencias', [payload])
       .then(function(response) {
         ocultarLoading();
         if (!response.success) {
+          fecharJanelaExternaReservada_(pendingWindow);
           mostrarMensagemErro(response.message);
           return;
         }
@@ -4496,41 +4559,56 @@
           .then(function() {
             mostrarMensagemSucesso(message);
             if (pdfPayload) {
-              abrirPdfOrcamento_(pdfPayload);
+              abrirPdfOrcamento_(pdfPayload, pendingWindow);
+            } else {
+              fecharJanelaExternaReservada_(pendingWindow);
             }
           });
       })
-      .catch(handleFailure);
+      .catch(function(error) {
+        fecharJanelaExternaReservada_(pendingWindow);
+        handleFailure(error);
+      });
   }
 
-  function abrirPdfOrcamento_(payload) {
-    if (!payload || !(payload.openUrl || payload.url || payload.downloadUrl)) {
+  function abrirPdfOrcamento_(payload, pendingWindow) {
+    if (!payload || !(payload.openUrl || payload.previewUrl || payload.url || payload.downloadUrl)) {
       throw new Error('Arquivo PDF do orcamento invalido.');
     }
-    abrirPdfExterno_(payload.openUrl || payload.url || payload.downloadUrl, payload.fileName || 'orcamento.pdf');
+    abrirPdfExterno_(payload, payload.fileName || 'orcamento.pdf', pendingWindow);
   }
 
-  function abrirPdfExterno_(url, fileName) {
-    if (!url) {
+  function abrirPdfExterno_(payloadOrUrl, fileName, pendingWindow) {
+    var payload = normalizeExternalFilePayload_(payloadOrUrl, fileName);
+    var primaryUrl = payload.previewUrl || payload.openUrl || payload.url || payload.downloadUrl;
+    var sameTabFallbackUrl = payload.downloadUrl || payload.openUrl || payload.url || primaryUrl;
+    if (!primaryUrl) {
       throw new Error('Link do PDF invalido.');
     }
-    if (hasNativeBridgeMethod_('openExternalLink')) {
+    if (shouldPreferNativeExternalOpen_()) {
       try {
-        getNativeBridge_().openExternalLink(url, fileName || 'arquivo.pdf');
+        getNativeBridge_().openExternalLink(primaryUrl, payload.fileName || 'arquivo.pdf');
+        fecharJanelaExternaReservada_(pendingWindow);
         return;
       } catch (error) {}
     }
-    var anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.target = '_blank';
-    anchor.rel = 'noopener';
-    document.body.appendChild(anchor);
-    anchor.click();
-    setTimeout(function() {
-      if (anchor.parentNode) {
-        anchor.parentNode.removeChild(anchor);
+    if (pendingWindow && !pendingWindow.closed) {
+      try {
+        pendingWindow.location.replace(primaryUrl);
+        pendingWindow.focus();
+        return;
+      } catch (windowError) {}
+    }
+    try {
+      var popup = window.open(primaryUrl, '_blank');
+      if (popup) {
+        try {
+          popup.focus();
+        } catch (focusError) {}
+        return;
       }
-    }, 600);
+    } catch (popupError) {}
+    window.location.assign(sameTabFallbackUrl);
   }
 
   function renderHistoryTimeline_(historyItems) {
@@ -4655,17 +4733,22 @@
       mostrarMensagemErro('A abertura do PDF do orcamento precisa de internet.');
       return;
     }
+    var pendingWindow = reservarJanelaExterna_('Abrindo PDF do orcamento...');
     mostrarLoading();
     serverCall_('gerarPdfOrcamento', [idOrcamento])
       .then(function(response) {
         ocultarLoading();
         if (!response.success) {
+          fecharJanelaExternaReservada_(pendingWindow);
           mostrarMensagemErro(response.message);
           return;
         }
-        abrirPdfOrcamento_(response.data);
+        abrirPdfOrcamento_(response.data, pendingWindow);
       })
-      .catch(handleFailure);
+      .catch(function(error) {
+        fecharJanelaExternaReservada_(pendingWindow);
+        handleFailure(error);
+      });
   }
 
   function excluirOrcamentoAtivo(idOrcamento, pendenciaId) {

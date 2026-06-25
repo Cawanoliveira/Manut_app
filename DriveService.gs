@@ -54,6 +54,23 @@ function sanitizeFileName_(value) {
     .substring(0, 180);
 }
 
+function buildGeneratedDriveFilePayload_(file) {
+  if (!file) {
+    return null;
+  }
+  var fileId = safeString_(file.getId());
+  var encodedId = encodeURIComponent(fileId);
+  var defaultUrl = safeString_(file.getUrl());
+  return {
+    fileName: safeString_(file.getName()) || 'arquivo',
+    fileId: fileId,
+    url: defaultUrl,
+    openUrl: fileId ? ('https://drive.google.com/file/d/' + encodedId + '/view') : defaultUrl,
+    previewUrl: fileId ? ('https://drive.google.com/file/d/' + encodedId + '/preview') : defaultUrl,
+    downloadUrl: fileId ? ('https://drive.google.com/uc?export=download&id=' + encodedId + '&confirm=t') : defaultUrl
+  };
+}
+
 function obterFotoPreview(idArquivoDrive) {
   try {
     if (!idArquivoDrive) {
