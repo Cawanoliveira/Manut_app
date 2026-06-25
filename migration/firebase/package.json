@@ -1,0 +1,19 @@
+{
+  "name": "manut-firebase-migration",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Ferramentas de migracao do sistema legado baseado em planilha para Firebase.",
+  "scripts": {
+    "legacy:export": "node ./scripts/export-legacy-snapshot.mjs",
+    "firebase:import": "node ./scripts/import-firestore.mjs",
+    "firebase:mirror-assets": "node ./scripts/mirror-drive-assets-to-storage.mjs",
+    "firebase:verify": "node ./scripts/verify-firestore-import.mjs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.3.1",
+    "googleapis": "^140.0.1"
+  }
+}
+
