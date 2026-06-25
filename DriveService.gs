@@ -58,10 +58,11 @@ function buildGeneratedDriveFilePayload_(file) {
   if (!file) {
     return null;
   }
+  var options = arguments[1] || {};
   var fileId = safeString_(file.getId());
   var encodedId = encodeURIComponent(fileId);
   var defaultUrl = safeString_(file.getUrl());
-  return {
+  var payload = {
     fileName: safeString_(file.getName()) || 'arquivo',
     fileId: fileId,
     url: defaultUrl,
@@ -69,6 +70,23 @@ function buildGeneratedDriveFilePayload_(file) {
     previewUrl: fileId ? ('https://drive.google.com/file/d/' + encodedId + '/preview') : defaultUrl,
     downloadUrl: fileId ? ('https://drive.google.com/uc?export=download&id=' + encodedId + '&confirm=t') : defaultUrl
   };
+  if (options.includeInlineData) {
+    try {
+      var blob = file.getBlob();
+      var bytes = blob.getBytes();
+      var maxInlineBytes = Number(options.maxInlineBytes || 4194304);
+      payload.inlineSize = bytes.length;
+      if (bytes.length <= maxInlineBytes) {
+        payload.inlineMimeType = blob.getContentType() || options.mimeType || 'application/octet-stream';
+        payload.inlineBase64 = Utilities.base64Encode(bytes);
+      } else {
+        payload.inlineSkipped = 'size_limit';
+      }
+    } catch (error) {
+      payload.inlineSkipped = 'error';
+    }
+  }
+  return payload;
 }
 
 function obterFotoPreview(idArquivoDrive) {

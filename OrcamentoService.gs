@@ -90,7 +90,9 @@ function criarOrcamentoPendencias(payload) {
     var pdfPayload = null;
     var message = 'Orcamento registrado com sucesso.';
     try {
-      pdfPayload = gerarPdfOrcamentoInterno_(orcamentoRecord, itemSnapshots);
+      pdfPayload = gerarPdfOrcamentoInterno_(orcamentoRecord, itemSnapshots, {
+        includeInlineData: true
+      });
       message = 'Orcamento registrado e PDF gerado com sucesso.';
       var orcamentoRowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.ORCAMENTOS, 'id_orcamento', orcamentoId);
       if (orcamentoRowIndex > -1) {
@@ -144,7 +146,9 @@ function gerarPdfOrcamento(idOrcamento) {
     if (!items.length) {
       return createErrorResponse_('Esse orcamento nao possui pendencias vinculadas.');
     }
-    var pdfPayload = gerarPdfOrcamentoInterno_(orcamento, items);
+    var pdfPayload = gerarPdfOrcamentoInterno_(orcamento, items, {
+      includeInlineData: true
+    });
     var rowIndex = findRowIndexByValue_(APP_CONFIG.SHEETS.ORCAMENTOS, 'id_orcamento', idOrcamento);
     if (rowIndex > -1) {
       updateSheetRecordByRow_(APP_CONFIG.SHEETS.ORCAMENTOS, rowIndex, {
@@ -419,7 +423,7 @@ function listarItensOrcamento_(idOrcamento) {
   });
 }
 
-function gerarPdfOrcamentoInterno_(orcamento, items) {
+function gerarPdfOrcamentoInterno_(orcamento, items, options) {
   var pdfData = buildOrcamentoPdfData_(orcamento, items);
   var html = montarHtmlOrcamentoPrestador_(pdfData);
   var pdfBlob = Utilities
@@ -428,7 +432,10 @@ function gerarPdfOrcamentoInterno_(orcamento, items) {
     .setName(buildOrcamentoFileName_(orcamento));
   var file = DriveApp.createFile(pdfBlob);
   ensureGeneratedFileSharing_(file);
-  return buildGeneratedDriveFilePayload_(file);
+  return buildGeneratedDriveFilePayload_(file, {
+    includeInlineData: !!(options && options.includeInlineData),
+    mimeType: MimeType.PDF
+  });
 }
 
 function buildOrcamentoPdfData_(orcamento, items) {

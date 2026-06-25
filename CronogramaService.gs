@@ -17,7 +17,10 @@ function gerarCronogramaPdf(filtros) {
       .setName(buildCronogramaFileName_(cleanFilters, false));
     pdfFile = DriveApp.createFile(pdfBlob);
     ensureGeneratedFileSharing_(pdfFile);
-    var pdfPayload = buildGeneratedDriveFilePayload_(pdfFile);
+    var pdfPayload = buildGeneratedDriveFilePayload_(pdfFile, {
+      includeInlineData: true,
+      mimeType: MimeType.PDF
+    });
     pdfPayload.total = items.length;
     return createSuccessResponse_('PDF do cronograma gerado com sucesso.', pdfPayload);
   } catch (error) {
