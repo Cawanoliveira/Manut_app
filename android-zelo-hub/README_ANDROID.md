@@ -18,7 +18,7 @@ Projeto base do aplicativo Android nativo para o sistema `Zelo Hub`, usando:
 
 O app aponta para:
 
-- `https://cawanoliveira.github.io/Manut_app/`
+- `https://big-compra-firebase-dev.web.app/`
 
 Essa URL fica em `BuildConfig.APP_URL` dentro de `app/build.gradle.kts`.
 

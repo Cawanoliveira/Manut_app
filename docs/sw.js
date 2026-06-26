@@ -1,7 +1,8 @@
-const CACHE_NAME = 'manutencao-pwa-v27';
+const CACHE_NAME = 'manutencao-pwa-v28';
 const APP_SHELL = [
   './',
   './index.html',
+  './android.html',
   './styles.css',
   './app.js',
   './firebase-bridge.js',
@@ -9,7 +10,8 @@ const APP_SHELL = [
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
-  './logopretoelaranja.webp'
+  './logopretoelaranja.webp',
+  './selolaranjaebranco.webp'
 ];
 
 self.addEventListener('install', (event) => {

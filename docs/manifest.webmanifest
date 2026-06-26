@@ -1,26 +1,27 @@
 {
   "id": "./",
-  "name": "Zelo Hub",
-  "short_name": "Zelo Hub",
-  "description": "Aplicativo de manutencao com funcionamento online e offline para registro, programacao e conclusao de pendencias.",
-  "start_url": "./index.html",
+  "name": "BIG Compra",
+  "short_name": "BIG Compra",
+  "description": "Aplicativo operacional para registrar, priorizar e acompanhar pendencias com fluxo guiado e cronograma.",
+  "start_url": "./",
   "scope": "./",
-  "display": "fullscreen",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "background_color": "#050505",
+  "background_color": "#fffaf5",
   "theme_color": "#ff7a00",
   "icons": [
     {
       "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ],
   "categories": ["business", "productivity"],

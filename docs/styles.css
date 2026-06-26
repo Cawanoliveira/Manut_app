@@ -219,6 +219,43 @@
     margin-top: 0;
   }
 
+  .install-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    border-color: #ffd2a8;
+    background: linear-gradient(135deg, #fff7ee 0%, #ffffff 100%);
+    box-shadow: 0 14px 28px rgba(242, 100, 0, 0.08);
+  }
+
+  .install-banner-copy {
+    display: grid;
+    gap: 4px;
+    max-width: 720px;
+  }
+
+  .install-banner-copy strong {
+    color: var(--primary-strong);
+    font-size: 15px;
+    letter-spacing: 0.01em;
+  }
+
+  .install-banner-copy p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .install-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
   .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -2820,6 +2857,10 @@
       padding: 8px 16px 0;
     }
 
+    .install-banner {
+      padding: 14px 16px;
+    }
+
     .summary-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2872,6 +2913,14 @@
   }
 
   @media (max-width: 767px) {
+    .install-banner {
+      align-items: flex-start;
+    }
+
+    .install-banner-actions {
+      width: 100%;
+    }
+
     .section-insights {
       grid-template-columns: 1fr 1fr;
     }

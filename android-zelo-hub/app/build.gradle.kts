@@ -11,11 +11,11 @@ android {
         applicationId = "br.com.bigcompra.zelohub"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "APP_URL", "\"https://cawanoliveira.github.io/Manut_app/\"")
+        buildConfigField("String", "APP_URL", "\"https://big-compra-firebase-dev.web.app/\"")
     }
 
     buildTypes {

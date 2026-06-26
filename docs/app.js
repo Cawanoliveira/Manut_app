@@ -1,5 +1,5 @@
 ﻿var CACHE_KEY = 'manutencao_offline_cache_v4';
-  var CLIENT_BUILD_LABEL = 'v19';
+  var CLIENT_BUILD_LABEL = 'v20';
   var CRONOGRAMA_EXECUTOR_ALL = '__TODOS_PRESTADORES__';
   var CRONOGRAMA_EXECUTOR_UNASSIGNED = '__SEM_PRESTADOR__';
   var bridgeResolvers_ = {};
@@ -7,6 +7,8 @@
   var filterFabDragState_ = null;
   var multiSelectOutsideHandlerBound_ = false;
   var openMultiSelectId_ = '';
+  var installPromptEvent_ = null;
+  var installBannerStorageKey_ = 'manutencao_install_banner_dismissed_v1';
   var appState = getDefaultAppState_();
 
   document.addEventListener('DOMContentLoaded', function() {
@@ -87,6 +89,8 @@
 
   function inicializarApp() {
       registerNativeBridgeCallbacks_();
+      bindInstallExperience_();
+      registerServiceWorker_();
       bindConnectivityHandlers_();
       bindFilterFab_();
       bindFormExperience_();
@@ -112,6 +116,169 @@
     window.handleNativeSpenResult = function(payload) {
       handleNativeSpenResultPayload_(payload);
     };
+  }
+
+  function getBackendMode_() {
+    return safeTrim_((window.PWA_CONFIG || {}).backendMode || '').toLowerCase();
+  }
+
+  function isFirebaseRuntimeReady_() {
+    return !!(window.FirebaseBridge &&
+      typeof window.FirebaseBridge.isEnabled === 'function' &&
+      window.FirebaseBridge.isEnabled() &&
+      typeof window.FirebaseBridge.canHandle === 'function');
+  }
+
+  function registerServiceWorker_() {
+    if (!('serviceWorker' in navigator) || isAppsScriptHost_()) {
+      return;
+    }
+    navigator.serviceWorker.register('./sw.js').catch(function(error) {
+      if (window.console && console.warn) {
+        console.warn('Falha ao registrar o service worker.', error);
+      }
+    });
+  }
+
+  function bindInstallExperience_() {
+    updateInstallBanner_();
+    window.addEventListener('beforeinstallprompt', function(event) {
+      event.preventDefault();
+      installPromptEvent_ = event;
+      rememberInstallBannerDismissal_(false);
+      updateInstallBanner_();
+    });
+    window.addEventListener('appinstalled', function() {
+      installPromptEvent_ = null;
+      rememberInstallBannerDismissal_(true);
+      updateInstallBanner_();
+      mostrarMensagemSucesso('Aplicativo instalado com sucesso neste dispositivo.');
+    });
+    if (window.matchMedia) {
+      var standaloneMedia = window.matchMedia('(display-mode: standalone)');
+      if (standaloneMedia) {
+        if (typeof standaloneMedia.addEventListener === 'function') {
+          standaloneMedia.addEventListener('change', updateInstallBanner_);
+        } else if (typeof standaloneMedia.addListener === 'function') {
+          standaloneMedia.addListener(updateInstallBanner_);
+        }
+      }
+    }
+  }
+
+  function isStandaloneApp_() {
+    return !!((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+      window.navigator.standalone === true);
+  }
+
+  function isIosDevice_() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+  }
+
+  function isAndroidDevice_() {
+    return /android/i.test(navigator.userAgent || '');
+  }
+
+  function shouldShowInstallBanner_() {
+    if (hasNativeBridgeMethod_('showToast')) {
+      return false;
+    }
+    if (isStandaloneApp_()) {
+      return false;
+    }
+    if (isInstallBannerDismissed_()) {
+      return false;
+    }
+    if (installPromptEvent_) {
+      return true;
+    }
+    return isAndroidDevice_() || isIosDevice_();
+  }
+
+  function getInstallBannerMessage_() {
+    if (installPromptEvent_) {
+      return 'Abra o BIG Compra direto da tela inicial para ganhar velocidade e uma experiencia mais fluida no celular.';
+    }
+    if (isIosDevice_()) {
+      return 'No iPhone ou iPad, use o menu Compartilhar do Safari e toque em "Adicionar a Tela de Inicio".';
+    }
+    if (isAndroidDevice_()) {
+      return 'No Android, abra o menu do navegador e use "Instalar app" ou "Adicionar a tela inicial".';
+    }
+    return 'Instale o BIG Compra no navegador para abrir como aplicativo.';
+  }
+
+  function updateInstallBanner_() {
+    var banner = document.getElementById('installBanner');
+    if (!banner) {
+      return;
+    }
+    if (!shouldShowInstallBanner_()) {
+      banner.classList.add('hidden');
+      return;
+    }
+    var text = document.getElementById('installBannerText');
+    var installButton = document.getElementById('installAppButton');
+    var helpButton = document.getElementById('installHelpButton');
+    if (text) {
+      text.textContent = getInstallBannerMessage_();
+    }
+    if (installButton) {
+      installButton.classList.toggle('hidden', !installPromptEvent_);
+    }
+    if (helpButton) {
+      helpButton.classList.toggle('hidden', !!installPromptEvent_);
+    }
+    banner.classList.remove('hidden');
+  }
+
+  function rememberInstallBannerDismissal_(dismissed) {
+    try {
+      if (dismissed) {
+        window.localStorage.setItem(installBannerStorageKey_, '1');
+      } else {
+        window.localStorage.removeItem(installBannerStorageKey_);
+      }
+    } catch (error) {}
+  }
+
+  function isInstallBannerDismissed_() {
+    try {
+      return window.localStorage.getItem(installBannerStorageKey_) === '1';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function solicitarInstalacaoApp() {
+    if (!installPromptEvent_) {
+      mostrarAjudaInstalacaoApp();
+      return;
+    }
+    installPromptEvent_.prompt();
+    Promise.resolve(installPromptEvent_.userChoice).then(function(choice) {
+      if (choice && choice.outcome === 'accepted') {
+        rememberInstallBannerDismissal_(true);
+      }
+      installPromptEvent_ = null;
+      updateInstallBanner_();
+    }).catch(function() {
+      updateInstallBanner_();
+    });
+  }
+
+  function mostrarAjudaInstalacaoApp() {
+    var message = isIosDevice_()
+      ? 'No Safari, toque em Compartilhar e depois em "Adicionar a Tela de Inicio".'
+      : isAndroidDevice_()
+        ? 'No navegador do Android, abra o menu e toque em "Instalar app" ou "Adicionar a tela inicial".'
+        : 'No Chrome ou Edge, use a opcao de instalar aplicativo na barra de enderecos.';
+    window.alert(message);
+  }
+
+  function dispensarInstallBanner() {
+    rememberInstallBannerDismissal_(true);
+    updateInstallBanner_();
   }
 
   function getNativeBridge_() {
@@ -2055,12 +2222,26 @@
       throw new Error('Arquivo do cronograma invalido.');
     }
     var targetUrl = payload.downloadUrl || payload.url;
+    var isObjectUrl = /^(blob:|data:)/i.test(targetUrl);
+    if (!isObjectUrl && hasNativeBridgeMethod_('openExternalDocument')) {
+      try {
+        getNativeBridge_().openExternalDocument(
+          targetUrl,
+          payload.mimeType || 'application/octet-stream',
+          payload.fileName || 'cronograma.csv'
+        );
+        return;
+      } catch (error) {}
+    }
     try {
       window.location.assign(targetUrl);
     } catch (error) {
       var anchor = document.createElement('a');
       anchor.href = targetUrl;
       anchor.target = '_self';
+      if (isObjectUrl && payload.fileName) {
+        anchor.download = payload.fileName;
+      }
       anchor.rel = 'noopener';
       document.body.appendChild(anchor);
       anchor.click();
@@ -4513,7 +4694,8 @@
     if (!url) {
       throw new Error('Link do PDF invalido.');
     }
-    if (hasNativeBridgeMethod_('openExternalLink')) {
+    var isObjectUrl = /^(blob:|data:)/i.test(url);
+    if (!isObjectUrl && hasNativeBridgeMethod_('openExternalLink')) {
       try {
         getNativeBridge_().openExternalLink(url, fileName || 'arquivo.pdf');
         return;
@@ -4522,6 +4704,9 @@
     var anchor = document.createElement('a');
     anchor.href = url;
     anchor.target = '_blank';
+    if (isObjectUrl && fileName) {
+      anchor.download = fileName;
+    }
     anchor.rel = 'noopener';
     document.body.appendChild(anchor);
     anchor.click();
@@ -4884,7 +5069,7 @@
       return;
     }
     if (!appState.connection.online) {
-      mostrarMensagemErro('Cadastre executores/prestadores com internet para sincronizar com a planilha.');
+      mostrarMensagemErro('Cadastre executores/prestadores com internet para sincronizar com a base online.');
       return;
     }
     mostrarLoading();
@@ -4919,7 +5104,7 @@
       return;
     }
     if (!appState.connection.online) {
-      mostrarMensagemErro('Altere executores/prestadores com internet para sincronizar com a planilha.');
+      mostrarMensagemErro('Altere executores/prestadores com internet para sincronizar com a base online.');
       return;
     }
     mostrarLoading();
@@ -4954,7 +5139,7 @@
       return;
     }
     if (!appState.connection.online) {
-      mostrarMensagemErro('Exclua executores/prestadores com internet para sincronizar com a planilha.');
+      mostrarMensagemErro('Exclua executores/prestadores com internet para sincronizar com a base online.');
       return;
     }
     mostrarLoading();
@@ -5046,7 +5231,7 @@
       return;
     }
     if (!appState.connection.online) {
-      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a planilha.');
+      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a base online.');
       return;
     }
     mostrarLoading();
@@ -5071,7 +5256,7 @@
       return;
     }
     if (!appState.connection.online) {
-      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a planilha.');
+      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a base online.');
       return;
     }
     mostrarLoading();
@@ -5092,7 +5277,7 @@
       return;
     }
     if (!appState.connection.online) {
-      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a planilha.');
+      mostrarMensagemErro('Edicoes de listas precisam de internet para sincronizar com a base online.');
       return;
     }
     mostrarLoading();
@@ -6223,7 +6408,13 @@
   }
 
   function isServerBridgeReady_() {
-    return !!(window.google && google.script && google.script.run) || !!(((window.PWA_CONFIG || {}).appsScriptBridgeUrl || '').trim());
+    if (isFirebaseRuntimeReady_()) {
+      return true;
+    }
+    if (window.google && google.script && google.script.run) {
+      return true;
+    }
+    return getBackendMode_() !== 'firebase' && !!(((window.PWA_CONFIG || {}).appsScriptBridgeUrl || '').trim());
   }
 
   function waitForAppsScriptBridgeReady_(timeoutMs) {
@@ -6241,7 +6432,7 @@
         }
         if (Date.now() - startedAt >= limit) {
           clearInterval(timer);
-          reject(new Error('Bridge do Apps Script ainda nao estava pronto.'));
+          reject(new Error('Bridge do servidor ainda nao estava pronto.'));
         }
       }, 90);
     });
@@ -6300,7 +6491,7 @@
         var config = window.PWA_CONFIG || {};
         var endpoint = (config.appsScriptBridgeUrl || '').trim();
         if (!endpoint) {
-          reject(new Error('Configure o URL do Apps Script em docs/config.js antes de sincronizar com o servidor.'));
+          reject(new Error('Nenhum endpoint de fallback foi configurado para esta copia do app.'));
           return;
       }
       ensureBridgeListener_();
@@ -6329,7 +6520,7 @@
           if (!opts.quietOffline) {
             setConnectionState_(false);
           }
-          reject(new Error('Tempo esgotado ao comunicar com o Apps Script.'));
+          reject(new Error('Tempo esgotado ao comunicar com o servidor.'));
         }, Number(opts.timeoutMs || 45000));
 
       bridgeResolvers_[requestId] = {

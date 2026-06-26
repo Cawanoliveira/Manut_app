@@ -11,6 +11,7 @@ import android.os.Looper
 import android.view.View
 import android.webkit.ConsoleMessage
 import android.webkit.PermissionRequest
+import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -146,12 +147,23 @@ class MainActivity : AppCompatActivity() {
                 return super.onConsoleMessage(consoleMessage)
             }
         }
+
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+            val guessedName = URLUtil.guessFileName(url, contentDisposition, mimeType)
+            openExternalDocument(url, mimeType ?: "*/*", guessedName.ifBlank { "arquivo" })
+        }
     }
 
     private fun handleExternalUrl(uri: Uri): Boolean {
+        val scheme = uri.scheme.orEmpty()
+        if (scheme.equals("blob", ignoreCase = true) || scheme.equals("data", ignoreCase = true)) {
+            return false
+        }
         val host = uri.host.orEmpty()
         val isInternal =
             host.contains("github.io") ||
+                host.contains("web.app") ||
+                host.contains("firebaseapp.com") ||
                 host.contains("script.google.com") ||
                 host.contains("googleusercontent.com")
         if (isInternal) {
