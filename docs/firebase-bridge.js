@@ -97,6 +97,15 @@
   }
 
   function getCurrentUserIdentifier() {
+    if (window.firebase && typeof window.firebase.auth === 'function') {
+      try {
+        var currentUser = window.firebase.auth().currentUser;
+        var currentEmail = safeString(currentUser && currentUser.email);
+        if (currentEmail) {
+          return currentEmail;
+        }
+      } catch (error) {}
+    }
     var config = window.PWA_CONFIG || {};
     return safeString(config.currentUserEmail) || 'firebase-copy@local';
   }

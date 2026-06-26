@@ -96,6 +96,89 @@
     color: #111111;
   }
 
+  .auth-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(17, 17, 17, 0.38);
+    backdrop-filter: blur(8px);
+  }
+
+  .auth-gate-card {
+    width: min(460px, 100%);
+    padding: 26px 24px;
+    border-radius: 24px;
+    border: 1px solid #ffd7b5;
+    background: linear-gradient(180deg, #fffaf5 0%, #ffffff 100%);
+    box-shadow: 0 22px 44px rgba(17, 17, 17, 0.16);
+    display: grid;
+    gap: 14px;
+    text-align: center;
+  }
+
+  .auth-gate-logo {
+    width: 132px;
+    height: auto;
+    margin: 0 auto;
+  }
+
+  .auth-gate-card h2 {
+    color: var(--primary-strong);
+    font-size: 26px;
+    line-height: 1.1;
+  }
+
+  .auth-gate-card p {
+    color: var(--muted);
+    line-height: 1.5;
+    font-size: 14px;
+  }
+
+  .auth-gate-actions {
+    display: flex;
+    justify-content: center;
+  }
+
+  .auth-session-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border: 1px solid #ffe0c2;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #fff7ef 0%, #ffffff 100%);
+  }
+
+  .auth-session-copy {
+    display: grid;
+    gap: 4px;
+  }
+
+  .auth-session-copy strong {
+    color: var(--primary-strong);
+    font-size: 14px;
+  }
+
+  .auth-session-copy p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .auth-session-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .filter-fab {
     position: fixed;
     top: 40px;
@@ -2913,6 +2996,14 @@
   }
 
   @media (max-width: 767px) {
+    .auth-session-panel {
+      align-items: flex-start;
+    }
+
+    .auth-session-actions {
+      width: 100%;
+    }
+
     .install-banner {
       align-items: flex-start;
     }

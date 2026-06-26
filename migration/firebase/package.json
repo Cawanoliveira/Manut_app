@@ -8,7 +8,8 @@
     "legacy:export": "node ./scripts/export-legacy-snapshot.mjs",
     "firebase:import": "node ./scripts/import-firestore.mjs",
     "firebase:mirror-assets": "node ./scripts/mirror-drive-assets-to-storage.mjs",
-    "firebase:verify": "node ./scripts/verify-firestore-import.mjs"
+    "firebase:verify": "node ./scripts/verify-firestore-import.mjs",
+    "firebase:seed-allowlist": "node ./scripts/seed-auth-allowlist.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -16,4 +17,3 @@
     "googleapis": "^140.0.1"
   }
 }
-

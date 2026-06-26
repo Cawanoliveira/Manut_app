@@ -9,6 +9,9 @@
   var openMultiSelectId_ = '';
   var installPromptEvent_ = null;
   var installBannerStorageKey_ = 'manutencao_install_banner_dismissed_v1';
+  var firebaseAuthReady_ = false;
+  var firebaseAuthUser_ = null;
+  var initialBootstrapScheduled_ = false;
   var appState = getDefaultAppState_();
 
   document.addEventListener('DOMContentLoaded', function() {
@@ -101,12 +104,7 @@
       navegar('secaoDashboard', null, true);
       atualizarNomeArquivo('novaFoto', 'novaFotoNome');
       atualizarNomeArquivo('editFoto', 'editFotoNome');
-      setTimeout(function() {
-        detectarConectividadeInicial_(0);
-      }, 180);
-      setTimeout(function() {
-        garantirBootstrapInicialDashboard_();
-      }, 3200);
+      startInitialBootstrapFlow_();
     }
 
   function registerNativeBridgeCallbacks_() {
@@ -164,6 +162,187 @@
         }
       }
     }
+  }
+
+  function requiresFirebaseLogin_() {
+    return getBackendMode_() === 'firebase';
+  }
+
+  function getFirebaseAuthInstance_() {
+    if (!requiresFirebaseLogin_() || !window.firebase || !window.firebase.auth) {
+      return null;
+    }
+    if (!window.firebase.apps.length) {
+      var firebaseConfig = (window.PWA_CONFIG || {}).firebase;
+      if (!firebaseConfig) {
+        return null;
+      }
+      window.firebase.initializeApp(firebaseConfig);
+    }
+    return window.firebase.auth();
+  }
+
+  function startInitialBootstrapFlow_() {
+    if (requiresFirebaseLogin_()) {
+      initializeFirebaseAuth_();
+      return;
+    }
+    scheduleInitialServerBootstrap_();
+  }
+
+  function scheduleInitialServerBootstrap_() {
+    if (initialBootstrapScheduled_) {
+      return;
+    }
+    initialBootstrapScheduled_ = true;
+    setTimeout(function() {
+      detectarConectividadeInicial_(0);
+    }, 180);
+    setTimeout(function() {
+      garantirBootstrapInicialDashboard_();
+    }, 3200);
+  }
+
+  function initializeFirebaseAuth_() {
+    if (initializeFirebaseAuth_.started) {
+      updateAuthUi_();
+      return;
+    }
+    initializeFirebaseAuth_.started = true;
+    var auth = getFirebaseAuthInstance_();
+    if (!auth) {
+      firebaseAuthReady_ = true;
+      mostrarMensagemErro('Nao foi possivel iniciar a autenticacao do Firebase.');
+      updateAuthUi_();
+      return;
+    }
+    Promise.resolve(auth.setPersistence(window.firebase.auth.Auth.Persistence.LOCAL)).catch(function(error) {
+      if (window.console && console.warn) {
+        console.warn('Falha ao definir persistencia local do login.', error);
+      }
+    });
+    auth.getRedirectResult().catch(function(error) {
+      ocultarLoading();
+      if (error && error.message) {
+        mostrarMensagemErro(error.message);
+      }
+    });
+    setTimeout(function() {
+      if (!firebaseAuthReady_) {
+        firebaseAuthReady_ = true;
+        updateAuthUi_();
+        renderAll_();
+        ocultarLoading();
+      }
+    }, 2400);
+    auth.onAuthStateChanged(function(user) {
+      firebaseAuthReady_ = true;
+      firebaseAuthUser_ = user || null;
+      if (user && user.email) {
+        window.PWA_CONFIG.currentUserEmail = user.email;
+      }
+      updateAuthUi_();
+      renderAll_();
+      if (firebaseAuthUser_) {
+        scheduleInitialServerBootstrap_();
+        return;
+      }
+      appState.connection.syncing = false;
+      setConnectionState_(false);
+      ocultarLoading();
+    });
+  }
+
+  function isFirebaseUserSignedIn_() {
+    return !!(firebaseAuthReady_ && firebaseAuthUser_ && firebaseAuthUser_.email);
+  }
+
+  function getFirebaseUserEmail_() {
+    return safeTrim_((firebaseAuthUser_ && firebaseAuthUser_.email) || '');
+  }
+
+  function getFirebaseUserLabel_() {
+    var email = getFirebaseUserEmail_();
+    var name = safeTrim_((firebaseAuthUser_ && firebaseAuthUser_.displayName) || '');
+    if (name && email) {
+      return name + ' • ' + email;
+    }
+    return name || email || 'Nenhuma conta conectada.';
+  }
+
+  function updateAuthUi_() {
+    var gate = document.getElementById('authGate');
+    var gateMessage = document.getElementById('authGateMessage');
+    var loginButton = document.getElementById('authLoginButton');
+    var sessionPanel = document.getElementById('authSessionPanel');
+    var sessionEmail = document.getElementById('authSessionEmail');
+    if (!requiresFirebaseLogin_()) {
+      if (gate) gate.classList.add('hidden');
+      if (sessionPanel) sessionPanel.classList.add('hidden');
+      return;
+    }
+    if (sessionEmail) {
+      sessionEmail.textContent = getFirebaseUserLabel_();
+    }
+    if (sessionPanel) {
+      sessionPanel.classList.toggle('hidden', !isFirebaseUserSignedIn_());
+    }
+    if (!gate) {
+      return;
+    }
+    if (isFirebaseUserSignedIn_()) {
+      gate.classList.add('hidden');
+      return;
+    }
+    if (gateMessage) {
+      gateMessage.textContent = firebaseAuthReady_
+        ? 'Use sua conta Google autorizada para acessar a base Firebase com seguranca.'
+        : 'Validando sua sessao com a base Firebase...';
+    }
+    if (loginButton) {
+      loginButton.disabled = !firebaseAuthReady_;
+      loginButton.textContent = firebaseAuthReady_ ? 'Entrar com Google' : 'Validando acesso...';
+    }
+    gate.classList.remove('hidden');
+  }
+
+  function iniciarLoginFirebase_() {
+    var auth = getFirebaseAuthInstance_();
+    if (!auth) {
+      mostrarMensagemErro('Autenticacao do Firebase indisponivel neste momento.');
+      return;
+    }
+    var provider = new window.firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    mostrarLoading();
+    var useRedirect = isAndroidDevice_() || isIosDevice_() || isStandaloneApp_();
+    var request = useRedirect ? auth.signInWithRedirect(provider) : auth.signInWithPopup(provider);
+    Promise.resolve(request).then(function(result) {
+      if (result && result.user && result.user.email) {
+        window.PWA_CONFIG.currentUserEmail = result.user.email;
+      }
+      if (!useRedirect) {
+        ocultarLoading();
+      }
+    }).catch(function(error) {
+      ocultarLoading();
+      mostrarMensagemErro((error && error.message) || 'Nao foi possivel entrar com Google.');
+    });
+  }
+
+  function sairFirebase_() {
+    var auth = getFirebaseAuthInstance_();
+    if (!auth) {
+      return;
+    }
+    mostrarLoading();
+    auth.signOut().then(function() {
+      ocultarLoading();
+      mostrarMensagemSucesso('Sessao encerrada com sucesso.');
+    }).catch(function(error) {
+      ocultarLoading();
+      mostrarMensagemErro((error && error.message) || 'Nao foi possivel encerrar a sessao.');
+    });
   }
 
   function isStandaloneApp_() {
@@ -1025,6 +1204,7 @@
     renderEditGuidance_();
     updateFilterFabState_();
     applyFilterFabPosition_();
+    updateAuthUi_();
     updateSyncStatusBar_();
     refreshBackButtons_();
   }
@@ -6005,6 +6185,11 @@
     if (!indicator) {
       return;
     }
+    if (requiresFirebaseLogin_() && !isFirebaseUserSignedIn_()) {
+      indicator.className = 'connection-indicator syncing';
+      indicator.textContent = (firebaseAuthReady_ ? 'Entrar' : 'Acessando...') + ' • ' + CLIENT_BUILD_LABEL;
+      return;
+    }
     var statusText = appState.connection.online ? 'Online' : 'Offline';
     indicator.className = 'connection-indicator ' + (appState.connection.online ? 'online' : 'offline');
     if (appState.connection.syncing) {
@@ -6576,7 +6761,16 @@
 
   function handleFailure(error) {
     ocultarLoading();
+    if (isFirebasePermissionError_(error)) {
+      mostrarMensagemErro('Sua conta nao esta autorizada para acessar esta base Firebase.');
+      return;
+    }
     mostrarMensagemErro(error.message || 'Ocorreu um erro inesperado.');
+  }
+
+  function isFirebasePermissionError_(error) {
+    var message = safeTrim_(error && (error.message || error.code || error.error || ''));
+    return /permission|insufficient|missing or insufficient permissions|unauthorized/i.test(message);
   }
 
   function renderTag(type, value) {

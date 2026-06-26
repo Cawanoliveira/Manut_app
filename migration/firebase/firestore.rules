@@ -1,8 +1,20 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedInAndAllowed() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/auth_allowlist/$(request.auth.token.email));
+    }
+
+    match /auth_allowlist/{email} {
+      allow read: if signedInAndAllowed() && request.auth.token.email == email;
+      allow write: if false;
+    }
+
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if signedInAndAllowed();
     }
   }
 }

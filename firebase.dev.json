@@ -10,5 +10,13 @@
   },
   "firestore": {
     "rules": "migration/firebase/firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "BIG Compra",
+        "supportEmail": "Cawanfernandoanjok@hotmail.com"
+      }
+    }
   }
 }
