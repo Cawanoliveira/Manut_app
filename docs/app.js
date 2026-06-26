@@ -296,7 +296,7 @@
     }
     if (gateMessage) {
       gateMessage.textContent = firebaseAuthReady_
-        ? 'Use sua conta Google autorizada para acessar a base Firebase com seguranca.'
+        ? 'Use sua conta Google autorizada para acessar o sistema'
         : 'Validando sua sessao com a base Firebase...';
     }
     if (loginButton) {
