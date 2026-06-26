@@ -1,9 +1,10 @@
-const CACHE_NAME = 'manutencao-pwa-v26';
+const CACHE_NAME = 'manutencao-pwa-v27';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './firebase-bridge.js',
   './config.js',
   './manifest.webmanifest',
   './icon-192.png',

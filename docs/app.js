@@ -6190,6 +6190,10 @@
 
   function serverCall_(functionName, args, options) {
       var opts = options || {};
+      if (window.FirebaseBridge && typeof window.FirebaseBridge.isEnabled === 'function' && window.FirebaseBridge.isEnabled() &&
+          typeof window.FirebaseBridge.canHandle === 'function' && window.FirebaseBridge.canHandle(functionName)) {
+        return window.FirebaseBridge.call(functionName, args || [], opts);
+      }
       if (window.google && google.script && google.script.run) {
         return new Promise(function(resolve, reject) {
           var runner = google.script.run
