@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "BIG Compra",
-  "short_name": "BIG Compra",
+  "name": "Zelo Hub",
+  "short_name": "Zelo Hub",
   "description": "Aplicativo operacional para registrar, priorizar e acompanhar pendencias com fluxo guiado e cronograma.",
   "start_url": "./",
   "scope": "./",

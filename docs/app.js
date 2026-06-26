@@ -139,29 +139,7 @@
   }
 
   function bindInstallExperience_() {
-    updateInstallBanner_();
-    window.addEventListener('beforeinstallprompt', function(event) {
-      event.preventDefault();
-      installPromptEvent_ = event;
-      rememberInstallBannerDismissal_(false);
-      updateInstallBanner_();
-    });
-    window.addEventListener('appinstalled', function() {
-      installPromptEvent_ = null;
-      rememberInstallBannerDismissal_(true);
-      updateInstallBanner_();
-      mostrarMensagemSucesso('Aplicativo instalado com sucesso neste dispositivo.');
-    });
-    if (window.matchMedia) {
-      var standaloneMedia = window.matchMedia('(display-mode: standalone)');
-      if (standaloneMedia) {
-        if (typeof standaloneMedia.addEventListener === 'function') {
-          standaloneMedia.addEventListener('change', updateInstallBanner_);
-        } else if (typeof standaloneMedia.addListener === 'function') {
-          standaloneMedia.addListener(updateInstallBanner_);
-        }
-      }
-    }
+    return;
   }
 
   function requiresFirebaseLogin_() {
@@ -376,7 +354,7 @@
 
   function getInstallBannerMessage_() {
     if (installPromptEvent_) {
-      return 'Abra o BIG Compra direto da tela inicial para ganhar velocidade e uma experiencia mais fluida no celular.';
+      return 'Abra o Zelo Hub direto da tela inicial para ganhar velocidade e uma experiencia mais fluida no celular.';
     }
     if (isIosDevice_()) {
       return 'No iPhone ou iPad, use o menu Compartilhar do Safari e toque em "Adicionar a Tela de Inicio".';
@@ -384,7 +362,7 @@
     if (isAndroidDevice_()) {
       return 'No Android, abra o menu do navegador e use "Instalar app" ou "Adicionar a tela inicial".';
     }
-    return 'Instale o BIG Compra no navegador para abrir como aplicativo.';
+    return 'Instale o Zelo Hub no navegador para abrir como aplicativo.';
   }
 
   function updateInstallBanner_() {

@@ -14,7 +14,7 @@
   "auth": {
     "providers": {
       "googleSignIn": {
-        "oAuthBrandDisplayName": "BIG Compra",
+        "oAuthBrandDisplayName": "Zelo Hub",
         "supportEmail": "Cawanfernandoanjok@hotmail.com"
       }
     }
